@@ -2561,8 +2561,10 @@ func doRestartFailedTasks(ctx context.Context, tasks []string, user string, resu
 // ClearAndResetStrandedHostTask clears the host task dispatched to the host due
 // to being stranded on a bad host (e.g. one that has been terminated). It also
 // marks the current task execution as finished and, if possible, a new
-// execution is created to restart the task.
-func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Settings, h *host.Host) error {
+// execution is created to restart the task. The reason is a human-readable
+// explanation of why the task was stranded and is stored in the task's end
+// details.
+func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Settings, h *host.Host, reason string) error {
 	if h.RunningTask == "" {
 		return nil
 	}
@@ -2578,7 +2580,7 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
 	}
 
-	if err := endAndResetSystemFailedTask(ctx, settings, t, evergreen.TaskDescriptionStranded); err != nil {
+	if err := endAndResetSystemFailedTask(ctx, settings, t, evergreen.TaskDescriptionStranded, reason); err != nil {
 		if errors.Is(err, ErrTaskStateChanged) {
 			logTaskAlreadyHandled(ctx, t)
 			return nil
@@ -2593,6 +2595,7 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 		"execution_platform": t.ExecutionPlatform,
 		"version":            t.Version,
 		"failure_desc":       t.Details.Description,
+		"reason":             reason,
 	})
 
 	return nil
@@ -2602,11 +2605,13 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 // The current task execution is marked as finished and, if the task was not
 // aborted, the task is reset. If the task was aborted, we do not reset the task
 // and it is just marked as failed alongside other necessary updates to finish the task.
-func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) error {
+// The host is the one the task was running on and may be nil.
+func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, h *host.Host) error {
 	failureDesc := evergreen.TaskDescriptionHeartbeat
+	reason := staleTaskReason(t, h)
 	if t.Aborted {
 		failureDesc = evergreen.TaskDescriptionAborted
-		if err := finishStaleAbortedTask(ctx, settings, t); err != nil {
+		if err := finishStaleAbortedTask(ctx, settings, t, reason); err != nil {
 			if errors.Is(err, ErrTaskStateChanged) {
 				logTaskAlreadyHandled(ctx, t)
 				return nil
@@ -2615,7 +2620,7 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 		}
 		saveAndTrackCrashPathS3Cost(ctx, t)
 	} else {
-		if err := endAndResetSystemFailedTask(ctx, settings, t, failureDesc); err != nil {
+		if err := endAndResetSystemFailedTask(ctx, settings, t, failureDesc, reason); err != nil {
 			if errors.Is(err, ErrTaskStateChanged) {
 				logTaskAlreadyHandled(ctx, t)
 				return nil
@@ -2643,6 +2648,27 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 		"description":        failureDesc,
 	})
 	return nil
+}
+
+// hostCommunicationSlack is how far behind the task's last heartbeat the
+// host's last communication time can lag, since the app server only records
+// host communication about once a minute. It should be kept in sync with
+// hostCommunicationWriteInterval in rest/route.
+const hostCommunicationSlack = time.Minute
+
+func staleTaskReason(t *task.Task, h *host.Host) string {
+	reason := "task never sent a heartbeat"
+	if !utility.IsZeroTime(t.LastHeartbeat) {
+		reason = fmt.Sprintf("task has not sent a heartbeat since %s", t.LastHeartbeat.UTC().Format(time.RFC3339))
+	}
+	if h == nil || utility.IsZeroTime(h.LastCommunicationTime) {
+		return reason
+	}
+	lastCommunication := h.LastCommunicationTime.UTC().Format(time.RFC3339)
+	if h.LastCommunicationTime.After(t.LastHeartbeat.Add(hostCommunicationSlack)) {
+		return fmt.Sprintf("%s; the host contacted Evergreen at %s, so the agent likely stopped running the task", reason, lastCommunication)
+	}
+	return fmt.Sprintf("%s; nothing on the host has contacted Evergreen since %s, so the host or its agent likely became unresponsive", reason, lastCommunication)
 }
 
 func logTaskAlreadyHandled(ctx context.Context, t *task.Task) {
@@ -2711,11 +2737,12 @@ func saveAndTrackCrashPathS3Cost(ctx context.Context, t *task.Task) {
 		"tracking version S3 cost for crash-path task '%s'", t.Id))
 }
 
-func finishStaleAbortedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) error {
+func finishStaleAbortedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, reason string) error {
 	failureDetails := &apimodels.TaskEndDetail{
-		Status:      evergreen.TaskFailed,
-		Type:        evergreen.CommandTypeSystem,
-		Description: evergreen.TaskDescriptionAborted,
+		Status:              evergreen.TaskFailed,
+		Type:                evergreen.CommandTypeSystem,
+		Description:         evergreen.TaskDescriptionAborted,
+		SystemFailureReason: reason,
 	}
 	if err := markEndIfUnchanged(ctx, settings, t, evergreen.APIServerTaskActivator, t.EstimatedFinishTime(time.Now()), failureDetails); err != nil {
 		return errors.Wrapf(err, "calling mark finish on task '%s'", t.Id)
@@ -2730,7 +2757,7 @@ var ErrTaskStateChanged = errors.New("task changed since it was read")
 // endAndResetSystemFailedTask finishes and resets a task that has encountered a system failure
 // such as being stranded on a terminated host/container or failing to send a
 // heartbeat.
-func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, description string) error {
+func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, description, reason string) error {
 	if t.IsFinished() {
 		return nil
 	}
@@ -2742,7 +2769,7 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 	// Mark the task as finished (without restarting) if restarts are disabled, or the task isn't on its first execution.
 	shouldSkipRetry := settings.ServiceFlags.SystemFailedTaskRestartDisabled || t.Execution > 0
 	if unschedulableTask || shouldSkipRetry || t.IsStuckTask() {
-		failureDetails := task.GetSystemFailureDetails(description)
+		failureDetails := task.GetSystemFailureDetails(description, reason)
 		// If the task has already exceeded the unschedulable threshold, we
 		// don't want to restart it, so just mark it as finished.
 		if t.DisplayOnly {
@@ -2761,7 +2788,7 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 		return markEndIfUnchanged(ctx, settings, t, evergreen.MonitorPackage, t.EstimatedFinishTime(time.Now()), &failureDetails)
 	}
 
-	if err := t.MarkSystemFailedIfUnchanged(ctx, description); err != nil {
+	if err := t.MarkSystemFailedIfUnchanged(ctx, description, reason); err != nil {
 		if adb.ResultsNotFound(err) {
 			return ErrTaskStateChanged
 		}
@@ -2828,7 +2855,7 @@ func FixStrandedVirtualTask(ctx context.Context, settings *evergreen.Settings, t
 		return nil
 	}
 
-	details := task.GetSystemFailureDetails(evergreen.TaskDescriptionStranded)
+	details := task.GetSystemFailureDetails(evergreen.TaskDescriptionStranded, "runner task finished without setting a status for this virtual task")
 	if err := MarkEnd(ctx, settings, t, evergreen.MonitorPackage, time.Now(), &details); err != nil {
 		return errors.Wrapf(err, "marking stranded virtual task '%s' finished", t.Id)
 	}

@@ -52,7 +52,8 @@ const (
 )
 
 // hostCommunicationWriteInterval is the minimum time between writes to a host's last
-// communication time.
+// communication time. It should be kept in sync with hostCommunicationSlack in
+// the model package.
 const hostCommunicationWriteInterval = time.Minute
 
 type projCtxMiddleware struct{}
