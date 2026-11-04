@@ -41,6 +41,8 @@ type MockInstance struct {
 	InstanceID string
 	// StateReason is the state reason returned by GetInstanceState.
 	StateReason string
+	// TerminateErr is the error returned by TerminateInstance, if any.
+	TerminateErr error
 }
 
 type MockVolume struct {
@@ -301,6 +303,9 @@ func (m *mockManager) TerminateInstance(ctx context.Context, host *host.Host, us
 	instance, ok := m.Instances[host.Id]
 	if !ok {
 		return errors.Errorf("unable to fetch host '%s'", host.Id)
+	}
+	if instance.TerminateErr != nil {
+		return instance.TerminateErr
 	}
 
 	instance.Status = StatusTerminated

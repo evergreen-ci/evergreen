@@ -534,18 +534,20 @@ func TestSetHostTerminated(t *testing.T) {
 
 		So(host.Insert(ctx), ShouldBeNil)
 
-		Convey("setting the host as terminated should set the status and the"+
-			" termination time in both the in-memory and database copies of"+
-			" the host", func() {
+		Convey("setting the host as terminated should set the status,"+
+			" termination time, and termination reason in both the in-memory"+
+			" and database copies of the host", func() {
 
-			So(host.Terminate(ctx, evergreen.User, ""), ShouldBeNil)
+			So(host.Terminate(ctx, evergreen.User, "host was found in state 'stopped'"), ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
+			So(host.TerminationReason, ShouldEqual, "host was found in state 'stopped'")
 
 			host, err = FindOne(ctx, ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
+			So(host.TerminationReason, ShouldEqual, "host was found in state 'stopped'")
 
 		})
 

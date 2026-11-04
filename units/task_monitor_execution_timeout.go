@@ -186,6 +186,9 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 		}
 	}
 
+	// If this fails after the host's running task was cleared above, an agent
+	// deploy job can update the host's last communication time before the
+	// retry, so the retry may blame the agent rather than an unreachable host.
 	if err := model.FixStaleTask(ctx, j.env.Settings(), j.task, host); err != nil {
 		return errors.Wrapf(err, "resetting stale task '%s'", j.task.Id)
 	}

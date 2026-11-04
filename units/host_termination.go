@@ -118,7 +118,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"provider": j.host.Distro.Provider,
 			"message":  "host termination for a non-spawnable distro",
 		})
-		if err := j.host.Terminate(ctx, evergreen.User, j.TerminationReason); err != nil {
+		if err := j.host.Terminate(ctx, evergreen.User, j.terminationReasonOrDefault()); err != nil {
 			j.AddError(errors.Wrapf(err, "terminating host '%s' in DB", j.host.Id))
 		}
 		return
@@ -211,7 +211,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task_execution": j.host.RunningTaskExecution,
 			})
 
-			j.AddError(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host, j.terminationReason()))
+			j.AddError(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host, j.terminationReasonOrDefault()))
 		} else {
 			return
 		}
@@ -256,7 +256,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// set host as decommissioned in DB so no new task will be assigned
 	prevStatus := j.host.Status
 	if prevStatus != evergreen.HostTerminated {
-		if err = j.host.SetDecommissioned(ctx, evergreen.User, j.TerminateIfBusy, j.terminationReason()); err != nil {
+		if err = j.host.SetDecommissioned(ctx, evergreen.User, j.TerminateIfBusy, j.terminationReasonOrDefault()); err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"host_id":  j.host.Id,
 				"provider": j.host.Distro.Provider,
@@ -290,7 +290,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task_execution": j.host.RunningTaskExecution,
 			})
 
-			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host, j.terminationReason()), "fixing stranded task '%s' execution '%d'", j.host.RunningTask, j.host.RunningTaskExecution))
+			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host, j.terminationReasonOrDefault()), "fixing stranded task '%s' execution '%d'", j.host.RunningTask, j.host.RunningTaskExecution))
 		} else {
 			return
 		}
@@ -340,9 +340,9 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 }
 
-// terminationReason returns why the host is being terminated, falling back to
-// a generic reason if none was given.
-func (j *hostTerminationJob) terminationReason() string {
+// terminationReasonOrDefault returns why the host is being terminated, falling
+// back to a generic reason if none was given.
+func (j *hostTerminationJob) terminationReasonOrDefault() string {
 	if j.TerminationReason != "" {
 		return j.TerminationReason
 	}
@@ -435,7 +435,7 @@ func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) (time.Durati
 
 func (j *hostTerminationJob) cleanupIntentHost(ctx context.Context) error {
 	if j.SkipCloudHostTermination {
-		return errors.Wrap(j.host.Terminate(ctx, evergreen.User, j.TerminationReason), "marking DB host terminated")
+		return errors.Wrap(j.host.Terminate(ctx, evergreen.User, j.terminationReasonOrDefault()), "marking DB host terminated")
 	}
 
 	if j.host.IPAllocationID != "" || j.host.IPAssociationID != "" {
@@ -451,7 +451,7 @@ func (j *hostTerminationJob) cleanupIntentHost(ctx context.Context) error {
 		}))
 	}
 
-	if err := j.host.Terminate(ctx, evergreen.User, j.TerminationReason); err != nil {
+	if err := j.host.Terminate(ctx, evergreen.User, j.terminationReasonOrDefault()); err != nil {
 		return errors.Wrapf(err, "terminating intent host in DB")
 	}
 	return nil
@@ -465,7 +465,7 @@ func (j *hostTerminationJob) cleanupIntentHost(ctx context.Context) error {
 // host and only mark the host as terminated in the DB .
 func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context) error {
 	if j.SkipCloudHostTermination {
-		return errors.Wrap(j.host.Terminate(ctx, evergreen.User, j.TerminationReason), "marking DB host terminated")
+		return errors.Wrap(j.host.Terminate(ctx, evergreen.User, j.terminationReasonOrDefault()), "marking DB host terminated")
 	}
 
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env)
@@ -482,7 +482,7 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context) err
 		return errors.Wrap(err, "getting cloud host instance status")
 	}
 	if cloudInfo.Status == cloud.StatusNonExistent {
-		return errors.Wrap(j.host.Terminate(ctx, evergreen.User, j.TerminationReason), "marking nonexistent host as terminated")
+		return errors.Wrap(j.host.Terminate(ctx, evergreen.User, j.terminationReasonOrDefault()), "marking nonexistent host as terminated")
 	}
 
 	if cloudInfo.Status == cloud.StatusTerminated {
@@ -494,7 +494,7 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context) err
 		return j.host.Terminate(ctx, evergreen.User, "cloud provider indicated that the host was already terminated")
 	}
 
-	if err := cloudHost.TerminateInstance(ctx, evergreen.User, j.TerminationReason); err != nil {
+	if err := cloudHost.TerminateInstance(ctx, evergreen.User, j.terminationReasonOrDefault()); err != nil {
 		return errors.Wrap(err, "terminating cloud host")
 	}
 

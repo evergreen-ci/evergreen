@@ -1428,21 +1428,16 @@ func (h *Host) ResetLastCommunicated(ctx context.Context) error {
 // and unsets the host volumes.
 func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 	terminatedAt := time.Now()
-	setFields := bson.M{
-		TerminationTimeKey: terminatedAt,
-		VolumesKey:         nil,
-	}
-	if reason != "" {
-		setFields[TerminationReasonKey] = reason
-	}
-	if err := h.setStatusAndFields(ctx, evergreen.HostTerminated, nil, setFields, nil, user, reason); err != nil {
+	if err := h.setStatusAndFields(ctx, evergreen.HostTerminated, nil, bson.M{
+		TerminationTimeKey:   terminatedAt,
+		TerminationReasonKey: reason,
+		VolumesKey:           nil,
+	}, nil, user, reason); err != nil {
 		return err
 	}
 
 	h.TerminationTime = terminatedAt
-	if reason != "" {
-		h.TerminationReason = reason
-	}
+	h.TerminationReason = reason
 	h.Volumes = nil
 
 	return nil

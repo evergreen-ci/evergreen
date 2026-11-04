@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -105,6 +106,27 @@ func TestHostTerminationJob(t *testing.T) {
 			cloudHost := mcp.Get(h.Id)
 			require.NotZero(t, cloudHost)
 			assert.Equal(t, cloud.StatusRunning, cloudHost.Status, "cloud host should be unchanged because cloud host termination should be skipped")
+		},
+		"RecordsTerminationReasonAsDecommissionReasonWhenCloudTerminationFails": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
+			require.NoError(t, h.Insert(ctx))
+			mcp.Set(h.Id, cloud.MockInstance{
+				Status:       cloud.StatusRunning,
+				TerminateErr: errors.New("cloud termination failed"),
+			})
+
+			j := NewHostTerminationJob(env, h, HostTerminationOptions{
+				TerminateIfBusy:   true,
+				TerminationReason: reason,
+			})
+			j.Run(ctx)
+			assert.Error(t, j.Error())
+
+			dbHost, err := host.FindOne(ctx, host.ById(h.Id))
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostDecommissioned, dbHost.Status)
+			assert.Equal(t, reason, dbHost.DecommissionReason)
+			assert.Empty(t, dbHost.TerminationReason)
 		},
 		"TerminatesStaticHosts": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Distro.Provider = evergreen.ProviderNameStatic

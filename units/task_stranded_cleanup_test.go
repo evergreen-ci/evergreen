@@ -130,8 +130,6 @@ func TestTaskStrandedCleanupJob(t *testing.T) {
 					HostId:    "host",
 					Status:    evergreen.TaskStarted,
 					Activated: true,
-					// A later execution is finished without being restarted,
-					// so the reason stays on the current task document.
 					Execution: 1,
 				}
 				require.NoError(t, tsk.Insert(t.Context()))

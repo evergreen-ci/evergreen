@@ -7197,18 +7197,22 @@ func TestStaleTaskReason(t *testing.T) {
 		tsk := &task.Task{LastHeartbeat: lastHeartbeat}
 		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z", staleTaskReason(tsk, nil))
 	})
-	t.Run("HostThatNeverCommunicatedShouldBeReported", func(t *testing.T) {
+	t.Run("HostWithoutCommunicationTimeShouldOnlyReportHeartbeat", func(t *testing.T) {
 		tsk := &task.Task{LastHeartbeat: lastHeartbeat}
-		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z and the host has never communicated with Evergreen", staleTaskReason(tsk, &host.Host{}))
+		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z", staleTaskReason(tsk, &host.Host{}))
 	})
 	t.Run("HostCommunicatingAfterHeartbeatShouldReportAgentStopped", func(t *testing.T) {
 		tsk := &task.Task{LastHeartbeat: lastHeartbeat}
 		h := &host.Host{LastCommunicationTime: lastHeartbeat.Add(10 * time.Minute)}
-		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z, but the host last communicated with Evergreen at 2026-10-28T12:10:00Z, so the host is up and the agent likely stopped running the task", staleTaskReason(tsk, h))
+		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z; the host contacted Evergreen at 2026-10-28T12:10:00Z, so the agent likely stopped running the task", staleTaskReason(tsk, h))
 	})
-	t.Run("HostSilentSinceHeartbeatShouldReportHostUnreachable", func(t *testing.T) {
+	t.Run("NeverSentHeartbeatWithCommunicatingHostShouldReportAgentStopped", func(t *testing.T) {
+		h := &host.Host{LastCommunicationTime: lastHeartbeat}
+		assert.Equal(t, "task never sent a heartbeat; the host contacted Evergreen at 2026-10-28T12:00:00Z, so the agent likely stopped running the task", staleTaskReason(&task.Task{}, h))
+	})
+	t.Run("HostSilentSinceHeartbeatShouldReportHostOrAgentUnresponsive", func(t *testing.T) {
 		tsk := &task.Task{LastHeartbeat: lastHeartbeat}
 		h := &host.Host{LastCommunicationTime: lastHeartbeat.Add(30 * time.Second)}
-		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z and the host has not communicated with Evergreen since 2026-10-28T12:00:30Z, so the host likely became unreachable", staleTaskReason(tsk, h))
+		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z; nothing on the host has contacted Evergreen since 2026-10-28T12:00:30Z, so the host or its agent likely became unresponsive", staleTaskReason(tsk, h))
 	})
 }
