@@ -807,12 +807,12 @@ func TestMakeTagValidationError(t *testing.T) {
 	}{
 		"BelowTaskCap": {
 			numFailures:   3,
-			expectedInMsg: []string{"3 generated tasks are missing a tag with prefix 'owning_team_':\ntask0\ntask1\ntask2"},
+			expectedInMsg: []string{"3 generated task(s) are missing a tag with prefix 'owning_team_':\ntask0\ntask1\ntask2"},
 		},
 		"AboveTaskCap": {
 			numFailures: 80,
 			expectedInMsg: []string{
-				"80 generated tasks are missing a tag with prefix 'owning_team_'",
+				"80 generated task(s) are missing a tag with prefix 'owning_team_'",
 				"task49",
 				"and 30 more (truncated)",
 			},
