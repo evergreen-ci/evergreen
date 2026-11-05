@@ -414,6 +414,8 @@ func TestDecommissionHost(t *testing.T) {
 	require.NotNil(t, hostFromDb)
 	assert.NotEqual(t, evergreen.HostDecommissioned, hostFromDb.Status)
 	assert.NotEqual(t, evergreen.HostDecommissioned, h.Status)
+	assert.Empty(t, hostFromDb.DecommissionReason)
+	assert.Empty(t, h.DecommissionReason)
 
 	assert.NoError(t, h.SetDecommissioned(ctx, "user", true, "counting to three"))
 
@@ -423,6 +425,37 @@ func TestDecommissionHost(t *testing.T) {
 	require.NotNil(t, hostFromDb)
 	assert.Equal(t, evergreen.HostDecommissioned, hostFromDb.Status)
 	assert.Equal(t, evergreen.HostDecommissioned, h.Status)
+	assert.Equal(t, "counting to three", hostFromDb.DecommissionReason)
+	assert.Equal(t, "counting to three", h.DecommissionReason)
+}
+
+func TestDecommissionParentHostRecordsReasonOnContainers(t *testing.T) {
+	ctx := t.Context()
+
+	require.NoError(t, db.ClearCollections(Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	})
+	parent := Host{
+		Id:            "parent",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	require.NoError(t, parent.Insert(ctx))
+	container := Host{
+		Id:       "container",
+		Status:   evergreen.HostRunning,
+		ParentID: parent.Id,
+	}
+	require.NoError(t, container.Insert(ctx))
+
+	require.NoError(t, parent.SetDecommissioned(ctx, "user", true, "host decommissioned due to overallocation"))
+
+	dbContainer, err := FindOneId(ctx, container.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbContainer)
+	assert.Equal(t, evergreen.HostDecommissioned, dbContainer.Status)
+	assert.Equal(t, "parent is being decommissioned (host decommissioned due to overallocation)", dbContainer.DecommissionReason)
 }
 
 func TestSetStopped(t *testing.T) {
@@ -501,18 +534,20 @@ func TestSetHostTerminated(t *testing.T) {
 
 		So(host.Insert(ctx), ShouldBeNil)
 
-		Convey("setting the host as terminated should set the status and the"+
-			" termination time in both the in-memory and database copies of"+
-			" the host", func() {
+		Convey("setting the host as terminated should set the status,"+
+			" termination time, and termination reason in both the in-memory"+
+			" and database copies of the host", func() {
 
-			So(host.Terminate(ctx, evergreen.User, ""), ShouldBeNil)
+			So(host.Terminate(ctx, evergreen.User, "host was found in state 'stopped'"), ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
+			So(host.TerminationReason, ShouldEqual, "host was found in state 'stopped'")
 
 			host, err = FindOne(ctx, ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
+			So(host.TerminationReason, ShouldEqual, "host was found in state 'stopped'")
 
 		})
 
@@ -1254,7 +1289,7 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 		}
 
 		Convey("When decommissioning hosts of type distro_a", func() {
-			err := DecommissionHostsWithDistroId(ctx, distroA)
+			err := DecommissionHostsWithDistroId(ctx, distroA, "decommissioned from the distro page")
 			So(err, ShouldBeNil)
 
 			Convey("Distro should be marked as decommissioned accordingly", func() {
@@ -1266,10 +1301,12 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 				for _, host := range hostsTypeA {
 
 					So(host.Status, ShouldEqual, evergreen.HostDecommissioned)
+					So(host.DecommissionReason, ShouldEqual, "decommissioned from the distro page")
 				}
 
 				for _, host := range hostsTypeB {
 					So(host.Status, ShouldEqual, evergreen.HostRunning)
+					So(host.DecommissionReason, ShouldBeEmpty)
 
 				}
 			})

@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	mongobson "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -2076,7 +2077,7 @@ func TestShellVersionFromRevisionTriggerModule(t *testing.T) {
 	metadata := model.VersionMetadata{
 		Revision:            model.Revision{Revision: "mainline-sha"},
 		TriggerID:           "dsi",
-		TriggerType:         model.ProjectTriggerLevelPush,
+		TriggerType:         evergreen.ProjectTriggerLevelPush,
 		TriggerDefinitionID: "def1",
 		SourceCommit:        "module-sha",
 		SourceModule: &model.SourceModule{
@@ -2300,6 +2301,7 @@ func TestCreateVersionItemsPathFiltering(t *testing.T) {
 buildvariants:
 - name: frontend
   display_name: Frontend
+  tags: [frontend-tag]
   run_on: d
   paths:
   - "frontend/**"
@@ -2380,6 +2382,24 @@ tasks:
 
 			err = createVersionItems(ctx, v, tc.metadata, projectInfo, nil, nil)
 			require.NoError(t, err)
+			storedVersion, err := model.VersionFindOneIdWithBuildVariants(ctx, v.Id)
+			require.NoError(t, err)
+			require.NotNil(t, storedVersion)
+
+			foundFrontend := false
+			for _, bv := range storedVersion.BuildVariants {
+				if bv.BuildVariant == "frontend" {
+					foundFrontend = true
+					assert.Equal(t, []string{"frontend-tag"}, bv.Tags)
+					tasks, err := task.Find(ctx, mongobson.M{task.BuildIdKey: bv.BuildId})
+					require.NoError(t, err)
+					require.NotEmpty(t, tasks)
+					for _, task := range tasks {
+						assert.Equal(t, []string{"frontend-tag"}, task.BuildVariantTags)
+					}
+				}
+			}
+			require.True(t, foundFrontend)
 
 			ignoredVariants := []string{}
 			for _, bv := range v.BuildVariants {

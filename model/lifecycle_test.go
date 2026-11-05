@@ -992,6 +992,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		buildVar1 := parserBV{
 			Name:        "buildVar",
 			DisplayName: "Build Variant",
+			Tags:        []string{"variant-tag"},
 			RunOn:       []string{"arch"},
 			Tasks: parserBVTaskUnits{
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskD"},
@@ -1222,6 +1223,10 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(build, ShouldNotBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(tasks), ShouldEqual, 6)
+			So(build.Tags, ShouldResemble, []string{"variant-tag"})
+			for _, task := range tasks {
+				So(task.BuildVariantTags, ShouldResemble, build.Tags)
+			}
 
 			creationInfo.BuildVariantName = buildVar2.Name
 			build, tasks, err = CreateBuildFromVersionNoInsert(ctx, creationInfo)

@@ -654,16 +654,11 @@ func aliasMatchesTaskGroupTask(p *model.Project, alias model.ProjectAlias, tgNam
 
 func validateProjectConfigPlugins(ctx context.Context, pc *model.ProjectConfig) ValidationErrors {
 	errs := ValidationErrors{}
-	annotationSettings := pc.TaskAnnotationSettings
-	var webhook *evergreen.WebHook
-	if annotationSettings != nil {
-		webhook = &annotationSettings.FileTicketWebhook
-	}
 	// skip validation if no build baron configuration exists
 	if pc.BuildBaronSettings == nil {
 		return ValidationErrors{}
 	}
-	err := model.ValidateBbProject(ctx, pc.Project, *pc.BuildBaronSettings, webhook)
+	err := model.ValidateBbProject(ctx, pc.Project, *pc.BuildBaronSettings, nil)
 	if err != nil {
 		errs = append(errs,
 			ValidationError{
@@ -1126,11 +1121,23 @@ func validateIncludeLimits(_ context.Context, settings *evergreen.Settings, proj
 }
 
 func validateProjectLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
-	bvTasks := project.FindAllBuildVariantTasks()
+	// Virtual tasks start inactive, so they don't count toward the limit.
+	virtualTasks := map[string]bool{}
+	for _, t := range project.Tasks {
+		if t.Virtual {
+			virtualTasks[t.Name] = true
+		}
+	}
+	numTasks := 0
+	for _, bvt := range project.FindAllBuildVariantTasks() {
+		if !virtualTasks[bvt.Name] {
+			numTasks++
+		}
+	}
 	errs := ValidationErrors{}
-	if settings.TaskLimits.MaxTasksPerVersion > 0 && len(bvTasks) > settings.TaskLimits.MaxTasksPerVersion {
+	if settings.TaskLimits.MaxTasksPerVersion > 0 && numTasks > settings.TaskLimits.MaxTasksPerVersion {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("project's total number of tasks (%d) exceeds maximum limit (%d)", len(bvTasks), settings.TaskLimits.MaxTasksPerVersion),
+			Message: fmt.Sprintf("project's total number of non-virtual tasks (%d) exceeds maximum limit (%d)", numTasks, settings.TaskLimits.MaxTasksPerVersion),
 			Level:   Error,
 		})
 	}

@@ -9,43 +9,42 @@ import (
 )
 
 const (
-	clientS3BucketFlagName   = "client_s3_bucket"
-	ConfFlagName             = "conf"
-	crossFileAnchorsFlagName = "cross-file-anchors"
-	dirFlagName              = "dir"
-	displayNameFlagName      = "name"
-	errorOnWarningsFlagName  = "error-on-warnings"
-	hostFlagName             = "host"
-	largeFlagName            = "large"
-	limitFlagName            = "limit"
-	localModulesFlagName     = "local_modules"
-	moduleFlagName           = "module"
-	noBrowserFlagName        = "no-browser"
-	overwriteConfFlagName    = "overwrite"
-	parameterFlagName        = "param"
-	patchAliasFlagName       = "alias"
-	patchAuthorFlag          = "author"
-	patchBrowseFlagName      = "browse"
-	patchFinalizeFlagName    = "finalize"
-	patchIDFlagName          = "patch"
-	pathFlagName             = "path"
-	preserveCommitsFlag      = "preserve-commits"
-	projectFlagName          = "project"
-	quietFlagName            = "quiet"
-	refFlagName              = "ref"
-	regexTasksFlagName       = "regex_tasks"
-	regexVariantsFlagName    = "regex_variants"
-	regionFlagName           = "region"
-	skipConfirmFlagName      = "skip_confirm"
-	startTimeFlagName        = "time"
-	subscriptionTypeFlag     = "subscription-type"
-	tasksFlagName            = "tasks"
-	testingEnvFlagName       = "testing-env"
-	traceEndpointFlagName    = "trace_endpoint"
-	uncommittedChangesFlag   = "uncommitted"
-	variantsFlagName         = "variants"
-	versionIDFlagName        = "version_id"
-	yesFlagName              = "yes"
+	clientS3BucketFlagName  = "client_s3_bucket"
+	ConfFlagName            = "conf"
+	dirFlagName             = "dir"
+	displayNameFlagName     = "name"
+	errorOnWarningsFlagName = "error-on-warnings"
+	hostFlagName            = "host"
+	largeFlagName           = "large"
+	limitFlagName           = "limit"
+	localModulesFlagName    = "local_modules"
+	moduleFlagName          = "module"
+	noBrowserFlagName       = "no-browser"
+	overwriteConfFlagName   = "overwrite"
+	parameterFlagName       = "param"
+	patchAliasFlagName      = "alias"
+	patchAuthorFlag         = "author"
+	patchBrowseFlagName     = "browse"
+	patchFinalizeFlagName   = "finalize"
+	patchIDFlagName         = "patch"
+	pathFlagName            = "path"
+	preserveCommitsFlag     = "preserve-commits"
+	projectFlagName         = "project"
+	quietFlagName           = "quiet"
+	refFlagName             = "ref"
+	regexTasksFlagName      = "regex_tasks"
+	regexVariantsFlagName   = "regex_variants"
+	regionFlagName          = "region"
+	skipConfirmFlagName     = "skip_confirm"
+	startTimeFlagName       = "time"
+	subscriptionTypeFlag    = "subscription-type"
+	tasksFlagName           = "tasks"
+	testingEnvFlagName      = "testing-env"
+	traceEndpointFlagName   = "trace_endpoint"
+	uncommittedChangesFlag  = "uncommitted"
+	variantsFlagName        = "variants"
+	versionIDFlagName       = "version_id"
+	yesFlagName             = "yes"
 
 	dbAWSAuthFlagName       = "mongo-aws-auth"
 	dbNameFlagName          = "db"
@@ -251,13 +250,6 @@ func addUncommittedChangesFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.BoolFlag{
 		Name:  joinFlagNames(uncommittedChangesFlag, "u"),
 		Usage: "include uncommitted changes",
-	})
-}
-
-func addCrossFileAnchorsFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.BoolFlag{
-		Name:  crossFileAnchorsFlagName,
-		Usage: "enable cross-file YAML anchors regardless of the admin setting",
 	})
 }
 

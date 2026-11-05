@@ -3047,9 +3047,6 @@ build_baron_settings:
 		includedYaml := `
 workstation_config:
   git_clone: false
-task_annotation_settings:
-  file_ticket_webhook:
-    endpoint: "https://example.com"
 `
 		p1, _, _, err := createIntermediateProject([]byte(mainYaml), false, nil)
 		require.NoError(t, err)
@@ -3062,7 +3059,6 @@ task_annotation_settings:
 		require.NotNil(t, p1.projectConfigFields.WorkstationConfig)
 		assert.True(t, utility.FromBoolPtr(p1.projectConfigFields.WorkstationConfig.GitClone))
 		assert.NotNil(t, p1.projectConfigFields.BuildBaronSettings)
-		assert.NotNil(t, p1.projectConfigFields.TaskAnnotationSettings)
 		assert.Equal(t, []string{"workstation_config"}, p1.redefinedProjectConfigSettings)
 	})
 }
@@ -3752,12 +3748,11 @@ tasks:
 }
 
 // moduleIncludeOpts builds GetProjectOpts that serves include files from
-// inline bytes, bypassing GitHub and git, with cross-file YAML anchors enabled.
+// inline bytes, bypassing GitHub and git.
 func moduleIncludeOpts(t testing.TB, includes ...patch.LocalModuleInclude) *GetProjectOpts {
 	t.Helper()
 	return &GetProjectOpts{
-		LocalModuleIncludes:         includes,
-		CrossFileYAMLAnchorsEnabled: true,
+		LocalModuleIncludes: includes,
 	}
 }
 
@@ -5239,7 +5234,7 @@ functions:
     command: shell.exec
 `
 	t.Run("FallbackEmitsWarning", func(t *testing.T) {
-		opts := &GetProjectOpts{CrossFileYAMLAnchorsEnabled: true}
+		opts := &GetProjectOpts{}
 		pp, warnings, err := LoadProjectInto(t.Context(), []byte(yml), opts, "proj", &Project{}, true)
 		require.NoError(t, err)
 		require.NotNil(t, pp)
@@ -5248,16 +5243,8 @@ functions:
 		assert.Contains(t, warnings[0], "mapping key")
 	})
 
-	t.Run("AnchorsDisabledEmitsNoWarning", func(t *testing.T) {
-		opts := &GetProjectOpts{}
-		pp, warnings, err := LoadProjectInto(t.Context(), []byte(yml), opts, "proj", &Project{}, true)
-		require.NoError(t, err)
-		require.NotNil(t, pp)
-		assert.Empty(t, warnings)
-	})
-
 	t.Run("SuccessfulAnchorParseEmitsNoWarning", func(t *testing.T) {
-		opts := &GetProjectOpts{CrossFileYAMLAnchorsEnabled: true}
+		opts := &GetProjectOpts{}
 		pp, warnings, err := LoadProjectInto(t.Context(), []byte("functions:\n  f:\n    command: shell.exec\n"), opts, "proj", &Project{}, true)
 		require.NoError(t, err)
 		require.NotNil(t, pp)

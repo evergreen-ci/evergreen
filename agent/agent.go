@@ -1372,7 +1372,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, detail *apimode
 	if tc.taskConfig != nil {
 		taskData = &tc.taskConfig.Task
 	}
-	span.SetAttributes(buildTaskEndSpanAttributes(taskData, detail)...)
+	span.SetAttributes(buildTaskEndSpanAttributes(taskData, detail, tc.aborted.Load())...)
 	if detail.Status != evergreen.TaskSucceeded {
 		span.SetStatus(codes.Error, fmt.Sprintf("failing status '%s'", detail.Status))
 	}
@@ -1380,7 +1380,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, detail *apimode
 	return resp, nil
 }
 
-func buildTaskEndSpanAttributes(t *task.Task, detail *apimodels.TaskEndDetail) []attribute.KeyValue {
+func buildTaskEndSpanAttributes(t *task.Task, detail *apimodels.TaskEndDetail, aborted bool) []attribute.KeyValue {
 	if detail == nil {
 		return nil
 	}
@@ -1393,6 +1393,7 @@ func buildTaskEndSpanAttributes(t *task.Task, detail *apimodels.TaskEndDetail) [
 		taskCopy := *t
 		taskCopy.Status = detail.Status
 		taskCopy.Details = *detail
+		taskCopy.Aborted = aborted
 		attrs = append(attrs, attribute.String(evergreen.TaskDisplayStatusOtelAttribute, taskCopy.DetermineDisplayStatus()))
 	}
 	if detail.Type != "" {

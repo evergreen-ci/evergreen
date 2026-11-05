@@ -248,12 +248,14 @@ func TestBuildAbortSuite(t *testing.T) {
 }
 
 func (s *BuildAbortSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, build.Collection))
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, build.Collection, serviceModel.VersionCollection))
 	projRef := serviceModel.ProjectRef{Repo: "project", Id: "branch"}
 	s.NoError(projRef.Insert(s.T().Context()))
+	v := &serviceModel.Version{Id: "version1"}
+	s.NoError(v.Insert(s.T().Context()))
 	builds := []build.Build{
-		{Id: "build1", Project: "branch"},
-		{Id: "build2", Project: "notbranch"},
+		{Id: "build1", Project: "branch", Version: "version1"},
+		{Id: "build2", Project: "notbranch", Version: "version1"},
 	}
 	for _, item := range builds {
 		s.Require().NoError(item.Insert(s.T().Context()))

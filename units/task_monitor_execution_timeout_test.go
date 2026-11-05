@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -55,6 +56,10 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		"RestartsStaleHostTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
 			require.NoError(t, j.task.Insert(t.Context()))
 			require.NoError(t, v.Insert(t.Context()))
+			h, err := host.FindOneId(ctx, hostID)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			require.NoError(t, h.UpdateLastCommunicated(ctx))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -65,6 +70,12 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status, "host should still be running")
 
 			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionHeartbeat)
+			archivedTask, err := task.FindOneIdAndExecution(ctx, j.task.Id, 0)
+			require.NoError(t, err)
+			require.NotZero(t, archivedTask)
+			expectedReason := fmt.Sprintf("task has not sent a heartbeat since %s; the host contacted Evergreen at %s, so the agent likely stopped running the task",
+				j.task.LastHeartbeat.UTC().Format(time.RFC3339), dbHost.LastCommunicationTime.UTC().Format(time.RFC3339))
+			assert.Equal(t, expectedReason, archivedTask.Details.SystemFailureReason)
 		},
 		"RestartsAllTaskGroupTasksForStaleHostTaskInSingleHostTaskGroup": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
 			const taskGroupName = "some_task_group"

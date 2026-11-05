@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -64,6 +65,8 @@ type taskContext struct {
 	// backgroundFailingCommand stores metadata from the first background
 	// command whose failure caused the task to fail.
 	backgroundFailingCommand *internal.BackgroundFailure
+	// aborted is set when the agent detects that the task is being aborted.
+	aborted atomic.Bool
 	// taskCleanups and taskGroupCleanups store the cleanup commands for the
 	// task and setup group, respectively.
 	taskCleanups       []internal.CommandCleanup
@@ -437,13 +440,13 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	var confPatch *patch.Patch
-	if evergreen.IsGitHubPatchRequester(taskInfo.task.Requester) {
-		grip.Info(ctx, "Fetching patch document for GitHub PR request.")
+	if evergreen.IsPatchRequester(taskInfo.task.Requester) {
+		grip.Info(ctx, "Fetching patch document.")
 		ctx, getTaskPatchSpan := a.tracer.Start(ctx, "get-task-patch")
 		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task)
 		getTaskPatchSpan.End()
 		if err != nil {
-			return nil, errors.Wrap(err, "fetching patch for GitHub PR request")
+			return nil, errors.Wrap(err, "fetching patch")
 		}
 	}
 

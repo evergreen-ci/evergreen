@@ -11,21 +11,47 @@
             "owner": "annie.black"
           }
         }
-      }
+      },
+      "test_user_id": "regular_user"
     },
     {
       "query_file": "nonexistent.graphql",
       "result": {
         "errors": [
           {
-            "message": "project 'i-dont-exist' not found",
-            "path": ["addFavoriteProject"],
+            "message": "project/repo 'i-dont-exist' not found",
+            "path": [
+              "addFavoriteProject",
+              "opts",
+              "projectIdentifier"
+            ],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
           }
         ],
         "data": null
+      }
+    },
+    {
+      "name": "RestrictedProjectWithoutAccessShouldBeForbidden",
+      "query_file": "restricted.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'regular_user' does not have permission to 'view tasks' for the project 'restricted_secret_project_id'",
+            "path": [
+              "addFavoriteProject",
+              "opts",
+              "projectIdentifier"
+            ],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
       }
     }
   ]

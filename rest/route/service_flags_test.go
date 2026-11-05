@@ -20,7 +20,6 @@ func TestServiceFlagsGetHandler(t *testing.T) {
 
 	flags := *originalFlags
 	flags.DebugSpawnHostDisabled = true
-	flags.CrossFileYAMLAnchorsEnabled = true
 	require.NoError(t, flags.Set(ctx))
 
 	resp := makeFetchServiceFlags().Run(ctx)
@@ -30,7 +29,6 @@ func TestServiceFlagsGetHandler(t *testing.T) {
 	data, err := json.Marshal(resp.Data())
 	require.NoError(t, err)
 	assert.JSONEq(t, `{
-		"debug_spawn_host_disabled": true,
-		"cross_file_yaml_anchors_enabled": true
+		"debug_spawn_host_disabled": true
 	}`, string(data))
 }

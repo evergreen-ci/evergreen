@@ -24,7 +24,6 @@ func Evaluate() cli.Command {
 		Usage: "prints the given project configuration with tags and included files expanded (excluding files included from a separate module)",
 		Flags: mergeFlagSlices(
 			addPathFlag(),
-			addCrossFileAnchorsFlag(),
 			[]cli.Flag{
 				cli.BoolFlag{
 					Name:  taskFlagName,
@@ -68,21 +67,10 @@ func Evaluate() cli.Command {
 
 			p := &model.Project{}
 			ctx := context.Background()
-			cliAnchors := c.Bool(crossFileAnchorsFlagName)
-			anchorsEnabled := cliAnchors
-			if !cliAnchors {
-				// Best-effort: fetch the admin service flag. Avoid logging on failure
-				// to prevent polluting YAML output to stdout.
-				confPath := c.Parent().String(ConfFlagName)
-				if conf, err := NewClientSettings(confPath); err == nil {
-					anchorsEnabled, _ = getCrossFileYAMLAnchorsEnabled(conf)
-				}
-			}
 			opts := &model.GetProjectOpts{
-				LocalModules:                localModuleMap,
-				ReadFileFrom:                model.ReadFromLocal,
-				LocalIncludeDir:             cwd,
-				CrossFileYAMLAnchorsEnabled: anchorsEnabled,
+				LocalModules:    localModuleMap,
+				ReadFileFrom:    model.ReadFromLocal,
+				LocalIncludeDir: cwd,
 			}
 			_, _, err = model.LoadProjectInto(ctx, configBytes, opts, "", p, false)
 			if err != nil {

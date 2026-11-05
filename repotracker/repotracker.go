@@ -750,7 +750,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 	}
 	if metadata.TriggerType != "" {
 		var revision string
-		if metadata.TriggerType == model.ProjectTriggerLevelPush {
+		if metadata.TriggerType == evergreen.ProjectTriggerLevelPush {
 			revision = metadata.SourceCommit
 			v.TriggerSHA = revision
 			if metadata.SourceModule != nil {
@@ -1067,6 +1067,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			BuildVariant:   buildvariant.Name,
 			BuildId:        b.Id,
 			DisplayName:    b.DisplayName,
+			Tags:           b.Tags,
 			BatchTimeTasks: taskStatuses,
 			ActivationStatus: model.ActivationStatus{
 				ActivateAt: activateVariantAt,

@@ -65,7 +65,11 @@ evergreen
 
 # Agent related files
 CLAUDE.local.md
-.claude/
+.claude/*
+!.claude/skills/
+# Only skills committed for the whole team are tracked; personal skills stay local.
+.claude/skills/*
+!.claude/skills/evergreen-secure-coding/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/

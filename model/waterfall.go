@@ -54,12 +54,20 @@ type WaterfallOptions struct {
 	Requesters           []string `bson:"-" json:"-"`
 	Statuses             []string `bson:"-" json:"-"`
 	Tasks                []string `bson:"-" json:"-"`
+	TaskTags             []string `bson:"-" json:"-"`
 	TaskCaseSensitive    bool     `bson:"-" json:"-"`
 	Variants             []string `bson:"-" json:"-"`
+	VariantTags          []string `bson:"-" json:"-"`
 	VariantCaseSensitive bool     `bson:"-" json:"-"`
 }
 
 func addWaterfallTaskFilters(match bson.M, opts WaterfallOptions) {
+	if len(opts.TaskTags) > 0 {
+		match[task.TagsKey] = bson.M{"$in": opts.TaskTags}
+	}
+	if len(opts.VariantTags) > 0 {
+		match[task.BuildVariantTagsKey] = bson.M{"$in": opts.VariantTags}
+	}
 	if len(opts.Statuses) > 0 {
 		match[task.DisplayStatusCacheKey] = bson.M{"$in": opts.Statuses}
 	}
@@ -88,11 +96,12 @@ const (
 	minRevisionLength = 7
 )
 
-// This pipeline matches on versions that have a build with an ID or display name that matches variants
-// It checks if the version with order number versionSearchCutoff is old enough to require a join with the builds collection in order to obtain build variant display names.
-func getBuildVariantFilterPipeline(variants []string, caseSensitive bool, match bson.M, omitInactiveBuilds bool) ([]bson.M, error) {
+// getBuildVariantFilterPipeline matches versions with a build satisfying the variant filters.
+func getBuildVariantFilterPipeline(variants, variantTags []string, caseSensitive bool, match bson.M, omitInactiveBuilds bool) ([]bson.M, error) {
 	pipeline := []bson.M{}
-	match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey)] = bson.M{"$exists": true}
+	if len(variants) > 0 {
+		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey)] = bson.M{"$exists": true}
+	}
 	pipeline = append(pipeline, bson.M{"$match": match})
 	matchCopy := bson.M{}
 	for key := range match {
@@ -116,8 +125,12 @@ func getBuildVariantFilterPipeline(variants []string, caseSensitive bool, match 
 		}
 	}
 
-	buildsElemMatch := bson.M{
-		"$or": buildVariantMatch,
+	buildsElemMatch := bson.M{}
+	if len(variants) > 0 {
+		buildsElemMatch["$or"] = buildVariantMatch
+	}
+	if len(variantTags) > 0 {
+		buildsElemMatch[VersionBuildStatusTagsKey] = bson.M{"$in": variantTags}
 	}
 
 	if omitInactiveBuilds {
@@ -134,8 +147,9 @@ func getBuildVariantFilterPipeline(variants []string, caseSensitive bool, match 
 	return pipeline, nil
 }
 
-// GetActiveVersionsByTaskFilters returns limit versions that satisfy a task name or status filter. It also applies any requester and build variant filters.
-// If neither of these filters is specified, use GetActiveWaterfallVersions: it's faster.
+// GetActiveVersionsByTaskFilters returns up to opts.Limit versions matching task
+// filters. It also applies requester and build variant filters. If no task
+// filters are specified, GetActiveWaterfallVersions is faster.
 func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts WaterfallOptions, searchOffset int) ([]Version, error) {
 	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetActiveVersionsByTaskFilters")})
 
@@ -255,8 +269,8 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 
 	pipeline := []bson.M{}
 
-	if len(opts.Variants) > 0 {
-		buildVariantPipeline, err := getBuildVariantFilterPipeline(opts.Variants, opts.VariantCaseSensitive, match, opts.OmitInactiveBuilds)
+	if len(opts.Variants) > 0 || len(opts.VariantTags) > 0 {
+		buildVariantPipeline, err := getBuildVariantFilterPipeline(opts.Variants, opts.VariantTags, opts.VariantCaseSensitive, match, opts.OmitInactiveBuilds)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating build variant filter pipeline")
 		}

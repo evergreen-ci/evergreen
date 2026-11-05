@@ -118,6 +118,16 @@ task failed by activating previous commits as needed.
 Admins can enable Stepback Bisection which recursively divides the commits
 in half to reduce the tasks taken from O(n) to O(logn).
 
+#### Stepback Push Triggers
+
+By default, stepback only activates tasks in versions with the same requester as the failing task, so stepback on a
+mainline version skips versions created by [push level triggers](#project-triggers), such as versions for module
+commits.
+
+Admins can optionally enable Stepback Push Triggers so that stepback on mainline and push level trigger versions
+steps back through both kinds of versions, which lets it find failures caused by a module commit. When it's on,
+versions created by task and build level triggers are still skipped.
+
 #### Virtual Tasks
 
 Project admins can enable virtual tasks to allow tasks in the project to be defined as
@@ -150,6 +160,24 @@ commits as new and create versions for them. This can result in unexpected versi
 created and activated for commits that were not originally part of the tracked branch. To avoid
 this, use squash merges or other strategies that do not rewrite the commit history
 of the tracked branch.
+
+### Task Ownership Settings
+
+Project admins can require that tasks added by
+[`generate.tasks`](Project-Commands#generatetasks) carry at least one tag that
+has a matching prefix. The tag must be on the task itself; build variant tags do
+not count.
+
+In the task ownership settings, admins can configure:
+
+- **Generated task validation prefix**: the prefix that generated tasks must
+  have on at least one of its tags.
+- **Track generated task tag validation**: Tracks generated tasks
+  that fail tag validation. Failing tasks are reported to Honeycomb under the
+  [`generate_tasks_tag_validation_failures` span](Task_Traces#tag-validation-tracking);
+  task generation is not affected.
+- **Block generated tasks on tag validation**: Fails the `generate.tasks`
+  command and generates no tasks if any generated task fails tag validation.
 
 ### Access and Admin Settings
 
@@ -450,7 +478,8 @@ Options:
   - Push level triggers do not require any upstream build or task to run, but instead trigger a downstream version once
     a commit is pushed to the upstream project. This is helpful if the upstream project doesn't regularly run or create commit tasks.
   - For push level triggers, if the upstream project is a module of the downstream project's YAML,
-    the manifest of the downstream version will use the commit hash of the upstream project's commit.
+    the manifest of the downstream version will use the commit hash of the upstream project's commit. All other modules
+    keep the revisions from the previous version's manifest.
 - **Status**: Specify which status of the upstream build or task should trigger a downstream version.
   (Only applicable to build and task level triggers.)
 - **Date cutoff**: Do not trigger a downstream build if a user manually
@@ -740,7 +769,7 @@ Once toggled, the settings specified [below](#available-fields) may be defined i
 
 Version-controlled configuration may be defined in the main YAML file or in [included files](Project-Configuration-Files#include).
 Alias lists defined across multiple files are combined in include order, with the main config file's entries first. Settings
-structs (`task_annotation_settings`, `build_baron_settings`, `workstation_config`) may only be defined in one file; defining
+structs (`build_baron_settings`, `workstation_config`) may only be defined in one file; defining
 them in multiple files is a validation error.
 
 ### Hierarchical Inheritance
@@ -863,18 +892,6 @@ build_baron_settings: # This name is a holdover from legacy naming.
   ticket_search_projects:
     - SERVER
     - EVG
-```
-
-### Task Annotation Settings
-
-[View setting
-definition](#task-annotation-settings)
-
-```yaml
-task_annotation_settings:
-  web_hook:
-    endpoint: "/api/route"
-    secret: ""
 ```
 
 ## Test Selection Settings
