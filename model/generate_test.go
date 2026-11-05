@@ -3018,3 +3018,157 @@ func TestTaskGroupActivation(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateGeneratedProjectMaxTasksIgnoresVirtualTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection))
+	originalConfig, err := evergreen.GetConfig(t.Context())
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, evergreen.UpdateConfig(context.Background(), originalConfig))
+	})
+	require.NoError(t, evergreen.UpdateConfig(t.Context(), &evergreen.Settings{
+		TaskLimits: evergreen.TaskLimitsConfig{MaxTasksPerVersion: 3},
+	}))
+
+	v := &Version{Id: "v1"}
+	existingTasks := []task.Task{
+		{Id: "regular", Version: v.Id},
+		{Id: "inactive_virtual", Version: v.Id, IsVirtual: true},
+		{Id: "push_completed_virtual", Version: v.Id, IsVirtual: true, Activated: true, CompletedBy: "runner", Status: evergreen.TaskSucceeded},
+		{Id: "activated_virtual", Version: v.Id, IsVirtual: true, Activated: true},
+		{Id: "previously_generated", Version: v.Id, GeneratedBy: "generator"},
+	}
+	for _, tsk := range existingTasks {
+		require.NoError(t, tsk.Insert(t.Context()))
+	}
+
+	assert.NoError(t, validateGeneratedProjectMaxTasks(t.Context(), v, "generator", 1), "only the regular and activated virtual tasks should count toward the limit")
+	assert.Error(t, validateGeneratedProjectMaxTasks(t.Context(), v, "generator", 2))
+}
+
+func TestCountInactiveVirtualTasks(t *testing.T) {
+	p := &Project{
+		Tasks: []ProjectTask{
+			{Name: "regular"},
+			{Name: "virtual", Virtual: true},
+			{Name: "virtual_stepback", Virtual: true},
+		},
+	}
+	taskIDs := TaskIdConfig{
+		ExecutionTasks: TaskIdTable{
+			{Variant: "bv1", TaskName: "regular"}:          "regular_bv1",
+			{Variant: "bv1", TaskName: "virtual"}:          "virtual_bv1",
+			{Variant: "bv2", TaskName: "virtual"}:          "virtual_bv2",
+			{Variant: "bv1", TaskName: "virtual_stepback"}: "virtual_stepback_bv1",
+		},
+		DisplayTasks: TaskIdTable{
+			{Variant: "bv1", TaskName: "display"}: "display_bv1",
+		},
+	}
+	activationInfo := newSpecificActivationInfo()
+	activationInfo.stepbackTasks["bv1"] = []specificStepbackInfo{{task: "virtual_stepback", activate: true}}
+
+	assert.Equal(t, 2, countInactiveVirtualTasks(p, taskIDs, &activationInfo), "virtual tasks activated by stepback should count toward the limit")
+}
+
+func TestSaveGeneratedVirtualTasksWithMaxTasksPerVersion(t *testing.T) {
+	const generateTasksJSON = `
+{
+	"tasks": [
+		{"name": "regular_task", "commands": [{"command": "shell.exec"}]},
+		{"name": "virtual_task_1", "virtual": true, "commands": [{"command": "shell.exec"}]},
+		{"name": "virtual_task_2", "virtual": true, "commands": [{"command": "shell.exec"}]},
+		{"name": "virtual_task_3", "virtual": true, "commands": [{"command": "shell.exec"}]}
+	],
+	"buildvariants": [
+		{
+			"name": "bv",
+			"tasks": [
+				{"name": "regular_task"},
+				{"name": "virtual_task_1"},
+				{"name": "virtual_task_2"},
+				{"name": "virtual_task_3"}
+			]
+		}
+	]
+}
+`
+	originalConfig, err := evergreen.GetConfig(t.Context())
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, evergreen.UpdateConfig(context.Background(), originalConfig))
+	})
+
+	saveGeneratedTasks := func(t *testing.T, maxTasksPerVersion int) error {
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ParserProjectCollection, ProjectRefCollection))
+		require.NoError(t, evergreen.UpdateConfig(t.Context(), &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{MaxTasksPerVersion: maxTasksPerVersion},
+		}))
+		ref := ProjectRef{Id: "proj", VirtualTasksEnabled: utility.TruePtr()}
+		require.NoError(t, ref.Insert(t.Context()))
+		env := &mock.Environment{}
+		require.NoError(t, env.Configure(t.Context()))
+
+		genTask := &task.Task{
+			Id:          "generator_task",
+			DisplayName: "generator_task",
+			BuildId:     "b1",
+			Version:     "v1",
+			Activated:   true,
+		}
+		require.NoError(t, genTask.Insert(t.Context()))
+		b := build.Build{
+			Id:           "b1",
+			BuildVariant: "bv",
+			Version:      "v1",
+			Activated:    true,
+		}
+		require.NoError(t, b.Insert(t.Context()))
+		v := &Version{
+			Id:         "v1",
+			Identifier: "proj",
+			BuildIds:   []string{"b1"},
+		}
+		require.NoError(t, v.Insert(t.Context()))
+		pp := &ParserProject{}
+		require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(`
+tasks:
+- name: generator_task
+
+buildvariants:
+- name: bv
+  run_on:
+  - arch
+  tasks:
+  - name: generator_task
+`), pp))
+		pp.Id = "v1"
+		require.NoError(t, pp.Insert(t.Context()))
+
+		g, err := ParseProjectFromJSONString(generateTasksJSON)
+		require.NoError(t, err)
+		g.Task = genTask
+		p, pp, err := FindAndTranslateProjectForVersion(t.Context(), env.Settings(), v, false)
+		require.NoError(t, err)
+		p, pp, v, err = g.NewVersion(t.Context(), p, pp, v)
+		require.NoError(t, err)
+		_, err = g.Save(t.Context(), env.Settings(), p, pp, v)
+		return err
+	}
+
+	t.Run("SucceedsWhenOnlyInactiveVirtualTasksExceedLimit", func(t *testing.T) {
+		require.NoError(t, saveGeneratedTasks(t, 2))
+
+		virtualTasks, err := task.FindAll(t.Context(), db.Query(bson.M{task.IsVirtualKey: true}))
+		require.NoError(t, err)
+		require.Len(t, virtualTasks, 3)
+		for _, vt := range virtualTasks {
+			assert.False(t, vt.Activated)
+		}
+	})
+	t.Run("FailsWhenNonVirtualTasksExceedLimit", func(t *testing.T) {
+		err := saveGeneratedTasks(t, 1)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "version's number of tasks after generation (2, excluding inactive and push-completed virtual tasks) exceeds maximum limit (1)")
+	})
+}

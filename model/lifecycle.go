@@ -1184,8 +1184,6 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 	projectTask := creationInfo.Project.FindProjectTask(buildVarTask.Name)
 	isVirtual := projectTask != nil && projectTask.Virtual
 
-	activateTask := creationInfo.Build.Activated && !creationInfo.ActivationInfo.taskHasSpecificActivation(creationInfo.Build.BuildVariant, buildVarTask.Name)
-
 	if isVirtual {
 		skipReason := ""
 		if evergreen.GetEnvironment().Settings().ServiceFlags.VirtualTasksDisabled {
@@ -1205,19 +1203,9 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 			})
 			return nil, nil
 		}
-
-		// Virtual tasks start out inactive by default.
-		activateTask = false
 	}
 
-	// If stepback is enabled, check if the task should be activated via stepback.
-	// If a virtual task is being created by generate.tasks to perform stepback
-	// on this task, stepback is allowed to create and activate a virtual
-	// task.
-	stepbackInfo := creationInfo.ActivationInfo.getStepbackTask(creationInfo.Build.BuildVariant, buildVarTask.Name)
-	if stepbackInfo != nil {
-		activateTask = stepbackInfo.shouldActivate()
-	}
+	activateTask := creationInfo.ActivationInfo.shouldActivateNewTask(creationInfo.Build.BuildVariant, buildVarTask.Name, creationInfo.Build.Activated, isVirtual)
 
 	buildVarTask.RunOn = creationInfo.DistroAliases.Expand(buildVarTask.RunOn)
 	creationInfo.BuildVariant.RunOn = creationInfo.DistroAliases.Expand(creationInfo.BuildVariant.RunOn)
@@ -1300,7 +1288,7 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 	t.DistroId = distroID
 	t.SecondaryDistros = secondaryDistros
 
-	if stepbackInfo != nil {
+	if creationInfo.ActivationInfo.getStepbackTask(creationInfo.Build.BuildVariant, buildVarTask.Name) != nil {
 		t.ActivatedBy = evergreen.StepbackTaskActivator
 	}
 
