@@ -27,13 +27,6 @@
       "r": "gitter_request",
       "activated": true,
       "order": 1
-    },
-    {
-      "_id": "empty-project-version",
-      "identifier": "empty-project",
-      "r": "gitter_request",
-      "activated": true,
-      "order": 1
     }
   ],
   "project_ref": [
