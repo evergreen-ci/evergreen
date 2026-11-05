@@ -924,9 +924,7 @@ type yamlTuple struct {
 
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's ID field to projectID. Tags are evaluated. Returns the intermediate step,
-// plus user-facing warnings encountered while parsing (populated only when validate is true),
-// such as the reason cross-file YAML anchor parsing failed and the file fell back to being
-// parsed without anchors.
+// plus user-facing warnings encountered while parsing if validate is true.
 // If reading from a version config, LoadProjectInfoForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
 func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, projectID string, project *Project, validate bool) (*ParserProject, []string, error) {
