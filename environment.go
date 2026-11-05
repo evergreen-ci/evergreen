@@ -821,6 +821,10 @@ func (e *envState) createNotificationQueue(ctx context.Context, tracer trace.Tra
 	// context.
 	ctx = trace.ContextWithSpan(ctx, nil)
 	for k := range e.senders {
+		// Skip webhooks so they can be recorded in the database.
+		if k == SenderEvergreenWebhook {
+			continue
+		}
 		e.senders[k] = logger.MakeQueueSender(ctx, e.notificationsQueue, e.senders[k])
 	}
 

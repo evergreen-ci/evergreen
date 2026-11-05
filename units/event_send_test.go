@@ -40,10 +40,18 @@ type eventNotificationSuite struct {
 type eventSendEnvironment struct {
 	*mock.Environment
 	githubSender send.Sender
+	sender       send.Sender
 }
 
 func (e *eventSendEnvironment) GetGitHubSender(string, string, evergreen.CreateInstallationTokenFunc) (send.Sender, error) {
 	return e.githubSender, nil
+}
+
+func (e *eventSendEnvironment) GetSender(key evergreen.SenderKey) (send.Sender, error) {
+	if e.sender != nil {
+		return e.sender, nil
+	}
+	return e.Environment.GetSender(key)
 }
 
 type eventSendErrorSender struct {
@@ -73,11 +81,12 @@ func (s *eventNotificationSuite) SetupTest() {
 	s.env = &mock.Environment{}
 	s.NoError(s.env.Configure(s.ctx))
 
-	s.NoError(db.ClearCollections(notification.Collection, evergreen.ConfigCollection))
+	s.NoError(db.ClearCollections(notification.Collection, notification.FailedWebhookCollection, evergreen.ConfigCollection))
 
 	s.notifications = []notification.Notification{
 		{
-			ID: "webhook",
+			ID:      "webhook",
+			Project: "evergreen",
 			Subscriber: event.Subscriber{
 				Type: event.EvergreenWebhookSubscriberType,
 				Target: event.WebhookSubscriber{
@@ -202,6 +211,14 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 	}
 
 	s.NotZero(s.notificationHasError(s.ctx, s.webhook.ID, "sender is disabled, not sending notification"))
+
+	// A disabled sender is also a non-delivery, so the webhook failure is
+	// recorded for recovery. The URL comes from the subscriber because the
+	// composer never ran.
+	failedWebhooks, err := notification.FindFailedWebhooks(s.ctx, []string{"evergreen"}, "https://example.com", 10)
+	s.NoError(err)
+	s.Require().Len(failedWebhooks, 1)
+	s.Equal(s.webhook.ID, failedWebhooks[0].NotificationID)
 }
 
 func (s *eventNotificationSuite) TestEvergreenWebhook() {
@@ -219,6 +236,26 @@ func (s *eventNotificationSuite) TestEvergreenWebhook() {
 	s.NotPanics(func() {
 		_ = msg.Message.Raw().(*util.EvergreenWebhook)
 	})
+}
+
+func (s *eventNotificationSuite) TestFailedWebhookSendIsRecorded() {
+	sender := &eventSendErrorSender{
+		Sender: s.env.InternalSender,
+		err:    errors.New("webhook response was 404 (Not Found)"),
+	}
+	job := NewEventSendJob(s.webhook.ID, "").(*eventSendJob)
+	job.env = &eventSendEnvironment{Environment: s.env, sender: sender}
+	job.Run(s.ctx)
+
+	s.Error(job.Error())
+	s.NotZero(s.notificationHasError(s.ctx, s.webhook.ID, "webhook response was 404"))
+
+	failedWebhooks, err := notification.FindFailedWebhooks(s.ctx, []string{"evergreen"}, "https://example.com", 10)
+	s.NoError(err)
+	s.Require().Len(failedWebhooks, 1)
+	s.Equal(s.webhook.ID, failedWebhooks[0].NotificationID)
+	s.Equal([]byte("o hai"), failedWebhooks[0].Body)
+	s.Equal("webhook response was 404 (Not Found)", failedWebhooks[0].Error)
 }
 
 func (s *eventNotificationSuite) TestSlack() {
