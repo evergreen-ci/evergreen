@@ -916,6 +916,76 @@
       }
     },
     {
+      "query_file": "task_tags.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": { "activeVersionIds": ["evergreen_version2"] },
+            "versions": [
+              { "id": "evergreen_version5", "waterfallBuilds": null },
+              { "id": "evergreen_version4", "waterfallBuilds": null },
+              { "id": "evergreen_version3", "waterfallBuilds": null },
+              { "id": "evergreen_version2", "waterfallBuilds": [{ "id": "evergreen_version2_build", "tasks": [{ "id": "task_3" }] }] }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "variant_tags.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": { "activeVersionIds": ["evergreen_version2"] },
+            "versions": [
+              { "id": "evergreen_version5", "waterfallBuilds": null },
+              { "id": "evergreen_version4", "waterfallBuilds": null },
+              { "id": "evergreen_version3", "waterfallBuilds": null },
+              { "id": "evergreen_version2", "waterfallBuilds": [{ "id": "evergreen_version2_build", "tasks": [{ "id": "task_3" }, { "id": "task_4" }] }] }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "combined_tags.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": { "activeVersionIds": ["evergreen_version2"] },
+            "versions": [
+              { "id": "evergreen_version5", "waterfallBuilds": null },
+              { "id": "evergreen_version4", "waterfallBuilds": null },
+              { "id": "evergreen_version3", "waterfallBuilds": null },
+              { "id": "evergreen_version2", "waterfallBuilds": [{ "id": "evergreen_version2_build", "tasks": [{ "id": "task_3" }] }] }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "combined_tags_no_match.graphql",
+      "result": {
+        "data": { "waterfall": { "pagination": { "activeVersionIds": [] } } }
+      }
+    },
+    {
+      "query_file": "tags_include_all.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": { "activeVersionIds": ["evergreen_version2"] },
+            "versions": [
+              { "id": "evergreen_version5", "waterfallBuilds": null },
+              { "id": "evergreen_version4", "waterfallBuilds": null },
+              { "id": "evergreen_version3", "waterfallBuilds": null },
+              { "id": "evergreen_version2", "waterfallBuilds": [{ "id": "evergreen_version2_build", "tasks": [{ "id": "task_3" }, { "id": "task_4" }] }] }
+            ]
+          }
+        }
+      }
+    },
+    {
       "query_file": "versions.graphql",
       "result": {
         "data": {

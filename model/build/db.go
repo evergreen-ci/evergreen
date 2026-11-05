@@ -44,6 +44,7 @@ var (
 	AbortedKey                    = bsonutil.MustHaveTag(Build{}, "Aborted")
 	AllTasksBlockedKey            = bsonutil.MustHaveTag(Build{}, "AllTasksBlocked")
 	HasUnfinishedEssentialTaskKey = bsonutil.MustHaveTag(Build{}, "HasUnfinishedEssentialTask")
+	HasInProgressTaskKey          = bsonutil.MustHaveTag(Build{}, "HasInProgressTask")
 
 	TaskCacheIdKey = bsonutil.MustHaveTag(TaskCache{}, "Id")
 )

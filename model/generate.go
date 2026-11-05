@@ -341,7 +341,8 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		return GenerateTasksCounts{}, errors.Wrap(err, "creating task ID table for new variant-tasks to create")
 	}
 	tasksToBeGenerated := allTasksToBeCreatedIncludingDeps.Length()
-	if err = validateGeneratedProjectMaxTasks(ctx, v, g.Task.Id, tasksToBeGenerated); err != nil {
+	numTasksTowardVersionLimit := tasksToBeGenerated - countInactiveVirtualTasks(p, allTasksToBeCreatedIncludingDeps, activationInfo)
+	if err = validateGeneratedProjectMaxTasks(ctx, v, g.Task.Id, numTasksTowardVersionLimit); err != nil {
 		return GenerateTasksCounts{}, errors.Wrapf(err, "validating the number of tasks to be added by '%s'", g.Task.Id)
 	}
 	span.SetAttributes(attribute.Int(NumGeneratedTasksOtelAttribute, tasksToBeGenerated))
@@ -445,10 +446,34 @@ func getBuildVariantsFromPairs(pairs TaskVariantPairs) []string {
 	return uniqueBVs
 }
 
+// countInactiveVirtualTasks returns the number of virtual tasks to be created
+// that won't be activated to run on a host. This doesn't account for virtual
+// tasks that get activated afterwards as a dependency of an activated task, so
+// those aren't counted toward the limit.
+func countInactiveVirtualTasks(p *Project, taskIDs TaskIdConfig, activationInfo *specificActivationInfo) int {
+	numInactive := 0
+	for pair := range taskIDs.ExecutionTasks {
+		pt := p.FindProjectTask(pair.TaskName)
+		// Build activation doesn't affect whether virtual tasks are activated.
+		if pt != nil && pt.Virtual && !activationInfo.shouldActivateNewTask(pair.Variant, pair.TaskName, false, true) {
+			numInactive++
+		}
+	}
+	return numInactive
+}
+
+// validateGeneratedProjectMaxTasks checks that the version will not exceed the
+// maximum number of tasks per version after generating tasks.
 func validateGeneratedProjectMaxTasks(ctx context.Context, v *Version, taskID string, tasksToBeCreated int) error {
 	numExistingTasks, err := task.Count(ctx, db.Query(bson.M{
 		task.VersionKey:     v.Id,
 		task.GeneratedByKey: bson.M{"$ne": taskID},
+		// Virtual tasks only count if they're activated and not push-completed,
+		// meaning they'll run on a host.
+		"$or": []bson.M{
+			{task.IsVirtualKey: bson.M{"$ne": true}},
+			{task.ActivatedKey: true, task.CompletedByKey: bson.M{"$exists": false}},
+		},
 	}))
 	if err != nil {
 		return errors.Wrapf(err, "counting tasks for version '%s'", v.Id)
@@ -459,7 +484,7 @@ func validateGeneratedProjectMaxTasks(ctx context.Context, v *Version, taskID st
 	}
 	totalTasks := numExistingTasks + tasksToBeCreated
 	if settings.TaskLimits.MaxTasksPerVersion > 0 && totalTasks > settings.TaskLimits.MaxTasksPerVersion {
-		return errors.Errorf("version's total number of tasks after generation (%d) exceeds maximum limit (%d)", totalTasks, settings.TaskLimits.MaxTasksPerVersion)
+		return errors.Errorf("version's number of tasks after generation (%d, excluding inactive and push-completed virtual tasks) exceeds maximum limit (%d)", totalTasks, settings.TaskLimits.MaxTasksPerVersion)
 	}
 	return nil
 }
@@ -686,6 +711,16 @@ func (b *specificActivationInfo) getActivationTasks(variant string) []string {
 
 func (b *specificActivationInfo) hasActivationTasks() bool {
 	return len(b.activationTasks) > 0
+}
+
+// shouldActivateNewTask returns whether a task being created should be
+// activated. Virtual tasks start inactive unless generate.tasks is creating
+// them for stepback.
+func (b *specificActivationInfo) shouldActivateNewTask(variant, taskName string, buildActivated, isVirtual bool) bool {
+	if stepbackInfo := b.getStepbackTask(variant, taskName); stepbackInfo != nil {
+		return stepbackInfo.shouldActivate()
+	}
+	return buildActivated && !isVirtual && !b.taskHasSpecificActivation(variant, taskName)
 }
 
 func (b *specificActivationInfo) getStepbackTask(variant, task string) *specificStepbackInfo {
