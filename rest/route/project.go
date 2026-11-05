@@ -823,6 +823,7 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 	h.url = util.HttpsUrl(r.Host)
 
 	// body is optional
+	// Read one byte past the max so an oversized body can be told apart from one that's exactly the max.
 	body := utility.NewRequestReaderWithSize(r, maxVersionsBodySize+1)
 	defer body.Close()
 	b, err := io.ReadAll(body)
