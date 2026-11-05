@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -61,4 +62,53 @@ buildvariants:
 		messages += validationErr.Message
 	}
 	assert.Contains(t, messages, "buildvariant 'my_build_variant' references a nonexistent distro or container named 'not_real'")
+}
+
+func TestValidateProjectHandlerReportsParseWarnings(t *testing.T) {
+	// A user-defined top-level _evg_anchors key parses fine but surfaces a
+	// warning, since the key is reserved for Evergreen's internal use when
+	// applying cross-file YAML anchors.
+	yml := `
+_evg_anchors:
+  - &unused
+    x: 1
+tasks:
+  - name: my_task
+`
+
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+	ref := model.ProjectRef{Id: "proj"}
+	require.NoError(t, ref.Insert(t.Context()))
+
+	input := validator.ValidationInput{
+		ProjectYaml: []byte(yml),
+		ProjectID:   "proj",
+	}
+	bodyBytes, err := json.Marshal(input)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPost, "/validate", bytes.NewBuffer(bodyBytes))
+	require.NoError(t, err)
+
+	handler := makeValidateProject().Factory()
+	require.NoError(t, handler.Parse(t.Context(), req))
+
+	resp := handler.Run(context.Background())
+	require.NotNil(t, resp)
+
+	rawBytes, err := json.Marshal(resp.Data())
+	require.NoError(t, err)
+
+	var results validator.ValidationErrors
+	require.NoError(t, json.Unmarshal(rawBytes, &results))
+
+	// CheckProject contributes its own warnings; assert that the parse warning
+	// from the reserved key is surfaced among them.
+	found := false
+	for _, validationErr := range results {
+		if validationErr.Level == validator.Warning && strings.Contains(validationErr.Message, "reserved top-level YAML key '_evg_anchors'") {
+			found = true
+		}
+	}
+	assert.True(t, found, "expected the reserved _evg_anchors key warning in %v", results)
 }

@@ -71,15 +71,23 @@ func (v *validateProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	pp, _, err := model.LoadProjectInto(ctx, v.input.ProjectYaml, opts, v.input.ProjectID, project, false)
+	pp, warnings, err := model.LoadProjectInto(ctx, v.input.ProjectYaml, opts, v.input.ProjectID, project, true)
+	errs := validator.ValidationErrors{}
+	for _, warning := range warnings {
+		errs = append(errs, validator.ValidationError{
+			Level:   validator.Warning,
+			Message: warning,
+		})
+	}
 	if err != nil {
 		validationErr.Message = err.Error()
-		return gimlet.NewJSONErrorResponse(validator.ValidationErrors{validationErr})
+		errs = append(errs, validationErr)
+		return gimlet.NewJSONErrorResponse(errs)
 	}
 	projectConfig = pp.MergedProjectConfig("")
 
 	projectRef, err := model.FindMergedProjectRefSecondary(ctx, v.input.ProjectID, "", false)
-	errs := validator.CheckProject(ctx, project, projectConfig, projectRef, v.input.ProjectID, err)
+	errs = append(errs, validator.CheckProject(ctx, project, projectConfig, projectRef, v.input.ProjectID, err)...)
 
 	if v.input.Quiet {
 		errs = errs.AtLevel(validator.Error)

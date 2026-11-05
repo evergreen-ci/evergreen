@@ -235,16 +235,24 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	pp, _, err := model.LoadProjectInto(ctx, input.ProjectYaml, opts, input.ProjectID, project, false)
+	pp, warnings, err := model.LoadProjectInto(ctx, input.ProjectYaml, opts, input.ProjectID, project, true)
+	errs := validator.ValidationErrors{}
+	for _, warning := range warnings {
+		errs = append(errs, validator.ValidationError{
+			Level:   validator.Warning,
+			Message: warning,
+		})
+	}
 	if err != nil {
 		validationErr.Message = err.Error()
-		gimlet.WriteJSONError(r.Context(), w, validator.ValidationErrors{validationErr})
+		errs = append(errs, validationErr)
+		gimlet.WriteJSONError(r.Context(), w, errs)
 		return
 	}
 	projectConfig = pp.MergedProjectConfig("")
 
 	projectRef, err := model.FindMergedProjectRef(r.Context(), input.ProjectID, "", false)
-	errs := validator.CheckProject(ctx, project, projectConfig, projectRef, input.ProjectID, err)
+	errs = append(errs, validator.CheckProject(ctx, project, projectConfig, projectRef, input.ProjectID, err)...)
 
 	if input.Quiet {
 		errs = errs.AtLevel(validator.Error)
