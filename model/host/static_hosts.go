@@ -41,7 +41,7 @@ func MarkInactiveStaticHosts(ctx context.Context, activeStaticHosts []string, d 
 	}
 	catcher := grip.NewBasicCatcher()
 	for _, h := range toTerminate {
-		catcher.Wrapf(h.SetStatus(ctx, evergreen.HostTerminated, evergreen.User, "static host removed from distro"), "terminating host '%s'", h.Id)
+		catcher.Wrapf(h.Terminate(ctx, evergreen.User, "static host removed from distro"), "terminating host '%s'", h.Id)
 	}
 
 	return errors.Wrap(catcher.Resolve(), "terminating inactive static hosts")

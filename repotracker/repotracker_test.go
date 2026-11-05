@@ -2077,7 +2077,7 @@ func TestShellVersionFromRevisionTriggerModule(t *testing.T) {
 	metadata := model.VersionMetadata{
 		Revision:            model.Revision{Revision: "mainline-sha"},
 		TriggerID:           "dsi",
-		TriggerType:         model.ProjectTriggerLevelPush,
+		TriggerType:         evergreen.ProjectTriggerLevelPush,
 		TriggerDefinitionID: "def1",
 		SourceCommit:        "module-sha",
 		SourceModule: &model.SourceModule{

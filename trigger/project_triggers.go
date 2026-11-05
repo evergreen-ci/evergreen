@@ -21,7 +21,7 @@ import (
 // and will go through the process of version creation given a triggering version.
 // If the trigger is a push event, the triggering version will be nonexistent.
 func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.Version, error) {
-	if args.SourceVersion == nil && args.TriggerType != model.ProjectTriggerLevelPush {
+	if args.SourceVersion == nil && args.TriggerType != evergreen.ProjectTriggerLevelPush {
 		return nil, errors.Errorf("unable to find source version in downstream project '%s'", args.DownstreamProject.Id)
 	}
 
@@ -39,7 +39,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	// extract the project ID from the trigger definition's project ID, which is populated in the TriggerID field
 	// for push triggers.
 	var versionID, projectID string
-	if args.TriggerType == model.ProjectTriggerLevelPush {
+	if args.TriggerType == evergreen.ProjectTriggerLevelPush {
 		projectID = args.TriggerID
 	} else {
 		projectID = args.SourceVersion.Identifier
@@ -62,7 +62,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		Requester:  evergreen.TriggerRequester,
 		IngestTime: metadata.IngestTime,
 	}
-	if args.TriggerType == model.ProjectTriggerLevelPush {
+	if args.TriggerType == evergreen.ProjectTriggerLevelPush {
 		resolverOpts.TriggeringModuleCommit = &manifest.Module{
 			Owner:    upstreamProject.Owner,
 			Repo:     upstreamProject.Repo,
@@ -79,7 +79,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	}
 	projectInfo.Ref = &args.DownstreamProject
 
-	if args.TriggerType == model.ProjectTriggerLevelPush {
+	if args.TriggerType == evergreen.ProjectTriggerLevelPush {
 		triggeringModule, err := resolver.TriggeringModuleName(ctx, projectInfo.Project.Modules)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding module for triggering commit")

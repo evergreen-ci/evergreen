@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -64,6 +65,8 @@ type taskContext struct {
 	// backgroundFailingCommand stores metadata from the first background
 	// command whose failure caused the task to fail.
 	backgroundFailingCommand *internal.BackgroundFailure
+	// aborted is set when the agent detects that the task is being aborted.
+	aborted atomic.Bool
 	// taskCleanups and taskGroupCleanups store the cleanup commands for the
 	// task and setup group, respectively.
 	taskCleanups       []internal.CommandCleanup

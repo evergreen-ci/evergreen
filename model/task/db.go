@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strings"
 	"sync"
 	"time"
@@ -72,11 +73,13 @@ var (
 	DistroIdKey                   = bsonutil.MustHaveTag(Task{}, "DistroId")
 	SecondaryDistrosKey           = bsonutil.MustHaveTag(Task{}, "SecondaryDistros")
 	BuildVariantKey               = bsonutil.MustHaveTag(Task{}, "BuildVariant")
+	BuildVariantTagsKey           = bsonutil.MustHaveTag(Task{}, "BuildVariantTags")
 	DependsOnKey                  = bsonutil.MustHaveTag(Task{}, "DependsOn")
 	UnattainableDependencyKey     = bsonutil.MustHaveTag(Task{}, "UnattainableDependency")
 	OverrideDependenciesKey       = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")
 	NumDependentsKey              = bsonutil.MustHaveTag(Task{}, "NumDependents")
 	DisplayNameKey                = bsonutil.MustHaveTag(Task{}, "DisplayName")
+	TagsKey                       = bsonutil.MustHaveTag(Task{}, "Tags")
 	ExecutionPlatformKey          = bsonutil.MustHaveTag(Task{}, "ExecutionPlatform")
 	HostIdKey                     = bsonutil.MustHaveTag(Task{}, "HostId")
 	AgentVersionKey               = bsonutil.MustHaveTag(Task{}, "AgentVersion")
@@ -88,6 +91,7 @@ var (
 	CheckRunIdKey                 = bsonutil.MustHaveTag(Task{}, "CheckRunId")
 	RevisionOrderNumberKey        = bsonutil.MustHaveTag(Task{}, "RevisionOrderNumber")
 	RequesterKey                  = bsonutil.MustHaveTag(Task{}, "Requester")
+	TriggerTypeKey                = bsonutil.MustHaveTag(Task{}, "TriggerType")
 	StatusKey                     = bsonutil.MustHaveTag(Task{}, "Status")
 	DetailsKey                    = bsonutil.MustHaveTag(Task{}, "Details")
 	AbortedKey                    = bsonutil.MustHaveTag(Task{}, "Aborted")
@@ -560,16 +564,33 @@ func ByPreviousCommit(buildVariant, displayName, project string, order int) bson
 	}
 }
 
-func ByBeforeRevision(revisionOrder int, buildVariant, displayName, project, requester string) (bson.M, []string) {
-	return bson.M{
-		BuildVariantKey: buildVariant,
-		DisplayNameKey:  displayName,
-		RequesterKey:    requester,
+// ByBeforeRevisionForStepback finds tasks for the same build variant, display
+// name, and project as t before the given revision order, sorted from latest
+// to earliest. It matches tasks with t's requester, unless includePushTriggers
+// is set and t is in a mainline or push-triggered version, in which case it
+// matches tasks in both mainline and push-triggered versions.
+func ByBeforeRevisionForStepback(revisionOrder int, t *Task, includePushTriggers bool) (bson.M, []string) {
+	q := bson.M{
+		BuildVariantKey: t.BuildVariant,
+		DisplayNameKey:  t.DisplayName,
 		RevisionOrderNumberKey: bson.M{
 			"$lt": revisionOrder,
 		},
-		ProjectKey: project,
-	}, []string{"-" + RevisionOrderNumberKey}
+		ProjectKey: t.Project,
+	}
+	if includePushTriggers && t.isMainlineOrPushTriggered() {
+		maps.Copy(q, mainlineAndPushTriggeredQuery())
+	} else {
+		q[RequesterKey] = t.Requester
+	}
+	return q, []string{"-" + RevisionOrderNumberKey}
+}
+
+func mainlineAndPushTriggeredQuery() bson.M {
+	return bson.M{"$or": []bson.M{
+		{RequesterKey: evergreen.RepotrackerVersionRequester},
+		{RequesterKey: evergreen.TriggerRequester, TriggerTypeKey: evergreen.ProjectTriggerLevelPush},
+	}}
 }
 
 func ByActivatedBeforeRevisionWithStatuses(revisionOrder int, statuses []string, buildVariant string, displayName string, project string) (bson.M, []string) {

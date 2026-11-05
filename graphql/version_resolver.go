@@ -605,7 +605,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *model.Versio
 			Revision: upstreamBuild.Revision,
 			Version:  upstreamVersion,
 		}
-	} else if obj.TriggerType == model.ProjectTriggerLevelPush {
+	} else if obj.TriggerType == evergreen.ProjectTriggerLevelPush {
 		projectID = obj.TriggerID
 		upstreamProject = &UpstreamProject{
 			Revision: obj.TriggerSHA,

@@ -829,6 +829,10 @@ const (
 	DebugRequester              = "debug_request"        // for debug spawn hosts
 )
 
+// ProjectTriggerLevelPush is the trigger type of versions created by push level
+// project triggers.
+const ProjectTriggerLevelPush = "push"
+
 // Constants related to requester types.
 
 var (

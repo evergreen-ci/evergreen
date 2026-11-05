@@ -573,7 +573,7 @@ func TestActivatePreviousTask(t *testing.T) {
 		So(previousTask.Insert(t.Context()), ShouldBeNil)
 		So(currentTask.Insert(t.Context()), ShouldBeNil)
 		Convey("activating a previous task should set the previous task's active field to true", func() {
-			So(activatePreviousTask(ctx, currentTask.Id, "", nil), ShouldBeNil)
+			So(activatePreviousTask(ctx, currentTask.Id, "", nil, false), ShouldBeNil)
 			t, err := task.FindOne(ctx, db.Query(task.ById(previousTask.Id)))
 			So(err, ShouldBeNil)
 			So(t.Activated, ShouldBeTrue)
@@ -3746,13 +3746,13 @@ func TestStepback(t *testing.T) {
 	assert.NoError(v2.Insert(t.Context()))
 	assert.NoError(v3.Insert(t.Context()))
 	// test stepping back a regular task
-	assert.NoError(doLinearStepback(ctx, t3))
+	assert.NoError(doLinearStepback(ctx, t3, false))
 	dbTask, err := task.FindOne(ctx, db.Query(task.ById(t2.Id)))
 	assert.NoError(err)
 	assert.True(dbTask.Activated)
 
 	// test stepping back a display task
-	assert.NoError(doLinearStepback(ctx, dt3))
+	assert.NoError(doLinearStepback(ctx, dt3, false))
 	dbTask, err = task.FindOne(ctx, db.Query(task.ById(dt2.Id)))
 	assert.NoError(err)
 	assert.True(dbTask.Activated)
@@ -3771,14 +3771,14 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 
 			// Doing stepback on "t-generated-0-1-0" should activate the existing undispatched generator task "t-generator-0-0"
 			// and set the generated task to activate on it.
-			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-0-0"])) // 2nd version, 0th generator, 0th generated task
-			generator = requireTaskFromDB(ctx, t, "t-generator-1-0")             // 1st version, 0th generator
+			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-0-0"], false)) // 2nd version, 0th generator, 0th generated task
+			generator = requireTaskFromDB(ctx, t, "t-generator-1-0")                    // 1st version, 0th generator
 			assert.True(t, generator.Activated)
 			assert.Equal(t, []string{"generated-task-0-0"}, generator.GeneratedTasksToActivate["bv"]) // 0th generator, 0th generated task
 
 			// Doing stepback on the 1st generated task should add it to the generator's list of generated tasks to activate.
-			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-0-1"])) // 2nd version, 0th generator, 1st generated task
-			generator = requireTaskFromDB(ctx, t, "t-generator-1-0")             // 1st version, 0th generator
+			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-0-1"], false)) // 2nd version, 0th generator, 1st generated task
+			generator = requireTaskFromDB(ctx, t, "t-generator-1-0")                    // 1st version, 0th generator
 			assert.True(t, generator.Activated)
 			assert.Equal(t, []string{"generated-task-0-0", "generated-task-0-1"}, generator.GeneratedTasksToActivate["bv"]) // 0th generator, 0th generated task and 0th generator, 1st generated task
 		},
@@ -3787,7 +3787,7 @@ func TestLinearStepbackWithGenerators(t *testing.T) {
 			assert.False(t, generated.Activated)
 
 			// Doing stepback on "t-generated-2-1-0" should activate the existing undispatched generated task "t-generated-1-1-0".
-			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-1-0"])) // 2nd version, 1st generator, 0th generated task
+			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-1-0"], false)) // 2nd version, 1st generator, 0th generated task
 
 			generated = requireTaskFromDB(ctx, t, "t-generated-1-1-0") // 1st version, 1st generator, 0th generated task
 			assert.True(t, generated.Activated)
@@ -4370,6 +4370,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 			ActivatedTime: time.Now(),
 			BuildId:       "b3",
 			Version:       "version3",
+			HostId:        "h1",
 			Execution:     settings.TaskLimits.MaxTaskExecution,
 		},
 	}
@@ -4403,7 +4404,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	}
 	assert.NoError(v2.Insert(t.Context()))
 
-	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h, "host was terminated"))
 
 	dbHost, err := host.FindOneId(ctx, h.Id)
 	require.NoError(t, err)
@@ -4418,6 +4419,8 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	require.NoError(t, err)
 	require.NotZero(t, archivedTask)
 	assert.WithinDuration(strandedTaskLastHeartbeat, archivedTask.FinishTime, 0)
+	assert.Equal(evergreen.TaskDescriptionStranded, archivedTask.Details.Description)
+	assert.Equal("host was terminated", archivedTask.Details.SystemFailureReason)
 
 	foundBuild, err := build.FindOneId(t.Context(), "b")
 	require.NoError(t, err)
@@ -4430,11 +4433,12 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	h.RunningTask = "unschedulableTask"
 	h.RunningTaskExecution = 0
 	assert.NoError(db.Update(ctx, host.Collection, bson.M{host.IdKey: h.Id}, bson.M{"$set": bson.M{host.RunningTaskKey: "unschedulableTask", host.RunningTaskExecutionKey: 0}}))
-	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h, "host was terminated"))
 
 	unschedulableTask, err := task.FindOne(ctx, db.Query(task.ById("unschedulableTask")))
 	require.NoError(t, err)
 	assert.Equal(evergreen.TaskFailed, unschedulableTask.Status)
+	assert.Equal("host was terminated", unschedulableTask.Details.SystemFailureReason)
 
 	dependencyTask, err := task.FindOneId(ctx, "dependencyTask")
 	require.NotNil(t, dependencyTask)
@@ -4444,7 +4448,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	dt, err := task.FindOne(ctx, db.Query(task.ById("displayTask")))
 	require.NoError(t, err)
 	assert.Equal(evergreen.TaskFailed, dt.Status)
-	assert.Equal(dt.Details, task.GetSystemFailureDetails(evergreen.TaskDescriptionStranded))
+	assert.Equal(dt.Details, task.GetSystemFailureDetails(evergreen.TaskDescriptionStranded, "host was terminated"))
 
 	foundBuild, err = build.FindOneId(t.Context(), "b2")
 	require.NoError(t, err)
@@ -4458,11 +4462,31 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	h.RunningTaskExecution = 0
 	assert.NoError(resetTask(ctx, "t2", ""))
 	assert.NoError(db.Update(ctx, host.Collection, bson.M{host.IdKey: h.Id}, bson.M{"$set": bson.M{host.RunningTaskKey: "t2", host.RunningTaskExecutionKey: 0}}))
-	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h, ""))
 	foundTask, err := task.FindOne(ctx, db.Query(task.ById("t2")))
 	require.NoError(t, err)
 	// The task should not have been reset twice.
 	assert.Equal(1, foundTask.Execution)
+
+	b3 := build.Build{
+		Id:      "b3",
+		Version: "version3",
+	}
+	assert.NoError(b3.Insert(t.Context()))
+	v3 := Version{
+		Id: b3.Version,
+	}
+	assert.NoError(v3.Insert(t.Context()))
+	h.RunningTask = "t3"
+	h.RunningTaskExecution = settings.TaskLimits.MaxTaskExecution
+	assert.NoError(db.Update(ctx, host.Collection, bson.M{host.IdKey: h.Id}, bson.M{"$set": bson.M{host.RunningTaskKey: "t3", host.RunningTaskExecutionKey: settings.TaskLimits.MaxTaskExecution}}))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h, "host was terminated while running the final allowed execution"))
+	nonRestartedTask, err := task.FindOneId(ctx, "t3")
+	require.NoError(t, err)
+	require.NotZero(t, nonRestartedTask)
+	assert.Equal(evergreen.TaskFailed, nonRestartedTask.Status)
+	assert.Equal(settings.TaskLimits.MaxTaskExecution, nonRestartedTask.Execution)
+	assert.Equal("host was terminated while running the final allowed execution", nonRestartedTask.Details.SystemFailureReason)
 }
 
 func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
@@ -4511,7 +4535,7 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 	assert.NoError(runningTask.Insert(t.Context()))
 
 	settings := testutil.TestConfig()
-	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, host))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, host, ""))
 	runningTask, err := task.FindOne(ctx, db.Query(task.ById("t")))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, runningTask.Status)
@@ -4572,7 +4596,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert(t.Context()))
 	settings := testutil.TestConfig()
-	assert.NoError(t, ClearAndResetStrandedHostTask(ctx, settings, h))
+	assert.NoError(t, ClearAndResetStrandedHostTask(ctx, settings, h, "host was terminated"))
 
 	checkTaskRestartEvent := func(t *testing.T, taskID string) {
 		events, err := event.FindAllByResourceID(t.Context(), taskID)
@@ -4621,6 +4645,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 	assert.NotNil(t, oldRestartedExecutionTask)
 	assert.Equal(t, evergreen.TaskFailed, oldRestartedExecutionTask.Status)
 	assert.Equal(t, 0, oldRestartedExecutionTask.Execution)
+	assert.Equal(t, "host was terminated", oldRestartedExecutionTask.Details.SystemFailureReason)
 }
 
 func TestClearAndResetExecTask(t *testing.T) {
@@ -4668,7 +4693,7 @@ func TestClearAndResetExecTask(t *testing.T) {
 	assert.NoError(t, v.Insert(t.Context()))
 
 	settings := testutil.TestConfig()
-	assert.NoError(t, ClearAndResetStrandedHostTask(ctx, settings, h))
+	assert.NoError(t, ClearAndResetStrandedHostTask(ctx, settings, h, ""))
 	restartedDisplayTask, err := task.FindOne(ctx, db.Query(task.ById("dt")))
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, restartedDisplayTask.Status)
@@ -4689,7 +4714,7 @@ func TestResetStaleTask(t *testing.T) {
 		"SuccessfullyRestartsStaleTask": func(t *testing.T, tsk task.Task) {
 			require.NoError(t, tsk.Insert(t.Context()))
 
-			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
+			require.NoError(t, FixStaleTask(ctx, settings, &tsk, nil))
 
 			dbArchivedTask, err := task.FindOneOldByIdAndExecution(ctx, tsk.Id, 0)
 			require.NoError(t, err)
@@ -4698,6 +4723,7 @@ func TestResetStaleTask(t *testing.T) {
 			assert.Equal(t, evergreen.CommandTypeSystem, dbArchivedTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionHeartbeat, dbArchivedTask.Details.Description)
 			assert.True(t, dbArchivedTask.Details.TimedOut)
+			assert.Equal(t, fmt.Sprintf("task has not sent a heartbeat since %s", tsk.LastHeartbeat.UTC().Format(time.RFC3339)), dbArchivedTask.Details.SystemFailureReason)
 			assert.False(t, utility.IsZeroTime(dbArchivedTask.FinishTime))
 
 			dbTask, err := task.FindOneId(ctx, tsk.Id)
@@ -4724,7 +4750,7 @@ func TestResetStaleTask(t *testing.T) {
 		"SuccessfullySystemFailsAbortedTask": func(t *testing.T, tsk task.Task) {
 			tsk.Aborted = true
 			require.NoError(t, tsk.Insert(t.Context()))
-			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
+			require.NoError(t, FixStaleTask(ctx, settings, &tsk, nil))
 
 			dbArchivedTask, err := task.FindOneOldByIdAndExecution(ctx, tsk.Id, 0)
 			require.NoError(t, err)
@@ -4735,6 +4761,7 @@ func TestResetStaleTask(t *testing.T) {
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionAborted, dbTask.Details.Description)
+			assert.Equal(t, fmt.Sprintf("task has not sent a heartbeat since %s", tsk.LastHeartbeat.UTC().Format(time.RFC3339)), dbTask.Details.SystemFailureReason)
 			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
 
 			dependencyTask, err := task.FindOneId(ctx, "dependencyTask")
@@ -4761,7 +4788,7 @@ func TestResetStaleTask(t *testing.T) {
 			tsk.DisplayTaskId = utility.ToStringPtr(dt.Id)
 			require.NoError(t, tsk.Insert(t.Context()))
 
-			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
+			require.NoError(t, FixStaleTask(ctx, settings, &tsk, nil))
 
 			dbDisplayTask, err := task.FindOneId(ctx, dt.Id)
 			require.NoError(t, err)
@@ -4791,7 +4818,7 @@ func TestResetStaleTask(t *testing.T) {
 			tsk.ActivatedTime = time.Now().Add(-10 * task.UnschedulableThreshold)
 			require.NoError(t, tsk.Insert(t.Context()))
 
-			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
+			require.NoError(t, FixStaleTask(ctx, settings, &tsk, nil))
 
 			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
@@ -4807,7 +4834,7 @@ func TestResetStaleTask(t *testing.T) {
 			tsk.Execution = execNum
 			require.NoError(t, tsk.Insert(t.Context()))
 
-			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
+			require.NoError(t, FixStaleTask(ctx, settings, &tsk, nil))
 
 			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
@@ -5598,7 +5625,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(task.UpdateOne(ctx, bson.M{"_id": "t1"},
 				bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}))
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
-			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
+			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1", false)
 			require.NoError(err)
 			assert.False(midTask.Activated)
 		},
@@ -5606,7 +5633,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			// If t5 is missing, t4 should be used.
 			require.NoError(task.Remove(ctx, "t5"))
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
-			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
+			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1", false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			assert.Equal("t4", midTask.Id)
@@ -5617,7 +5644,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(task.Remove(ctx, "t4"))
 			require.NoError(task.Remove(ctx, "t3"))
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
-			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
+			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1", false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			assert.Equal("t2", midTask.Id)
@@ -5631,14 +5658,14 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(task.Remove(ctx, "t3"))
 			require.NoError(task.Remove(ctx, "t2"))
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
-			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
+			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1", false)
 			require.NoError(err)
 			assert.False(midTask.Activated)
 			assert.Equal("t1", midTask.Id)
 		},
 		"FailedTaskInStepback": func(t *testing.T, t10 task.Task, pRef *ProjectRef, project *Project) {
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
-			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
+			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1", false)
 			prevTask := *midTask
 			require.NoError(err)
 			assert.True(midTask.Activated)
@@ -5668,7 +5695,7 @@ func TestEvalBisectStepback(t *testing.T) {
 				bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}))
 			// Activate next stepback
 			require.NoError(evalStepback(ctx, &prevTask, evergreen.TaskFailed, pRef, project))
-			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, prevTask.Id, "t1")
+			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, prevTask.Id, "t1", false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			// Check mid task stepback info.
@@ -5692,7 +5719,7 @@ func TestEvalBisectStepback(t *testing.T) {
 		},
 		"PassedTaskInStepback": func(t *testing.T, t10 task.Task, pRef *ProjectRef, project *Project) {
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
-			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
+			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1", false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			// Check mid task stepback info.
@@ -5722,7 +5749,7 @@ func TestEvalBisectStepback(t *testing.T) {
 				bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}))
 			// Activate next stepback
 			require.NoError(evalStepback(ctx, midTask, evergreen.TaskSucceeded, pRef, project))
-			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, "t10", prevTask.Id)
+			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, "t10", prevTask.Id, false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			// Check mid task stepback info.
@@ -5804,7 +5831,7 @@ func TestEvalBisectStepback(t *testing.T) {
 				bson.M{"$set": bson.M{"status": generated2Tasks[9].Status}}))
 			require.NoError(evalStepback(ctx, &generated1Tasks[9], evergreen.TaskFailed, pRef, project))
 			require.NoError(evalStepback(ctx, &generated2Tasks[9], evergreen.TaskFailed, pRef, project))
-			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
+			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1", false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			require.NotNil(midTask.StepbackInfo)
@@ -5873,7 +5900,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(evalStepback(ctx, midTaskG2, evergreen.TaskFailed, pRef, project))
 
 			// Check mid task stepback info relating to generated task 1.
-			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, "t10", prevTask.Id)
+			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, "t10", prevTask.Id, false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			require.NotNil(midTask.StepbackInfo)
@@ -5895,7 +5922,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.Nil(g2Info)
 
 			// Check mid task stepback info relating to generated task 2.
-			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, prevTask.Id, "t1")
+			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, prevTask.Id, "t1", false)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			require.NotNil(midTask.StepbackInfo)
@@ -7302,6 +7329,120 @@ func TestCheckResetDisplayTaskConcurrentReset(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbSucceededExecTask)
 			tCase.test(t, dbDisplayTask, dbSucceededExecTask)
+		})
+	}
+}
+
+func TestStaleTaskReason(t *testing.T) {
+	lastHeartbeat := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
+	t.Run("ZeroLastHeartbeatShouldReportNeverSentHeartbeat", func(t *testing.T) {
+		assert.Equal(t, "task never sent a heartbeat", staleTaskReason(&task.Task{}, nil))
+	})
+	t.Run("LastHeartbeatShouldBeIncluded", func(t *testing.T) {
+		tsk := &task.Task{LastHeartbeat: lastHeartbeat}
+		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z", staleTaskReason(tsk, nil))
+	})
+	t.Run("HostWithoutCommunicationTimeShouldOnlyReportHeartbeat", func(t *testing.T) {
+		tsk := &task.Task{LastHeartbeat: lastHeartbeat}
+		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z", staleTaskReason(tsk, &host.Host{}))
+	})
+	t.Run("HostCommunicatingAfterHeartbeatShouldReportAgentStopped", func(t *testing.T) {
+		tsk := &task.Task{LastHeartbeat: lastHeartbeat}
+		h := &host.Host{LastCommunicationTime: lastHeartbeat.Add(10 * time.Minute)}
+		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z; the host contacted Evergreen at 2026-10-28T12:10:00Z, so the agent likely stopped running the task", staleTaskReason(tsk, h))
+	})
+	t.Run("NeverSentHeartbeatWithCommunicatingHostShouldReportAgentStopped", func(t *testing.T) {
+		h := &host.Host{LastCommunicationTime: lastHeartbeat}
+		assert.Equal(t, "task never sent a heartbeat; the host contacted Evergreen at 2026-10-28T12:00:00Z, so the agent likely stopped running the task", staleTaskReason(&task.Task{}, h))
+	})
+	t.Run("HostSilentSinceHeartbeatShouldReportHostOrAgentUnresponsive", func(t *testing.T) {
+		tsk := &task.Task{LastHeartbeat: lastHeartbeat}
+		h := &host.Host{LastCommunicationTime: lastHeartbeat.Add(30 * time.Second)}
+		assert.Equal(t, "task has not sent a heartbeat since 2026-10-28T12:00:00Z; nothing on the host has contacted Evergreen since 2026-10-28T12:00:30Z, so the host or its agent likely became unresponsive", staleTaskReason(tsk, h))
+	})
+}
+
+func TestEvalStepbackWithPushTriggers(t *testing.T) {
+	yml := `
+stepback: true
+buildvariants:
+- name: bv
+  run_on: distro
+  tasks:
+  - name: task
+tasks:
+- name: task
+`
+	pp := &ParserProject{}
+	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(yml), &pp))
+	project, err := TranslateProject(t.Context(), pp)
+	require.NoError(t, err)
+
+	newTask := func(id string, order int, triggerType, status string) task.Task {
+		requester := evergreen.RepotrackerVersionRequester
+		if triggerType != "" {
+			requester = evergreen.TriggerRequester
+		}
+		return task.Task{
+			Id:                  id,
+			BuildId:             "b-" + id,
+			Version:             "v",
+			Project:             "proj",
+			BuildVariant:        "bv",
+			DisplayName:         "task",
+			RevisionOrderNumber: order,
+			Requester:           requester,
+			TriggerType:         triggerType,
+			Status:              status,
+			Activated:           status != evergreen.TaskUndispatched,
+		}
+	}
+
+	for tName, tCase := range map[string]struct {
+		bisect, pushTriggers  bool
+		middleTriggerType     string
+		failingTriggerType    string
+		expectMiddleActivated bool
+	}{
+		"LinearStepbackWithPushTriggersShouldActivatePushTriggeredTask": {
+			pushTriggers: true, middleTriggerType: evergreen.ProjectTriggerLevelPush, expectMiddleActivated: true,
+		},
+		"BisectStepbackWithPushTriggersShouldActivatePushTriggeredTask": {
+			bisect: true, pushTriggers: true, middleTriggerType: evergreen.ProjectTriggerLevelPush, expectMiddleActivated: true,
+		},
+		"LinearStepbackFromPushTriggeredTaskWithPushTriggersShouldActivateMainlineTask": {
+			pushTriggers: true, failingTriggerType: evergreen.ProjectTriggerLevelPush, expectMiddleActivated: true,
+		},
+		"LinearStepbackWithoutPushTriggersShouldNotActivatePushTriggeredTask": {
+			middleTriggerType: evergreen.ProjectTriggerLevelPush,
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection))
+			})
+			pRef := &ProjectRef{Id: "proj", StepbackBisect: utility.ToBoolPtr(tCase.bisect), StepbackPushTriggers: utility.ToBoolPtr(tCase.pushTriggers)}
+			require.NoError(t, pRef.Insert(t.Context()))
+			require.NoError(t, (&Version{Id: "v", Requester: evergreen.RepotrackerVersionRequester}).Insert(t.Context()))
+			middle := newTask("middle", 2, tCase.middleTriggerType, evergreen.TaskUndispatched)
+			taskTriggered := newTask("task-triggered", 3, ProjectTriggerLevelTask, evergreen.TaskUndispatched)
+			failing := newTask("failing", 4, tCase.failingTriggerType, evergreen.TaskFailed)
+			for _, tsk := range []task.Task{newTask("passing", 1, "", evergreen.TaskSucceeded), middle, taskTriggered, failing} {
+				require.NoError(t, tsk.Insert(t.Context()))
+				require.NoError(t, (&build.Build{Id: tsk.BuildId, BuildVariant: "bv", Version: "v"}).Insert(t.Context()))
+			}
+
+			require.NoError(t, evalStepback(t.Context(), &failing, evergreen.TaskFailed, pRef, project))
+
+			middleFromDB, err := task.FindOneId(t.Context(), middle.Id)
+			require.NoError(t, err)
+			require.NotNil(t, middleFromDB)
+			assert.Equal(t, tCase.expectMiddleActivated, middleFromDB.Activated)
+			taskTriggeredFromDB, err := task.FindOneId(t.Context(), taskTriggered.Id)
+			require.NoError(t, err)
+			require.NotNil(t, taskTriggeredFromDB)
+			assert.False(t, taskTriggeredFromDB.Activated)
 		})
 	}
 }

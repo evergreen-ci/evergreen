@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	"maps"
 	"regexp"
 	"runtime/debug"
 	"slices"
@@ -897,6 +898,28 @@ func (t *Task) PreviousCompletedTask(ctx context.Context, project string, status
 	return FindOne(ctx, query)
 }
 
+// PreviousCompletedStepbackTask is the same as PreviousCompletedTask in the
+// task's project, except that if includePushTriggers is set and the task is in
+// a mainline or push-triggered version, it only matches tasks in mainline and
+// push-triggered versions.
+func (t *Task) PreviousCompletedStepbackTask(ctx context.Context, statuses []string, includePushTriggers bool) (*Task, error) {
+	if !includePushTriggers || !t.isMainlineOrPushTriggered() {
+		return t.PreviousCompletedTask(ctx, t.Project, statuses)
+	}
+	if len(statuses) == 0 {
+		statuses = evergreen.TaskCompletedStatuses
+	}
+	q := ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant, t.DisplayName, t.Project, nil)
+	delete(q, RequesterKey)
+	maps.Copy(q, mainlineAndPushTriggeredQuery())
+	return FindOne(ctx, db.Query(q).Sort([]string{"-" + RevisionOrderNumberKey}))
+}
+
+func (t *Task) isMainlineOrPushTriggered() bool {
+	return t.Requester == evergreen.RepotrackerVersionRequester ||
+		(t.Requester == evergreen.TriggerRequester && t.TriggerType == evergreen.ProjectTriggerLevelPush)
+}
+
 // NextCompletedTask finds the next completed task for the same project +
 // build variant + display name combination as the specified task.
 // It defaults to completed statuses if the array is empty.
@@ -1257,8 +1280,10 @@ func setDependenciesMetTimeForTasks(ctx context.Context, uniqueIDsToSetDependenc
 // gets is out of bounds, it returns the given lower order revision task.
 //
 // It verifies that the tasks are from the same project, requester,
-// build variant, and display name.
-func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string) (*Task, error) {
+// build variant, and display name. If includePushTriggers is set, tasks in
+// mainline and push-triggered versions count as having the same requester, and
+// the midway task can be in either kind of version.
+func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string, includePushTriggers bool) (*Task, error) {
 	t1, err := FindOneId(ctx, t1Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task id '%s'", t1Id)
@@ -1279,13 +1304,14 @@ func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string) (*Task, e
 	catcher.ErrorfWhen(t1.BuildVariant != t2.BuildVariant, "given tasks have differing build variants '%s' and '%s'", t1.BuildVariant, t2.BuildVariant)
 	catcher.ErrorfWhen(t1.DisplayName != t2.DisplayName, "given tasks have differing display name '%s' and '%s'", t1.DisplayName, t2.DisplayName)
 	catcher.ErrorfWhen(t1.Project != t2.Project, "given tasks have differing project '%s' and '%s'", t1.Project, t2.Project)
-	catcher.ErrorfWhen(t1.Requester != t2.Requester, "given tasks have differing requester '%s' and '%s'", t1.Requester, t2.Requester)
+	bothMainlineOrPushTriggered := includePushTriggers && t1.isMainlineOrPushTriggered() && t2.isMainlineOrPushTriggered()
+	catcher.ErrorfWhen(!bothMainlineOrPushTriggered && t1.Requester != t2.Requester, "given tasks have differing requester '%s' and '%s'", t1.Requester, t2.Requester)
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
 	}
 
 	middleOrderNumber := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
-	filter, sort := ByBeforeRevision(middleOrderNumber+1, t1.BuildVariant, t1.DisplayName, t1.Project, t1.Requester)
+	filter, sort := ByBeforeRevisionForStepback(middleOrderNumber+1, t1, includePushTriggers)
 	query := db.Query(filter).Sort(sort)
 
 	task, err := FindOne(ctx, query)
@@ -1418,20 +1444,20 @@ func (t *Task) EstimatedFinishTime(now time.Time) time.Time {
 	return t.LastHeartbeat
 }
 
-func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
-	return t.markSystemFailed(ctx, description, false)
+func (t *Task) MarkSystemFailed(ctx context.Context, description, reason string) error {
+	return t.markSystemFailed(ctx, description, reason, false)
 }
 
 // MarkSystemFailedIfUnchanged is the same as MarkSystemFailed, but only
 // updates the task if its status and host haven't changed since it was read.
-func (t *Task) MarkSystemFailedIfUnchanged(ctx context.Context, description string) error {
-	return t.markSystemFailed(ctx, description, true)
+func (t *Task) MarkSystemFailedIfUnchanged(ctx context.Context, description, reason string) error {
+	return t.markSystemFailed(ctx, description, reason, true)
 }
 
-func (t *Task) markSystemFailed(ctx context.Context, description string, requireUnchanged bool) error {
+func (t *Task) markSystemFailed(ctx context.Context, description, reason string, requireUnchanged bool) error {
 	prevStatus := t.Status
 	t.FinishTime = t.EstimatedFinishTime(time.Now())
-	t.Details = GetSystemFailureDetails(description)
+	t.Details = GetSystemFailureDetails(description, reason)
 
 	if err := t.markEnd(ctx, t.FinishTime, &t.Details, requireUnchanged); err != nil {
 		return err
@@ -1451,18 +1477,21 @@ func (t *Task) markSystemFailed(ctx context.Context, description string, require
 		"status":             prevStatus,
 		"host_id":            t.HostId,
 		"description":        description,
+		"reason":             reason,
 		"execution_platform": t.ExecutionPlatform,
 	})
 
 	return nil
 }
 
-// GetSystemFailureDetails returns a task's end details based on an input description.
-func GetSystemFailureDetails(description string) apimodels.TaskEndDetail {
+// GetSystemFailureDetails returns a task's end details based on an input
+// description and a human-readable reason for the system failure.
+func GetSystemFailureDetails(description, reason string) apimodels.TaskEndDetail {
 	details := apimodels.TaskEndDetail{
-		Status:      evergreen.TaskFailed,
-		Type:        evergreen.CommandTypeSystem,
-		Description: description,
+		Status:              evergreen.TaskFailed,
+		Type:                evergreen.CommandTypeSystem,
+		Description:         description,
+		SystemFailureReason: reason,
 	}
 	if description == evergreen.TaskDescriptionHeartbeat {
 		details.TimedOut = true

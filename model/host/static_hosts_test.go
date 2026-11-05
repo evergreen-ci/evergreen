@@ -130,6 +130,9 @@ func TestTerminateStaticHostsForDistro(t *testing.T) {
 	found, err = Find(ctx, IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 3)
+	for _, h := range found {
+		assert.Equal(t, "static host removed from distro", h.TerminationReason)
+	}
 	d2 := &distro.Distro{Id: "d2"}
 	assert.NoError(t, MarkInactiveStaticHosts(ctx, []string{}, d2))
 	found, err = Find(ctx, IsTerminated)

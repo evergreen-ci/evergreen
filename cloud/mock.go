@@ -39,6 +39,10 @@ type MockInstance struct {
 	// InstanceID is the instance ID returned by GetRunningInstanceID. It
 	// defaults to the host ID.
 	InstanceID string
+	// StateReason is the state reason returned by GetInstanceState.
+	StateReason string
+	// TerminateErr is the error returned by TerminateInstance, if any.
+	TerminateErr error
 }
 
 type MockVolume struct {
@@ -248,6 +252,9 @@ func (m *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes h
 func (m *mockManager) GetInstanceState(ctx context.Context, h *host.Host) (CloudInstanceState, error) {
 	info := CloudInstanceState{}
 	info.Status = m.getOrDefaultInstanceStatus(ctx, h.Id)
+	m.mutex.RLock()
+	info.StateReason = m.Instances[h.Id].StateReason
+	m.mutex.RUnlock()
 	return info, nil
 }
 
@@ -296,6 +303,9 @@ func (m *mockManager) TerminateInstance(ctx context.Context, host *host.Host, us
 	instance, ok := m.Instances[host.Id]
 	if !ok {
 		return errors.Errorf("unable to fetch host '%s'", host.Id)
+	}
+	if instance.TerminateErr != nil {
+		return instance.TerminateErr
 	}
 
 	instance.Status = StatusTerminated

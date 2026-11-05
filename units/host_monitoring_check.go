@@ -200,7 +200,8 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			}))
 		}
 
-		event.LogHostTerminatedExternally(ctx, h.Id, h.Status)
+		terminationReason := externalTerminationReason(cloudInfo)
+		event.LogHostTerminatedExternally(ctx, h.Id, h.Status, terminationReason)
 		grip.Info(ctx, message.Fields{
 			"message":      "host terminated externally",
 			"operation":    "handleExternallyTerminatedHost",
@@ -215,7 +216,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 
 		err = EnqueueTerminateHostJob(ctx, env, NewHostTerminationJob(env, h, HostTerminationOptions{
 			TerminateIfBusy:          true,
-			TerminationReason:        fmt.Sprintf("host was found in state '%s'", cloudInfo.Status.String()),
+			TerminationReason:        terminationReason,
 			SkipCloudHostTermination: isTerminated,
 		}))
 		grip.Error(ctx, message.WrapError(err, message.Fields{
@@ -239,6 +240,17 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 		})
 		return false, errors.Errorf("unexpected host status '%s'", cloudInfo)
 	}
+}
+
+// externalTerminationReason describes the state of a host that was found to be
+// stopped or terminated outside of Evergreen, as reported by the cloud
+// provider.
+func externalTerminationReason(info cloud.CloudInstanceState) string {
+	reason := fmt.Sprintf("host was found in state '%s'", info.Status.String())
+	if info.StateReason != "" {
+		reason = fmt.Sprintf("%s (reason: %s)", reason, info.StateReason)
+	}
+	return reason
 }
 
 // handleTerminatedHostSpawnedByTask re-creates a new intent host if possible when this host.create host fails.

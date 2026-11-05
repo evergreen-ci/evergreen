@@ -201,13 +201,9 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 			})
 			continue
 		}
-		terminationReason := "host is expired, decommissioned, or failed to provision"
-		if h.Distro.SingleTaskDistro && h.LastTask != "" {
-			terminationReason = "single task host finished its task"
-		}
 		jobs = append(jobs, NewHostTerminationJob(env, &h, HostTerminationOptions{
 			TerminateIfBusy:   true,
-			TerminationReason: terminationReason,
+			TerminationReason: getHostTerminationReason(&h, time.Now()),
 		}))
 	}
 
@@ -225,6 +221,42 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 		}))
 	}
 	return jobs, catcher.Resolve()
+}
+
+// getHostTerminationReason returns a human-readable reason for why a host
+// returned by host.FindHostsToTerminate should be terminated.
+func getHostTerminationReason(h *host.Host, now time.Time) string {
+	switch h.Status {
+	case evergreen.HostBuildingFailed:
+		return "host failed to be created in the cloud provider"
+	case evergreen.HostProvisionFailed:
+		return "host failed to provision"
+	case evergreen.HostDecommissioned:
+		decommissioned := "host was decommissioned"
+		if h.DecommissionReason != "" {
+			decommissioned = fmt.Sprintf("host was decommissioned (%s)", h.DecommissionReason)
+		}
+		if h.RunningTask == "" {
+			if h.Distro.SingleTaskDistro && h.LastTask != "" {
+				return "single task host finished its task"
+			}
+			return decommissioned + " and is not running a task"
+		}
+		if utility.IsZeroTime(h.LastCommunicationTime) {
+			return decommissioned + " and has never communicated with Evergreen"
+		}
+		if h.LastCommunicationTime.Before(now.Add(-host.DecommissionedHostUnreachableCutoff)) {
+			return fmt.Sprintf("%s and has not communicated with Evergreen since %s", decommissioned, h.LastCommunicationTime.UTC().Format(time.RFC3339))
+		}
+	}
+
+	if h.StartedBy != evergreen.User && !h.ExpirationTime.After(now) {
+		return "host has passed its expiration time"
+	}
+	if !h.Provisioned || h.Status == evergreen.HostStarting || h.Status == evergreen.HostProvisioning {
+		return "host took too long to provision"
+	}
+	return "host matched termination criteria"
 }
 
 func lastContainerFinishTimeJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
