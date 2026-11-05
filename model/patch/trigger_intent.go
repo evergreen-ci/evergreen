@@ -85,6 +85,10 @@ func (t *TriggerIntent) ShouldFinalizePatch() bool {
 	return false
 }
 
+func (t *TriggerIntent) GetSubmittedBy() string {
+	return ""
+}
+
 func (t *TriggerIntent) RepeatPreviousPatchDefinition() (string, bool) {
 	return "", false
 }

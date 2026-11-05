@@ -198,6 +198,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/patches/{patch_id}").Version(2).Get().Wrap(requireUser, viewTasks, rateLimit).RouteHandler(makeFetchPatchByID())
 	app.AddRoute("/patches/{patch_id}").Version(2).Patch().Wrap(requireUser, submitPatches, rateLimit).RouteHandler(makeChangePatchStatus(env))
 	app.AddRoute("/patches/{patch_id}/abort").Version(2).Post().Wrap(requireUser, submitPatches, rateLimit).RouteHandler(makeAbortPatch())
+	app.AddRoute("/patches/{patch_id}/clone").Version(2).Post().Wrap(requireUser, submitPatches, rateLimit).RouteHandler(makeClonePatchHandler(env))
 	app.AddRoute("/patches/{patch_id}/configure").Version(2).Post().Wrap(requireUser, submitPatches, rateLimit).RouteHandler(makeSchedulePatchHandler(env))
 	app.AddRoute("/patches/{patch_id}/raw").Version(2).Get().Wrap(requireUser, viewTasks, rateLimit).RouteHandler(makePatchRawHandler())
 	app.AddRoute("/patches/{patch_id}/raw_modules").Version(2).Get().Wrap(requireUser, viewTasks, rateLimit).RouteHandler(makeModuleRawHandler())

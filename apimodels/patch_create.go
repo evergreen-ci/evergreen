@@ -166,3 +166,21 @@ func (r *CreatePatchRequest) repeatOptionsSet() bool {
 func (r *CreatePatchRequest) anyAliasSet() bool {
 	return r.Alias != "" || len(r.Aliases) > 0 || len(r.TriggerAliases) > 0
 }
+
+// ClonePatchRequest is the optional request body for cloning a patch. All
+// fields are optional; everything else about the new patch (diffs, base
+// commit, task/variant definition, parameters) is copied from the source
+// patch.
+type ClonePatchRequest struct {
+	// Description overrides the cloned patch's description, which otherwise is
+	// copied from the source patch.
+	Description string `json:"description"`
+	// Author is the Evergreen username to attribute the cloned patch to when
+	// creating it on behalf of someone else. Requires 'Patches: Admin'
+	// permission; if the user does not exist, the clone is attributed to the
+	// caller. Optional.
+	Author string `json:"author"`
+	// Finalize activates the cloned patch after creating it, starting its
+	// tasks.
+	Finalize bool `json:"finalize"`
+}

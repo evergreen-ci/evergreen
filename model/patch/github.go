@@ -266,6 +266,10 @@ func (g *githubIntent) ShouldFinalizePatch() bool {
 	return true
 }
 
+func (g *githubIntent) GetSubmittedBy() string {
+	return ""
+}
+
 func (g *githubIntent) RepeatPreviousPatchDefinition() (string, bool) {
 	return g.RepeatPatchId, g.RepeatPatchId != ""
 }
