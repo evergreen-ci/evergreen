@@ -12,6 +12,19 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Factory creates an instance of the handler.
+//
+//	@Summary			Fetch a project's event log
+//	@Description		Returns a paginated list of the project's events, most recent first.
+//	@Tags				projects
+//	@Router				/projects/{project_id}/events [get]
+//	@Security			Api-User || Api-Key
+//	@Param				project_id	path		string	true	"the project ID or identifier"
+//	@Param				ts			query		string	false	"Timestamp (RFC3339) to start at; pages list events that happened before this time. Defaults to now."
+//	@Param				limit		query		int		false	"The number of events to be returned per page of pagination. Defaults to 100"
+//	@Success			200			{array}		model.APIProjectEvent
+//	@Header				200			{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."
+//	@x-pagination-type	"time-cursor"
 func makeFetchProjectEvents() gimlet.RouteHandler {
 	return &projectEventsGet{}
 }
