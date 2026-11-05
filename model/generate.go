@@ -447,12 +447,15 @@ func getBuildVariantsFromPairs(pairs TaskVariantPairs) []string {
 }
 
 // countInactiveVirtualTasks returns the number of virtual tasks to be created
-// that won't be activated to run on a host.
+// that won't be activated to run on a host. This doesn't account for virtual
+// tasks that get activated afterwards as a dependency of an activated task, so
+// those aren't counted toward the limit.
 func countInactiveVirtualTasks(p *Project, taskIDs TaskIdConfig, activationInfo *specificActivationInfo) int {
 	numInactive := 0
 	for pair := range taskIDs.ExecutionTasks {
 		pt := p.FindProjectTask(pair.TaskName)
-		if pt != nil && pt.Virtual && !activationInfo.isVirtualTaskActivatedOnCreation(pair.Variant, pair.TaskName) {
+		// Build activation doesn't affect whether virtual tasks are activated.
+		if pt != nil && pt.Virtual && !activationInfo.shouldActivateNewTask(pair.Variant, pair.TaskName, false, true) {
 			numInactive++
 		}
 	}
@@ -710,11 +713,14 @@ func (b *specificActivationInfo) hasActivationTasks() bool {
 	return len(b.activationTasks) > 0
 }
 
-// isVirtualTaskActivatedOnCreation returns whether a virtual task should
-// be activated to run on a host. Virtual tasks start inactive unless stepback
-// activates them.
-func (b *specificActivationInfo) isVirtualTaskActivatedOnCreation(variant, task string) bool {
-	return b.getStepbackTask(variant, task).shouldActivate()
+// shouldActivateNewTask returns whether a task being created should be
+// activated. Virtual tasks start inactive unless generate.tasks is creating
+// them for stepback.
+func (b *specificActivationInfo) shouldActivateNewTask(variant, taskName string, buildActivated, isVirtual bool) bool {
+	if stepbackInfo := b.getStepbackTask(variant, taskName); stepbackInfo != nil {
+		return stepbackInfo.shouldActivate()
+	}
+	return buildActivated && !isVirtual && !b.taskHasSpecificActivation(variant, taskName)
 }
 
 func (b *specificActivationInfo) getStepbackTask(variant, task string) *specificStepbackInfo {
