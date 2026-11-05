@@ -520,6 +520,10 @@ the "Version Manifest" shown in the Spruce UI should show module configurations 
 The modules will only be cloned in the [git.get_project](Project-Commands#gitgetproject) command if the [build variant](Project-Configuration-Files#build-variants)
 is configured to use the module via the module field.
 
+CLI and GitHub PR patches can only use private module repos that a recent mainline version declares as modules. To
+add one, commit it to the tracked branch and wait for Evergreen to create the mainline version. GitHub PR patches can
+also use repos the PR author can read. Merge queue and child patches can use any repo.
+
 ```yaml
 modules:
   - name: evergreen
