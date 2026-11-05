@@ -85,6 +85,9 @@ func Evaluate() cli.Command {
 				CrossFileYAMLAnchorsEnabled: anchorsEnabled,
 			}
 			_, _, err = model.LoadProjectInto(ctx, configBytes, opts, "", p, false)
+			if err != nil {
+				return errors.Wrap(err, "loading project")
+			}
 			if diffable {
 				sortTasksByName := model.ProjectTasksByName(p.Tasks)
 				sort.Sort(sortTasksByName)

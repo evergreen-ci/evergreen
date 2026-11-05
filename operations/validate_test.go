@@ -327,7 +327,7 @@ func TestLoadProjectIntoWithValidation(t *testing.T) {
 			opts := &model.GetProjectOpts{
 				ReadFileFrom: model.ReadFromLocal,
 			}
-			pp, _, validationErrs := loadProjectIntoWithValidation(t.Context(), testCase.data, opts, false, testCase.errorOnWarnings, &model.Project{}, "")
+			pp, _, validationErrs := loadProjectIntoWithValidation(t.Context(), testCase.data, opts, testCase.errorOnWarnings, &model.Project{}, "")
 
 			if testCase.expectErrLevel != nil {
 				assert.True(t, validationErrs.Has(*testCase.expectErrLevel))
