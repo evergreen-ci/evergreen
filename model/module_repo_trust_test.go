@@ -88,7 +88,7 @@ func TestValidatePatchModuleRepos(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			err := ValidatePatchModuleRepos(t.Context(), tc.p, projectRef, ModuleList{tc.module})
-			require.Error(t, err)
+			assert.ErrorAs(t, err, &untrustedModuleReposError{})
 			assert.Contains(t, err.Error(), tc.module.Name)
 		})
 	}

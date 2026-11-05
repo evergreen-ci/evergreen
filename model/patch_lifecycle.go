@@ -877,6 +877,10 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 	}
 
 	if err := ValidatePatchModuleRepos(ctx, p, projectRef, project.Modules); err != nil {
+		var untrustedErr untrustedModuleReposError
+		if errors.As(err, &untrustedErr) {
+			return nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: err.Error()}
+		}
 		return nil, err
 	}
 
@@ -1257,6 +1261,14 @@ func prefetchAutoUpdateModuleRevisions(ctx context.Context, p *patch.Patch, proj
 	autoUpdateRevisions := make(map[string]string)
 	for _, module := range projectModulesOnly.Modules {
 		if module.AutoUpdate {
+			owner, repo, err := module.GetOwnerAndRepo()
+			if err != nil {
+				continue
+			}
+			// Patch creation reports modules that use untrusted repos.
+			if err := opts.moduleRepoChecker.check(ctx, owner, repo); err != nil {
+				continue
+			}
 			mfstModule, err := getManifestModule(ctx, projectRef, module, evergreen.PatchVersionRequester, p.IngestTime)
 			if err != nil {
 				grip.Warning(ctx, message.WrapError(err, message.Fields{

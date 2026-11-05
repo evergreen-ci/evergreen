@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -64,9 +65,17 @@ func ValidatePatchModuleRepos(ctx context.Context, p *patch.Patch, projectRef *P
 		}
 	}
 	if len(untrusted) > 0 {
-		return errors.Errorf("modules '%s' use private repos that patches can't use until a mainline version declares them", strings.Join(untrusted, "', '"))
+		return untrustedModuleReposError{modules: untrusted}
 	}
 	return nil
+}
+
+type untrustedModuleReposError struct {
+	modules []string
+}
+
+func (e untrustedModuleReposError) Error() string {
+	return fmt.Sprintf("modules '%s' use private repos that patches can't use until a mainline version declares them", strings.Join(e.modules, "', '"))
 }
 
 // patchModuleRepoChecker checks whether a patch can use module repos.
@@ -107,7 +116,7 @@ func (c *patchModuleRepoChecker) allows(ctx context.Context, owner, repo string)
 	trusted, ok := c.results[key]
 	if !ok {
 		var err error
-		trusted, err = c.isTrustedOnGitHub(ctx, owner, strings.TrimSuffix(trimGitSuffix(repo), ".wiki"))
+		trusted, err = c.isTrustedOnGitHub(ctx, owner, GitHubAppTokenRepo(repo))
 		if err != nil {
 			return false, err
 		}
@@ -195,10 +204,6 @@ func (c *patchModuleRepoChecker) load(ctx context.Context) error {
 	return nil
 }
 
-func trimGitSuffix(repo string) string {
-	return strings.TrimSuffix(strings.TrimSpace(repo), ".git")
-}
-
 func moduleRepoKey(owner, repo string) string {
-	return strings.ToLower(strings.TrimSpace(owner) + "/" + strings.TrimSuffix(trimGitSuffix(repo), ".wiki"))
+	return strings.ToLower(strings.TrimSpace(owner) + "/" + GitHubAppTokenRepo(repo))
 }

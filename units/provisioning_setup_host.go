@@ -905,7 +905,7 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 			catcher.Add(err)
 		}
 		if module.Owner != "" && repo != "" && settings != nil {
-			token, err := createToken(module.Owner, strings.TrimSuffix(strings.TrimSuffix(repo, ".git"), ".wiki"))
+			token, err := createToken(module.Owner, model.GitHubAppTokenRepo(repo))
 			catcher.Add(err)
 			moduleTokens = append(moduleTokens, fmt.Sprintf("%s:%s", moduleName, token))
 		}

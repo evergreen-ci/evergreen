@@ -1894,8 +1894,7 @@ func matchesModule(moduleOwner, moduleRepo, owner, repo string) bool {
 	if model.IsWikiRepo(moduleRepo) {
 		// The agent strips ".wiki" from repo names before requesting
 		// tokens, so this also matches the parent repo name for wiki modules.
-		parentRepo := strings.TrimSuffix(strings.TrimSuffix(strings.TrimSpace(moduleRepo), ".git"), ".wiki")
-		if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(parentRepo, repo) {
+		if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(model.GitHubAppTokenRepo(moduleRepo), repo) {
 			return true
 		}
 	}
