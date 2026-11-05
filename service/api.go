@@ -241,7 +241,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		CrossFileYAMLAnchorsEnabled: svcFlags.CrossFileYAMLAnchorsEnabled,
 	}
 	validationErr := validator.ValidationError{}
-	pp, err := model.LoadProjectInto(ctx, input.ProjectYaml, opts, input.ProjectID, project)
+	pp, _, err := model.LoadProjectInto(ctx, input.ProjectYaml, opts, input.ProjectID, project, false)
 	if err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(r.Context(), w, validator.ValidationErrors{validationErr})

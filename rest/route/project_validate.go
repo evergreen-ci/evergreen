@@ -84,7 +84,7 @@ func (v *validateProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		"request_id": gimlet.GetRequestID(ctx),
 	})
 	validationErr := validator.ValidationError{}
-	pp, err := model.LoadProjectInto(ctx, v.input.ProjectYaml, opts, v.input.ProjectID, project)
+	pp, _, err := model.LoadProjectInto(ctx, v.input.ProjectYaml, opts, v.input.ProjectID, project, false)
 	if err != nil {
 		validationErr.Message = err.Error()
 		return gimlet.NewJSONErrorResponse(validator.ValidationErrors{validationErr})

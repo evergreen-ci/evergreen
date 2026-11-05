@@ -186,7 +186,7 @@ func (e *LocalExecutor) LoadProject(ctx context.Context, configPath string) (*mo
 		LocalModules:    e.opts.LocalModules,
 	}
 
-	pp, err := model.LoadProjectInto(ctx, yamlBytes, opts, "", project)
+	pp, _, err := model.LoadProjectInto(ctx, yamlBytes, opts, "", project, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading project")
 	}

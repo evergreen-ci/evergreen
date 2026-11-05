@@ -176,12 +176,12 @@ include:
 			resolver := NewModuleResolver(projectRef, opts)
 
 			p := &Project{}
-			_, err := LoadProjectInto(t.Context(), mainConfig, &GetProjectOpts{
+			_, _, err := LoadProjectInto(t.Context(), mainConfig, &GetProjectOpts{
 				Ref:            projectRef,
 				Revision:       "main",
 				ReadFileFrom:   ReadFromGithub,
 				ModuleResolver: resolver,
-			}, projectRef.Id, p)
+			}, projectRef.Id, p, false)
 			require.NoError(t, err)
 			_, err = GetModuleByName(p.Modules, "render-module")
 			assert.Equal(t, tc.expectRenderModule, err == nil, "include should be read from the resolved module commit")

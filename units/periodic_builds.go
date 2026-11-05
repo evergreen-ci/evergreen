@@ -182,7 +182,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 		return errors.Wrap(err, "getting service flags")
 	}
 	opts.CrossFileYAMLAnchorsEnabled = svcFlags.CrossFileYAMLAnchorsEnabled
-	intermediateProject, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj)
+	intermediateProject, _, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj, false)
 	if err != nil {
 		return errors.Wrap(err, "parsing config file")
 	}

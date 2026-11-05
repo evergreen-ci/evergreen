@@ -3201,7 +3201,7 @@ tasks:
 			require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection))
 
 			project := &Project{}
-			pp, err := LoadProjectInto(ctx, []byte(patchedProject), nil, "", project)
+			pp, _, err := LoadProjectInto(ctx, []byte(patchedProject), nil, "", project, false)
 			require.NoError(t, err)
 
 			p := &patch.Patch{
@@ -3264,7 +3264,7 @@ patch_aliases:
 `
 
 	p := &Project{}
-	_, err := LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := LoadProjectInto(ctx, []byte(projYml), nil, "", p, false)
 	s.Require().NoError(err)
 
 	pc, err := CreateProjectConfig([]byte(projYml), "")

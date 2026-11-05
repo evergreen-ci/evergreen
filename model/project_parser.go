@@ -923,19 +923,13 @@ type yamlTuple struct {
 }
 
 // LoadProjectInto loads the raw data from the config file into project
-// and sets the project's ID field to projectID. Tags are evaluated. Returns the intermediate step.
+// and sets the project's ID field to projectID. Tags are evaluated. Returns the intermediate step,
+// plus user-facing warnings encountered while parsing (populated only when validate is true),
+// such as the reason cross-file YAML anchor parsing failed and the file fell back to being
+// parsed without anchors.
 // If reading from a version config, LoadProjectInfoForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
-func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, projectID string, project *Project) (*ParserProject, error) {
-	pp, _, err := LoadProjectIntoWithWarnings(ctx, data, opts, projectID, project)
-	return pp, err
-}
-
-// LoadProjectIntoWithWarnings is like LoadProjectInto but also returns
-// user-facing warnings encountered while parsing, such as the reason
-// cross-file YAML anchor parsing failed and the file fell back to being parsed
-// without anchors.
-func LoadProjectIntoWithWarnings(ctx context.Context, data []byte, opts *GetProjectOpts, projectID string, project *Project) (*ParserProject, []string, error) {
+func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, projectID string, project *Project, validate bool) (*ParserProject, []string, error) {
 	attrs := []attribute.KeyValue{
 		attribute.String(evergreen.ProjectIDOtelAttribute, projectID),
 	}
@@ -962,8 +956,10 @@ func LoadProjectIntoWithWarnings(ctx context.Context, data []byte, opts *GetProj
 		return nil, nil, errors.Wrapf(err, LoadProjectError)
 	}
 	var warnings []string
-	if warning := logDecodeErrorWithOpts(ctx, projectID, "", "LoadProjectInto", decodeErr, opts); warning != "" {
-		warnings = append(warnings, warning)
+	if validate {
+		if warning := logDecodeErrorWithOpts(ctx, projectID, "", "LoadProjectInto", decodeErr, opts); warning != "" {
+			warnings = append(warnings, warning)
+		}
 	}
 
 	if !slices.Contains(priorityBypassProjects, projectID) {
@@ -975,7 +971,9 @@ func LoadProjectIntoWithWarnings(ctx context.Context, data []byte, opts *GetProj
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "merging included files")
 		}
-		warnings = append(warnings, includeWarnings...)
+		if validate {
+			warnings = append(warnings, includeWarnings...)
+		}
 	}
 
 	// Return project even with errors.
@@ -1690,7 +1688,7 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 	}
 
 	config := Project{}
-	pp, err := LoadProjectInto(ctx, fileContents, &opts, opts.Ref.Id, &config)
+	pp, _, err := LoadProjectInto(ctx, fileContents, &opts, opts.Ref.Id, &config, false)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrapf(err, "parsing config file for '%s'", opts.Ref.Id)
 	}

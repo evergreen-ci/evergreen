@@ -60,7 +60,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Ref:          modelData.ProjectRef,
 		ReadFileFrom: model.ReadFromLocal,
 	}
-	pp, err := model.LoadProjectInto(ctx, projectConfig, opts, "", project)
+	pp, _, err := model.LoadProjectInto(ctx, projectConfig, opts, "", project, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshalling project config")
 	}

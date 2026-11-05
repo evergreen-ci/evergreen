@@ -228,14 +228,14 @@ func printParseWarnings(quiet bool, warnings []string) {
 func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model.GetProjectOpts, quiet, errorOnWarnings bool,
 	project *model.Project, projectID string) (*model.ParserProject, *model.ProjectConfig, validator.ValidationErrors) {
 	errs := validator.ValidationErrors{}
-	pp, warnings, err := model.LoadProjectIntoWithWarnings(ctx, data, opts, projectID, project)
+	pp, warnings, err := model.LoadProjectInto(ctx, data, opts, projectID, project, true)
 	printParseWarnings(quiet, warnings)
 	if err != nil {
 		// If the error came from unmarshalling strict, try it again without strict to verify if
 		// it's a legitimate unmarshal error or just an error from strict (which should be a warning)
 		if !errorOnWarnings && strings.Contains(err.Error(), util.UnmarshalStrictError) {
 			opts.UnmarshalStrict = false
-			pp, warnings, err2 := model.LoadProjectIntoWithWarnings(ctx, data, opts, projectID, project)
+			pp, warnings, err2 := model.LoadProjectInto(ctx, data, opts, projectID, project, true)
 			printParseWarnings(quiet, warnings)
 			if err2 == nil {
 				errs = append(errs, validator.ValidationError{

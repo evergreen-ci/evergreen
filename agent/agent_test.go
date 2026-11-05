@@ -857,7 +857,7 @@ post:
 // the YAML, parsing it, and setting the necessary fields for it to run.
 func (s *AgentSuite) setupRunTask(projYml string) {
 	p := &model.Project{}
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p, false)
 	s.Require().NoError(err)
 	s.tc.taskConfig.Project = *p
 	s.mockCommunicator.GetProjectResponse = p

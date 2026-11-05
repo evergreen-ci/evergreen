@@ -479,7 +479,7 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 	}
 
 	project := &Project{}
-	pp, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
+	pp, _, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project, false)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}

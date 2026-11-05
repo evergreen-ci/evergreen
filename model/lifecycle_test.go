@@ -1812,7 +1812,7 @@ func TestCreateTaskGroup(t *testing.T) {
 	proj := &Project{}
 	ctx := context.Background()
 	const projectIdentifier = "test"
-	_, err := LoadProjectInto(ctx, []byte(projYml), nil, projectIdentifier, proj)
+	_, _, err := LoadProjectInto(ctx, []byte(projYml), nil, projectIdentifier, proj, false)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	v := &Version{
@@ -1876,7 +1876,7 @@ buildvariants:
 `
 	proj := &Project{}
 	const projectIdentifier = "test"
-	_, err := LoadProjectInto(t.Context(), []byte(projYml), nil, projectIdentifier, proj)
+	_, _, err := LoadProjectInto(t.Context(), []byte(projYml), nil, projectIdentifier, proj, false)
 	require.NoError(t, err)
 	require.NotNil(t, proj)
 
@@ -1961,7 +1961,7 @@ buildvariants:
 `
 	proj := &Project{}
 	const projectIdentifier = "test"
-	_, err := LoadProjectInto(t.Context(), []byte(projYml), nil, projectIdentifier, proj)
+	_, _, err := LoadProjectInto(t.Context(), []byte(projYml), nil, projectIdentifier, proj, false)
 	require.NoError(t, err)
 	require.NotNil(t, proj)
 

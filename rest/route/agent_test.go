@@ -1109,7 +1109,7 @@ tasks:
     commands: []
 `
 	var fewProj model.Project
-	ppFew, err := model.LoadProjectInto(t.Context(), []byte(fewCheckRunYAML), nil, projectID, &fewProj)
+	ppFew, _, err := model.LoadProjectInto(t.Context(), []byte(fewCheckRunYAML), nil, projectID, &fewProj, false)
 	require.NoError(t, err)
 	ppFew.Id = fewVersionID
 	require.NoError(t, ppFew.Insert(t.Context()))
@@ -1171,7 +1171,7 @@ tasks:
     commands: []
 `
 	var manyProj model.Project
-	ppMany, err := model.LoadProjectInto(t.Context(), []byte(manyCheckRunYAML), nil, projectID, &manyProj)
+	ppMany, _, err := model.LoadProjectInto(t.Context(), []byte(manyCheckRunYAML), nil, projectID, &manyProj, false)
 	require.NoError(t, err)
 	ppMany.Id = manyVersionID
 	require.NoError(t, ppMany.Insert(t.Context()))
@@ -1297,7 +1297,7 @@ tasks:
     commands: []
 `
 	var manyProj model.Project
-	ppMany, err := model.LoadProjectInto(t.Context(), []byte(manyCheckRunYAML), nil, projectID, &manyProj)
+	ppMany, _, err := model.LoadProjectInto(t.Context(), []byte(manyCheckRunYAML), nil, projectID, &manyProj, false)
 	require.NoError(t, err)
 	ppMany.Id = manyVersionID
 	require.NoError(t, ppMany.Insert(t.Context()))
