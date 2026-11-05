@@ -953,7 +953,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	var warnings []string
 	if validate {
 		warnings = append(warnings, parseWarnings...)
-		if warningErr := logDecodeErrorWithOpts(ctx, projectID, "", "LoadProjectInto", decodeErr, opts); warningErr != nil {
+		if warningErr := logDecodeErrorWithOpts(ctx, projectID, "", decodeErr, opts); warningErr != nil {
 			warnings = append(warnings, warningErr.Error())
 		}
 	}
@@ -997,7 +997,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 // back to parsing the file without anchors) at warning level so users can see
 // why cross-file aliases were not applied. It returns that failure as a
 // user-facing error, or nil when the anchor-based parse did not fail.
-func logDecodeErrorWithOpts(ctx context.Context, projectID, filename, caller string, decodeErr error, opts *GetProjectOpts) error {
+func logDecodeErrorWithOpts(ctx context.Context, projectID, filename string, decodeErr error, opts *GetProjectOpts) error {
 	if decodeErr == nil {
 		return nil
 	}
@@ -1132,7 +1132,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 			return nil, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
 		}
 		warnings = append(warnings, includeWarnings...)
-		if warningErr := logDecodeErrorWithOpts(ctx, projectID, path.FileName, "mergeIncludes", decodeErr, opts); warningErr != nil {
+		if warningErr := logDecodeErrorWithOpts(ctx, projectID, path.FileName, decodeErr, opts); warningErr != nil {
 			warnings = append(warnings, warningErr.Error())
 		}
 

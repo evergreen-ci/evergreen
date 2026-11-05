@@ -550,7 +550,7 @@ func GetPatchedProjectConfig(ctx context.Context, p *patch.Patch) (string, error
 	}
 	// The returned error is only for surfacing the fallback to users during
 	// validation; the failure is already logged above.
-	_ = logDecodeErrorWithOpts(ctx, projectRef.Id, "", "GetPatchedProjectConfig", decodeErr, opts)
+	_ = logDecodeErrorWithOpts(ctx, projectRef.Id, "", decodeErr, opts)
 	if len(intermediateProject.Include) > 0 {
 		if _, err := mergeIncludes(ctx, p.Project, intermediateProject, registry, opts); err != nil {
 			return "", errors.Wrap(err, "merging included files")
