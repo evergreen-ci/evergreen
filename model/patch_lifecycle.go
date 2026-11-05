@@ -467,11 +467,6 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 		return nil, nil, errors.Wrap(err, "fetching project options for patch")
 	}
 	opts.cacheEnabled = projectTranslationCacheEnabled(settings)
-	svcFlags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "getting service flags")
-	}
-	opts.CrossFileYAMLAnchorsEnabled = svcFlags.CrossFileYAMLAnchorsEnabled || p.CrossFileYAMLAnchorsEnabled
 
 	projectFileBytes, err := getPatchedProjectYAML(ctx, projectRef, opts, p)
 	if err != nil {
@@ -548,13 +543,14 @@ func GetPatchedProjectConfig(ctx context.Context, p *patch.Patch) (string, error
 
 	// Parse the config directly instead of going through LoadProjectInto to
 	// avoid paying for project translation, which isn't needed for the config.
-	intermediateProject, decodeErr, err := createIntermediateProject(projectFileBytes, opts.UnmarshalStrict, nil)
+	registry := &anchorRegistry{}
+	intermediateProject, decodeErr, err := createIntermediateProject(projectFileBytes, opts.UnmarshalStrict, registry)
 	if err != nil {
 		return "", errors.Wrapf(err, LoadProjectError)
 	}
 	logDecodeErrorWithOpts(ctx, projectRef.Id, "", "GetPatchedProjectConfig", decodeErr, opts)
 	if len(intermediateProject.Include) > 0 {
-		if err := mergeIncludes(ctx, p.Project, intermediateProject, nil, opts); err != nil {
+		if err := mergeIncludes(ctx, p.Project, intermediateProject, registry, opts); err != nil {
 			return "", errors.Wrap(err, "merging included files")
 		}
 	}
