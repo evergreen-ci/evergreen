@@ -474,6 +474,9 @@ func TestGetUserPermissionDetails(t *testing.T) {
 	require.Contains(t, data.AvailablePermissions.Permissions, tasksKey)
 	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[tasksKey]), evergreen.TasksBasic.Description)
 	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[tasksKey]), evergreen.TasksAdmin.Description)
+	testQuarantineKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionTestQuarantine)
+	require.Contains(t, data.AvailablePermissions.Permissions, testQuarantineKey)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[testQuarantineKey]), evergreen.TestQuarantineEdit.Description)
 
 	byID := map[string]restModel.APIProjectPermissionSummary{}
 	for _, p := range *data.Projects {

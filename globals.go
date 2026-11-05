@@ -1321,6 +1321,7 @@ var (
 	PermissionAnnotations    = "project_task_annotations"
 	PermissionPatches        = "project_patches"
 	PermissionLogs           = "project_logs"
+	PermissionTestQuarantine = "project_test_quarantine"
 	// Distro permissions.
 	PermissionDistroSettings = "distro_settings"
 	PermissionHosts          = "distro_hosts"
@@ -1416,6 +1417,14 @@ var (
 		Description: "Not able to view logs",
 		Value:       0,
 	}
+	TestQuarantineEdit = PermissionLevel{
+		Description: "Quarantine and unquarantine tests",
+		Value:       10,
+	}
+	TestQuarantineNone = PermissionLevel{
+		Description: "Not able to quarantine tests",
+		Value:       0,
+	}
 	DistroSettingsAdmin = PermissionLevel{
 		Description: "Remove distro and edit distro settings",
 		Value:       30,
@@ -1461,6 +1470,8 @@ func GetDisplayNameForPermissionKey(permissionKey string) string {
 		return "Git Tag Versions"
 	case PermissionLogs:
 		return "Logs"
+	case PermissionTestQuarantine:
+		return "Test Quarantine"
 	case PermissionDistroSettings:
 		return "Distro Settings"
 	case PermissionHosts:
@@ -1507,6 +1518,11 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 			LogsView,
 			LogsNone,
 		}
+	case PermissionTestQuarantine:
+		return []PermissionLevel{
+			TestQuarantineEdit,
+			TestQuarantineNone,
+		}
 	case PermissionDistroSettings:
 		return []PermissionLevel{
 			DistroSettingsAdmin,
@@ -1536,6 +1552,7 @@ var ProjectPermissions = []string{
 	PermissionPatches,
 	PermissionGitTagVersions,
 	PermissionLogs,
+	PermissionTestQuarantine,
 }
 
 var DistroPermissions = []string{
