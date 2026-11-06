@@ -332,5 +332,8 @@ func (pp *ParserProject) mergeMultipleParserProjects(toMerge *ParserProject) err
 		catcher.Add(err)
 	}
 
+	// Parse warnings are not user-defined; collect them from all merged yamls.
+	pp.parseWarnings = append(pp.parseWarnings, toMerge.parseWarnings...)
+
 	return errors.Wrap(catcher.Resolve(), MergeProjectConfigError)
 }

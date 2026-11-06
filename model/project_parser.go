@@ -134,7 +134,7 @@ type ParserProject struct {
 	// is intentionally unexported so that it's never persisted to the DB and it
 	// only exists in memory.
 	parseWarnings []string
-}
+} // End of ParserProject mergeable fields (this comment is used by the linter).
 
 type parserTaskGroup struct {
 	Name                     string            `yaml:"name,omitempty" bson:"name,omitempty"`
@@ -1119,13 +1119,13 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		}
 		logDecodeErrorWithOpts(ctx, projectID, path.FileName, "mergeIncludes", decodeErr, opts)
 
+		for i, warning := range add.parseWarnings {
+			add.parseWarnings[i] = fmt.Sprintf("included file '%s': %s", path.FileName, warning)
+		}
+
 		if err = intermediateProject.mergeMultipleParserProjects(add); err != nil {
 			// Return intermediateProject even if we run into issues to show merge progress.
 			return errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
-		}
-
-		for _, warning := range add.parseWarnings {
-			intermediateProject.parseWarnings = append(intermediateProject.parseWarnings, fmt.Sprintf("included file '%s': %s", path.FileName, warning))
 		}
 
 		intermediateProject.mergeProjectConfigFields(add)
@@ -1678,7 +1678,8 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 // Uses decodeWithAnchors to collect anchors from each file into the registry.
 // If the registry already has entries, a preamble is prepended so aliases from
 // prior files resolve. If decoding with anchors fails, falls back to standard
-// unmarshalling and records the reason as a warning on the returned project.
+// unmarshalling and records the reason as a warning on the returned project;
+// a breached anchor limit fails the load instead.
 func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (pp *ParserProject, decodeErr error, err error) {
 	var combined []byte
 	if anchorRegistry.Length() > 0 {
@@ -1784,14 +1785,12 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 		return &ParserProject{}, nil
 	}
 
-	var p ParserProject
 	// A top-level _evg_anchors key in a file parsed without a prepended
 	// preamble can only be user content, since Evergreen did not put it there.
 	// It is still removed, but warn that the user-defined key is being ignored.
-	if stripEvgAnchorsKey(&node) && anchorRegistry.Length() == 0 {
-		p.parseWarnings = append(p.parseWarnings, fmt.Sprintf("ignoring reserved top-level YAML key '%s'; this key is reserved for Evergreen's internal use when applying cross-file YAML anchors", evgAnchorsKey))
-	}
+	strippedUserEvgAnchorsKey := stripEvgAnchorsKey(&node) && anchorRegistry.Length() == 0
 
+	var p ParserProject
 	if unmarshalStrict {
 		strictProjectWithVariables := struct {
 			ParserProject       `yaml:"pp,inline"`
@@ -1811,6 +1810,9 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
 			return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
 		}
+	}
+	if strippedUserEvgAnchorsKey {
+		p.parseWarnings = append(p.parseWarnings, fmt.Sprintf("ignoring reserved top-level YAML key '%s'; this key is reserved for Evergreen's internal use when applying cross-file YAML anchors", evgAnchorsKey))
 	}
 	// The unexported projectConfigFields are not populated by the decodes above,
 	// so always set them from the raw bytes, matching standardUnmarshal.

@@ -5279,4 +5279,13 @@ functions:
 			assert.NotContains(t, warning, "reserved top-level YAML key '_evg_anchors'")
 		}
 	})
+
+	t.Run("StrictModeStillWarns", func(t *testing.T) {
+		pp, decodeErr, err := createIntermediateProject([]byte(yml), true, &anchorRegistry{})
+		require.NoError(t, err)
+		require.NoError(t, decodeErr)
+		require.Len(t, pp.Functions, 1)
+		require.Len(t, pp.parseWarnings, 1)
+		assert.Contains(t, pp.parseWarnings[0], "reserved top-level YAML key '_evg_anchors'")
+	})
 }
