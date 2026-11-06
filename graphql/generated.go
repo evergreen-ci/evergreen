@@ -2377,7 +2377,7 @@ type ComplexityRoot struct {
 		Activated                    func(childComplexity int) int
 		Author                       func(childComplexity int) int
 		AuthorEmail                  func(childComplexity int) int
-		BaseVersion                  func(childComplexity int) int
+		BaseVersion                  func(childComplexity int, repotrackerOnly *bool) int
 		Branch                       func(childComplexity int) int
 		BuildVariantStats            func(childComplexity int, options BuildVariantOptions) int
 		BuildVariants                func(childComplexity int, options BuildVariantOptions) int
@@ -2864,7 +2864,7 @@ type UserResolver interface {
 	TokenAccessTokenExpiresAt(ctx context.Context, obj *user.DBUser) (*time.Time, error)
 }
 type VersionResolver interface {
-	BaseVersion(ctx context.Context, obj *model1.Version) (*model1.Version, error)
+	BaseVersion(ctx context.Context, obj *model1.Version, repotrackerOnly *bool) (*model1.Version, error)
 
 	BuildVariants(ctx context.Context, obj *model1.Version, options BuildVariantOptions) ([]*GroupedBuildVariant, error)
 	BuildVariantStats(ctx context.Context, obj *model1.Version, options BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error)
@@ -12854,7 +12854,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Version.BaseVersion(childComplexity), true
+		args, err := ec.field_Version_baseVersion_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Version.BaseVersion(childComplexity, args["repotrackerOnly"].(*bool)), true
 	case "Version.branch":
 		if e.complexity.Version.Branch == nil {
 			break
@@ -17349,6 +17354,17 @@ func (ec *executionContext) field_User_patches_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["patchesInput"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Version_baseVersion_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "repotrackerOnly", ec.unmarshalOBoolean2ᚖbool)
+	if err != nil {
+		return nil, err
+	}
+	args["repotrackerOnly"] = arg0
 	return args, nil
 }
 
@@ -76340,7 +76356,8 @@ func (ec *executionContext) _Version_baseVersion(ctx context.Context, field grap
 		field,
 		ec.fieldContext_Version_baseVersion,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Version().BaseVersion(ctx, obj)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Version().BaseVersion(ctx, obj, fc.Args["repotrackerOnly"].(*bool))
 		},
 		nil,
 		ec.marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersion,
@@ -76349,7 +76366,7 @@ func (ec *executionContext) _Version_baseVersion(ctx context.Context, field grap
 	)
 }
 
-func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Version_baseVersion(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Version",
 		Field:      field,
@@ -76450,6 +76467,17 @@ func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, 
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Version_baseVersion_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
