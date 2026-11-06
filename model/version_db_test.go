@@ -351,23 +351,23 @@ func TestFindBaseVersionForVersion(t *testing.T) {
 		"RepotrackerOnlyTrue": {
 			repotrackerOnly: true,
 			testCases: map[string]testCase{
-				"PatchReturnsMainlineCommitAtBaseRevision": {
+				"PatchReturnsRepotrackerCommitAtBaseRevision": {
 					versionID:  "v1",
 					expectedID: "project1_v1",
 				},
-				"MainlineCommitReturnsItself": {
+				"RepotrackerCommitReturnsItself": {
 					versionID:  "project1_v2",
 					expectedID: "project1_v2",
 				},
-				"TriggerVersionReturnsMainlineCommitAtSameRevision": {
+				"TriggerVersionReturnsRepotrackerCommitAtSameRevision": {
 					versionID:  "project1_v3_trigger",
 					expectedID: "project1_v1",
 				},
-				"PeriodicBuildReturnsMainlineCommitAtSameRevision": {
+				"PeriodicBuildReturnsRepotrackerCommitAtSameRevision": {
 					versionID:  "project1_v4_periodic",
 					expectedID: "project1_v2",
 				},
-				"TriggerVersionWithNoMainlineCommitAtSameRevisionReturnsNil": {
+				"TriggerVersionWithNoRepotrackerCommitAtSameRevisionReturnsNil": {
 					versionID: "project1_v5_trigger",
 				},
 			},
