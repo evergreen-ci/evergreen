@@ -235,9 +235,8 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	pp, err := model.LoadProjectInto(ctx, input.ProjectYaml, opts, input.ProjectID, project)
-	errs := validator.ValidationErrors{}
-	errs = append(errs, validator.ParseWarningsToValidationErrors(pp)...)
+	pp, warnings, err := model.LoadProjectInto(ctx, input.ProjectYaml, opts, input.ProjectID, project)
+	errs := validator.WarningsToValidationErrors(warnings)
 	if err != nil {
 		validationErr.Message = err.Error()
 		errs = append(errs, validationErr)

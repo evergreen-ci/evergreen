@@ -253,11 +253,11 @@ func addDistroWarning(distroWarnings map[string]string, distroName, warningNote 
 	distroWarnings[distroName] = fmt.Sprintf("\t%s\n\t%s", distroWarnings[distroName], warningNote)
 }
 
-// ParseWarningsToValidationErrors converts user-facing warnings stored on the
-// parser project into warning-level validation errors.
-func ParseWarningsToValidationErrors(pp *model.ParserProject) ValidationErrors {
+// WarningsToValidationErrors converts user-facing parse warnings into
+// warning-level validation errors.
+func WarningsToValidationErrors(warnings []string) ValidationErrors {
 	var errs ValidationErrors
-	for _, warning := range pp.ParseWarnings() {
+	for _, warning := range warnings {
 		errs = append(errs, ValidationError{
 			Level:   Warning,
 			Message: warning,

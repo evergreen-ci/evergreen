@@ -12,12 +12,6 @@ import (
 )
 
 func TestEvaluate(t *testing.T) {
-	// Mock the REST communicator so fetching the cross-file YAML anchors service
-	// flag doesn't hit a real API server, which would make the test depend on
-	// the production flag's value.
-	mockClient = &client.Mock{}
-	defer func() { mockClient = nil }()
-
 	samplePath := filepath.Join("testdata", "sample.yml")
 	crossFilePath := filepath.Join("testdata", "cross_file_anchor_main.yml")
 

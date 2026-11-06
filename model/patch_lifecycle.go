@@ -474,7 +474,7 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 	}
 
 	project := &Project{}
-	pp, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
+	pp, _, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -548,7 +548,7 @@ func GetPatchedProjectConfig(ctx context.Context, p *patch.Patch) (string, error
 	if err != nil {
 		return "", errors.Wrapf(err, LoadProjectError)
 	}
-	logDecodeErrorWithOpts(ctx, projectRef.Id, "", decodeErr, opts)
+	logDecodeErrorWithOpts(ctx, projectRef.Id, "", "GetPatchedProjectConfig", decodeErr, opts)
 	if len(intermediateProject.Include) > 0 {
 		if err := mergeIncludes(ctx, p.Project, intermediateProject, registry, opts); err != nil {
 			return "", errors.Wrap(err, "merging included files")
