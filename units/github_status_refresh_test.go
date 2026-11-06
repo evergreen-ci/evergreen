@@ -586,14 +586,104 @@ func (s *githubStatusRefreshSuite) TestStatusPendingForCreatedButActivatedBuild(
 	s.Equal(message.GithubStatePending, status.State)
 }
 
-func (s *githubStatusRefreshSuite) getAndValidateStatus(sender *send.InternalSender) *message.GithubStatus {
+func (s *githubStatusRefreshSuite) TestMergeQueuePatchSendsStatusesToMergeGroup() {
+	s.patchDoc.GithubPatchData = thirdparty.GithubPatch{}
+	s.patchDoc.GithubMergeData = thirdparty.GithubMergeGroup{
+		Org:     "mongodb",
+		Repo:    "mongo",
+		HeadSHA: "a7e4d1c9b2f3e8a6d5c4b3a2f1e0d9c8b7a6f5e4",
+	}
+
+	startTime := time.Now()
+	b := build.Build{
+		Id:           "b1",
+		BuildVariant: "myBuild",
+		Version:      s.patchDoc.Version,
+		Status:       evergreen.BuildSucceeded,
+		StartTime:    startTime,
+		FinishTime:   startTime.Add(time.Minute),
+	}
+	s.NoError(b.Insert(s.ctx))
+	t1 := task.Task{
+		Id:      "t1",
+		Version: s.patchDoc.Version,
+		BuildId: b.Id,
+		Status:  evergreen.TaskSucceeded,
+	}
+	s.NoError(t1.Insert(s.ctx))
+
+	childPatch := patch.Patch{
+		Id:         mgobson.NewObjectId(),
+		Status:     evergreen.VersionSucceeded,
+		Project:    "myChildProject",
+		Activated:  true,
+		StartTime:  startTime,
+		FinishTime: startTime.Add(12 * time.Minute),
+		Triggers: patch.TriggerInfo{
+			ParentPatch: s.patchDoc.Id.Hex(),
+		},
+		DisplayNewUI: true,
+	}
+	s.NoError(childPatch.Insert(s.ctx))
+	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
+	s.patchDoc.Status = evergreen.VersionSucceeded
+
+	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
+	s.Require().True(ok)
+	job.env = s.env
+	job.Run(s.ctx)
+	s.NoError(job.Error())
+
+	// Patch status
+	status := s.getStatus(s.env.InternalSender)
+	s.validateMergeGroupTarget(status)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+
+	// Child patch status
+	status = s.getStatus(s.env.InternalSender)
+	s.validateMergeGroupTarget(status)
+	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+
+	// Build status
+	status = s.getStatus(s.env.InternalSender)
+	s.validateMergeGroupTarget(status)
+	s.Equal("evergreen/myBuild", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+}
+
+func (s *githubStatusRefreshSuite) TestPatchWithoutGitHubTargetErrors() {
+	s.patchDoc.GithubPatchData = thirdparty.GithubPatch{}
+
+	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
+	s.Require().True(ok)
+	job.env = s.env
+	job.Run(s.ctx)
+	s.Error(job.Error())
+
+	_, ok = s.env.InternalSender.GetMessageSafe()
+	s.False(ok, "no status should be sent without a GitHub target")
+}
+
+func (s *githubStatusRefreshSuite) validateMergeGroupTarget(status *message.GithubStatus) {
+	s.Equal("mongodb", status.Owner)
+	s.Equal("mongo", status.Repo)
+	s.Equal("a7e4d1c9b2f3e8a6d5c4b3a2f1e0d9c8b7a6f5e4", status.Ref)
+}
+
+func (s *githubStatusRefreshSuite) getStatus(sender *send.InternalSender) *message.GithubStatus {
 	msg, ok := sender.GetMessageSafe()
 	s.Require().True(ok)
 	raw := msg.Message
 	s.Require().NotNil(raw)
 	status, ok := raw.Raw().(*message.GithubStatus)
 	s.Require().True(ok)
+	return status
+}
 
+func (s *githubStatusRefreshSuite) getAndValidateStatus(sender *send.InternalSender) *message.GithubStatus {
+	status := s.getStatus(sender)
 	s.Equal("evergreen-ci", status.Owner)
 	s.Equal("evergreen", status.Repo)
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)

@@ -107,7 +107,12 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 		}
 	}
 
-	j.sender, err = j.env.GetGitHubSender(j.patch.GithubPatchData.BaseOwner, j.patch.GithubPatchData.BaseRepo, githubapp.CreateGitHubAppAuth(j.env.Settings()).CreateGitHubSenderInstallationToken)
+	owner, repo, ref := getGithubStatusTarget(j.patch)
+	if owner == "" || repo == "" || ref == "" {
+		return errors.Errorf("patch '%s' has no GitHub owner, repo, and ref to send statuses to", j.patch.Id.Hex())
+	}
+
+	j.sender, err = j.env.GetGitHubSender(owner, repo, githubapp.CreateGitHubAppAuth(j.env.Settings()).CreateGitHubSenderInstallationToken)
 	if err != nil {
 		return err
 	}
@@ -124,6 +129,24 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// getGithubStatusTarget returns the GitHub owner, repo, and commit that the
+// patch's statuses are reported to.
+func getGithubStatusTarget(p *patch.Patch) (owner, repo, ref string) {
+	if p.IsMergeQueuePatch() {
+		return p.GithubMergeData.Org, p.GithubMergeData.Repo, p.GithubMergeData.HeadSHA
+	}
+	return p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.HeadHash
+}
+
+func (j *githubStatusRefreshJob) newGithubStatus() *message.GithubStatus {
+	owner, repo, ref := getGithubStatusTarget(j.patch)
+	return &message.GithubStatus{
+		Owner: owner,
+		Repo:  repo,
+		Ref:   ref,
+	}
 }
 
 func (j *githubStatusRefreshJob) sendStatus(ctx context.Context, status *message.GithubStatus) {
@@ -154,11 +177,7 @@ func (j *githubStatusRefreshJob) sendChildPatchStatuses(ctx context.Context) err
 		return nil
 	}
 
-	status := &message.GithubStatus{
-		Owner: j.patch.GithubPatchData.BaseOwner,
-		Repo:  j.patch.GithubPatchData.BaseRepo,
-		Ref:   j.patch.GithubPatchData.HeadHash,
-	}
+	status := j.newGithubStatus()
 
 	for _, childPatch := range j.childPatches {
 		projectIdentifier, err := model.GetIdentifierForProject(ctx, childPatch.Project)
@@ -195,11 +214,7 @@ func getGithubStateAndDescriptionForPatch(p *patch.Patch) (message.GithubState, 
 }
 
 func (j *githubStatusRefreshJob) sendBuildStatuses(ctx context.Context) {
-	status := &message.GithubStatus{
-		Owner: j.patch.GithubPatchData.BaseOwner,
-		Repo:  j.patch.GithubPatchData.BaseRepo,
-		Ref:   j.patch.GithubPatchData.HeadHash,
-	}
+	status := j.newGithubStatus()
 	for _, b := range j.builds {
 		// Dormant builds were never scheduled, so nothing will ever run for
 		// them and no status could ever resolve; report nothing for them.
@@ -251,13 +266,9 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 		return
 	}
 
-	status := &message.GithubStatus{
-		URL:     j.patch.GetURL(j.urlBase),
-		Context: thirdparty.GithubStatusDefaultContext,
-		Owner:   j.patch.GithubPatchData.BaseOwner,
-		Repo:    j.patch.GithubPatchData.BaseRepo,
-		Ref:     j.patch.GithubPatchData.HeadHash,
-	}
+	status := j.newGithubStatus()
+	status.URL = j.patch.GetURL(j.urlBase)
+	status.Context = thirdparty.GithubStatusDefaultContext
 	status.State, status.Description = getGithubStateAndDescriptionForPatch(j.patch)
 
 	// Send patch status
