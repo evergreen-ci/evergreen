@@ -2950,6 +2950,11 @@ func (p *ProjectRef) isValidCron(ctx context.Context, proposedCron time.Time, no
 	if mostRecentCommit == nil {
 		return true, nil
 	}
+	// The duplicate-cron check reads batchtime tasks, which live in a dedicated
+	// collection.
+	if _, err := mostRecentCommit.GetBuildVariants(ctx); err != nil {
+		return false, errors.Wrap(err, "getting build variant info for version")
+	}
 
 	return !isDuplicateCron(mostRecentCommit), nil
 }
@@ -2988,30 +2993,14 @@ func (p *ProjectRef) GetActivationTimeForTask(ctx context.Context, t *BuildVaria
 		return time.Now(), nil
 	}
 
-	lastActivated, err := VersionFindOne(ctx, VersionByLastTaskActivation(p.Id, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
+	lastActivatedTask, err := FindLastActivatedBatchTimeTask(ctx, p.Id, t.Variant, t.Name)
 	if err != nil {
-		return versionCreateTime, errors.Wrap(err, "finding version")
+		return versionCreateTime, errors.Wrap(err, "finding last activated batchtime task")
 	}
-	if lastActivated == nil {
+	if lastActivatedTask == nil {
 		return versionCreateTime, nil
 	}
-	if _, err := lastActivated.GetBuildVariants(ctx); err != nil {
-		return versionCreateTime, errors.Wrap(err, "getting build variant info for version")
-	}
-
-	for _, buildStatus := range lastActivated.BuildVariants {
-		// don't check buildStatus activation; this corresponds to the batchtime for the overall variant, not the individual tasks.
-		if buildStatus.BuildVariant != t.Variant {
-			continue
-		}
-		for _, taskStatus := range buildStatus.BatchTimeTasks {
-			if taskStatus.TaskName != t.Name || !taskStatus.Activated {
-				continue
-			}
-			return taskStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTimeForTask(t))), nil
-		}
-	}
-	return versionCreateTime, nil
+	return lastActivatedTask.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTimeForTask(t))), nil
 }
 
 // isValidBVCron checks is a build variant cron is valid.

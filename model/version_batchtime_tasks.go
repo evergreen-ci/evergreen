@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -125,4 +126,67 @@ func VersionBatchTimeTasksFindByLastTaskActivation(ctx context.Context, projectI
 		return nil, err
 	}
 	return doc, nil
+}
+
+// FindLastActivatedBatchTimeTask returns the batchtime task status for the
+// given variant and task from the most recent version in which that task was
+// activated, or nil if there is no such version. Newer versions store batchtime
+// tasks in a dedicated collection, while older versions still store them in the
+// version document, so both are considered.
+func FindLastActivatedBatchTimeTask(ctx context.Context, projectID, variant, taskName string) (*BatchTimeTaskStatus, error) {
+	bttDoc, err := VersionBatchTimeTasksFindByLastTaskActivation(ctx, projectID, variant, taskName)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding batchtime task activation")
+	}
+	versionDoc, err := VersionFindOne(ctx, VersionByLastTaskActivation(projectID, variant, taskName).WithFields(VersionBuildVariantsKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding batchtime task activation")
+	}
+
+	if versionDoc != nil && (bttDoc == nil || versionDoc.RevisionOrderNumber >= bttDoc.Order) {
+		return batchTimeTaskStatusFor(versionDoc.BuildVariants, variant, taskName), nil
+	}
+	if bttDoc == nil {
+		return nil, nil
+	}
+	return batchTimeTaskStatusFor(versionBuildVariantsFromBatchTimeTasks(bttDoc.Variants), variant, taskName), nil
+}
+
+// attachBatchTimeTasks sets each build variant status's batchtime tasks from the
+// dedicated collection, matching by build variant.
+func attachBatchTimeTasks(bvs []VersionBuildStatus, variants []VersionVariantBatchTimeTasks) {
+	byVariant := make(map[string][]BatchTimeTaskStatus, len(variants))
+	for _, v := range variants {
+		byVariant[v.BuildVariant] = v.BatchTimeTasks
+	}
+	for i := range bvs {
+		if tasks, ok := byVariant[bvs[i].BuildVariant]; ok {
+			bvs[i].BatchTimeTasks = tasks
+		}
+	}
+}
+
+func versionBuildVariantsFromBatchTimeTasks(variants []VersionVariantBatchTimeTasks) []VersionBuildStatus {
+	bvs := make([]VersionBuildStatus, len(variants))
+	for i, v := range variants {
+		bvs[i] = VersionBuildStatus{
+			BuildVariant:   v.BuildVariant,
+			BatchTimeTasks: v.BatchTimeTasks,
+		}
+	}
+	return bvs
+}
+
+func batchTimeTaskStatusFor(bvs []VersionBuildStatus, variant, taskName string) *BatchTimeTaskStatus {
+	for i := range bvs {
+		if bvs[i].BuildVariant != variant {
+			continue
+		}
+		for j := range bvs[i].BatchTimeTasks {
+			if bvs[i].BatchTimeTasks[j].TaskName == taskName {
+				return &bvs[i].BatchTimeTasks[j]
+			}
+		}
+	}
+	return nil
 }

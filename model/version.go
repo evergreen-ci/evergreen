@@ -75,9 +75,13 @@ type Version struct {
 	// BuildVariants contains information about build variant activation. This
 	// is not always loaded in version document queries because it can be large.
 	// See (Version).GetBuildVariants to fetch this field.
-	BuildVariants   []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
-	PeriodicBuildID string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
-	Aborted         bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
+	BuildVariants []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
+	// buildVariantsLoaded tracks whether BuildVariants has been fully loaded,
+	// including batchtime tasks from their dedicated collection. It is not
+	// persisted.
+	buildVariantsLoaded bool   `bson:"-" json:"-"`
+	PeriodicBuildID     string `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
+	Aborted             bool   `bson:"aborted,omitempty" json:"aborted,omitempty"`
 
 	// This stores whether or not a version has tasks which were activated.
 	// We use a bool ptr in order to distinguish the unset value from the default value
@@ -344,28 +348,43 @@ func (v *Version) UpdatePreGenerationProjectStorageMethod(ctx context.Context, m
 	return nil
 }
 
-// GetBuildVariants returns the build variants for the version. If the version
-// already has build variants cached, it'll use that; otherwise, it will load
-// the build variants from the DB. If the version does not exist in the DB yet,
-// it'll return v's own in-memory BuildVariants, if any.
+// GetBuildVariants returns the build variants for the version, including their
+// batchtime tasks. The build variant statuses are stored in the version
+// document, but the batchtime tasks are stored in a dedicated collection, so
+// this loads from both. If the version already has build variants cached, it'll
+// use that; otherwise, it will load the build variants from the DB. If the
+// version does not exist in the DB yet, it'll return v's own in-memory
+// BuildVariants, if any.
 func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, error) {
-	if v.BuildVariants != nil {
+	if v.buildVariantsLoaded {
 		return v.BuildVariants, nil
 	}
-	versionWithBuildVariants, err := VersionFindOneIdWithBuildVariants(ctx, v.Id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding version '%s'", v.Id)
-	}
-	bvs := []VersionBuildStatus{}
-	// If the version is nil, then the version doesn't exist in the DB, so it's
-	// safe to assume that BuildVariants is not populated. This intentionally
-	// does not error if the version doesn't exist in the DB so that this method
-	// can be called even if the version hasn't been inserted into the DB yet.
-	if versionWithBuildVariants != nil && versionWithBuildVariants.BuildVariants != nil {
-		bvs = versionWithBuildVariants.BuildVariants
-	}
-	v.BuildVariants = bvs
 
+	if v.BuildVariants == nil {
+		versionWithBuildVariants, err := VersionFindOneIdWithBuildVariants(ctx, v.Id)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding version '%s'", v.Id)
+		}
+		// If the version is nil, then the version doesn't exist in the DB, so it's
+		// safe to assume that BuildVariants is not populated. This intentionally
+		// does not error if the version doesn't exist in the DB so that this method
+		// can be called even if the version hasn't been inserted into the DB yet.
+		if versionWithBuildVariants != nil && versionWithBuildVariants.BuildVariants != nil {
+			v.BuildVariants = versionWithBuildVariants.BuildVariants
+		} else {
+			v.BuildVariants = []VersionBuildStatus{}
+		}
+	}
+
+	btt, err := VersionBatchTimeTasksFindOne(ctx, v.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding batchtime tasks for version '%s'", v.Id)
+	}
+	if btt != nil {
+		attachBatchTimeTasks(v.BuildVariants, btt.Variants)
+	}
+
+	v.buildVariantsLoaded = true
 	return v.BuildVariants, nil
 }
 
