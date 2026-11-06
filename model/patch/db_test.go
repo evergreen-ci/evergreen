@@ -927,3 +927,34 @@ func TestHasMergeQueuePatchForHeadSHASeesFinishedPatches(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, hasPatch)
 }
+
+func TestFindDuplicateMergeQueuePatchID(t *testing.T) {
+	t.Cleanup(func() { require.NoError(t, db.ClearCollections(Collection)) })
+	require.NoError(t, db.ClearCollections(Collection))
+
+	p := Patch{
+		Id:              bson.NewObjectId(),
+		Project:         "my-project",
+		Alias:           evergreen.CommitQueueAlias,
+		Status:          evergreen.VersionStarted,
+		CreateTime:      time.Now(),
+		GithubMergeData: thirdparty.GithubMergeGroup{Org: "10gen", Repo: "mongo", HeadSHA: "head-sha"},
+	}
+	require.NoError(t, db.Insert(t.Context(), Collection, p))
+
+	t.Run("SameHeadSHAShouldReturnExistingPatch", func(t *testing.T) {
+		existingID, err := FindDuplicateMergeQueuePatchID(t.Context(), "my-project", "10gen", "mongo", "head-sha", bson.NewObjectId())
+		require.NoError(t, err)
+		assert.Equal(t, p.Id.Hex(), existingID)
+	})
+	t.Run("DifferentHeadSHAShouldReturnNothing", func(t *testing.T) {
+		existingID, err := FindDuplicateMergeQueuePatchID(t.Context(), "my-project", "10gen", "mongo", "other-head-sha", "")
+		require.NoError(t, err)
+		assert.Empty(t, existingID)
+	})
+	t.Run("ExcludedPatchShouldReturnNothing", func(t *testing.T) {
+		existingID, err := FindDuplicateMergeQueuePatchID(t.Context(), "my-project", "10gen", "mongo", "head-sha", p.Id)
+		require.NoError(t, err)
+		assert.Empty(t, existingID)
+	})
+}

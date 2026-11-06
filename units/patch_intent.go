@@ -241,8 +241,12 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 		catcher.Wrap(err, "building GitHub patch document")
 	case patch.GithubMergeIntentType:
-		if err := j.buildGithubMergeDoc(ctx, patchDoc); err != nil {
+		var shouldCreatePatch bool
+		shouldCreatePatch, err = j.buildGithubMergeDoc(ctx, patchDoc)
+		if err != nil {
 			catcher.Wrap(err, "building GitHub merge queue patch document")
+		} else if !shouldCreatePatch {
+			return nil
 		}
 	case patch.TriggerIntentType:
 		patchedProject, patchedParserProject, err = j.buildTriggerPatchDoc(ctx, patchDoc)
@@ -1223,7 +1227,9 @@ func (j *patchIntentProcessor) getChangedFilenamesForLargePRs(ctx context.Contex
 	return nil
 }
 
-func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch) error {
+// buildGithubMergeDoc populates the merge queue patch document. It returns false if the patch should not be
+// created because another patch already exists for the same merge group.
+func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch) (bool, error) {
 	defer func() {
 		grip.Error(ctx, message.WrapError(j.intent.SetProcessed(ctx), message.Fields{
 			"message":     "could not mark patch intent as processed",
@@ -1252,21 +1258,57 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(ctx, patchDoc.GithubMergeData.Org,
 		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	if err != nil {
-		return errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
+		return false, errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch,
 		)
 	}
 	if projectRef == nil {
 		j.gitHubError = mergeQueueDisabled
-		return errors.Errorf("project ref for repo '%s/%s' with branch '%s' and merge queue enabled not found",
+		return false, errors.Errorf("project ref for repo '%s/%s' with branch '%s' and merge queue enabled not found",
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	}
 
 	span.SetAttributes(attribute.String(patch.MergeQueueAttrProjectID, projectRef.Identifier))
 
+	// The same merge group can arrive more than once, for example when merge queue recovery creates a patch
+	// and the delayed GitHub webhook arrives afterwards. A second patch would run every task again and post
+	// a competing status for the same commit, so skip it without reporting anything to GitHub.
+	existingPatchID, err := patch.FindDuplicateMergeQueuePatchID(ctx, projectRef.Id, patchDoc.GithubMergeData.Org,
+		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.HeadSHA, j.PatchID)
+	if err != nil {
+		// Fall back to creating the patch rather than failing the merge group because the check could not run.
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message":     "could not check for an existing merge queue patch, creating patch anyway",
+			"job":         j.ID(),
+			"patch_id":    j.PatchID,
+			"project_id":  projectRef.Id,
+			"head_sha":    patchDoc.GithubMergeData.HeadSHA,
+			"intent_type": j.IntentType,
+			"intent_id":   j.IntentID,
+			"source":      "patch intents",
+		}))
+	} else if existingPatchID != "" {
+		span.SetAttributes(attribute.String(patch.MergeQueueAttrDuplicateOfPatchID, existingPatchID))
+		grip.Info(ctx, message.Fields{
+			"message":           "skipping duplicate merge queue patch because one already exists for the merge group",
+			"job":               j.ID(),
+			"patch_id":          j.PatchID,
+			"existing_patch_id": existingPatchID,
+			"project_id":        projectRef.Id,
+			"org":               patchDoc.GithubMergeData.Org,
+			"repo":              patchDoc.GithubMergeData.Repo,
+			"base_branch":       patchDoc.GithubMergeData.BaseBranch,
+			"head_sha":          patchDoc.GithubMergeData.HeadSHA,
+			"intent_type":       j.IntentType,
+			"intent_id":         j.IntentID,
+			"source":            "patch intents",
+		})
+		return false, nil
+	}
+
 	j.user, err = findEvergreenUserForGithubMergeGroup(ctx)
 	if err != nil {
-		return errors.Wrap(err, "finding GitHub merge queue user")
+		return false, errors.Wrap(err, "finding GitHub merge queue user")
 	}
 	patchDoc.Author = j.user.Id
 	patchDoc.Project = projectRef.Id
@@ -1279,10 +1321,10 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 
 	// Get changed files to use for variant filtering.
 	if err = j.getChangedFilesForGithubMerge(ctx, patchDoc); err != nil {
-		return errors.Wrap(err, "getting changed files")
+		return false, errors.Wrap(err, "getting changed files")
 	}
 
-	return nil
+	return true, nil
 }
 
 func (j *patchIntentProcessor) getChangedFilesForGithubMerge(ctx context.Context, patchDoc *patch.Patch) error {

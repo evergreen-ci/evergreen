@@ -307,6 +307,93 @@ func TestReportGitHubProcessingError(t *testing.T) {
 	})
 }
 
+func TestBuildGithubMergeDoc(t *testing.T) {
+	ctx := testutil.TestSpan(t.Context(), t)
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	require.NoError(t, (&evergreen.UIConfig{Url: "https://example.com"}).Set(ctx))
+
+	originalEnv := evergreen.GetEnvironment()
+	evergreen.SetEnvironment(env)
+	t.Cleanup(func() {
+		evergreen.SetEnvironment(originalEnv)
+	})
+
+	const (
+		orgName  = "evergreen-ci"
+		repoName = "commit-queue-sandbox"
+		headSHA  = "d2a90288ad96adca4a7d0122d8d4fd1deb24db11"
+	)
+	newMergeIntent := func(t *testing.T, msgID string) patch.Intent {
+		headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
+		baseSHA := "7a45fe6ea28f5969d885bc913e551b8b3c4f09d1"
+		mge := github.MergeGroupEvent{
+			MergeGroup: &github.MergeGroup{
+				HeadSHA: utility.ToStringPtr(headSHA),
+				HeadRef: &headRef,
+				BaseSHA: &baseSHA,
+			},
+			Org:  &github.Organization{Login: utility.ToStringPtr(orgName)},
+			Repo: &github.Repository{Name: utility.ToStringPtr(repoName)},
+		}
+		intent, err := patch.NewGithubMergeIntent(ctx, msgID, patch.AutomatedCaller, &mge)
+		require.NoError(t, err)
+		require.NoError(t, intent.Insert(ctx))
+		return intent
+	}
+
+	t.Run("ExistingPatchForSameHeadSHAShouldSkipPatchWithoutGitHubStatus", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, patch.Collection, patch.IntentCollection,
+			patch.GitHubIntentInfoCollection, event.SubscriptionsCollection))
+		require.NoError(t, (&model.ProjectRef{
+			Id:          "mq-project",
+			Enabled:     true,
+			Owner:       orgName,
+			Repo:        repoName,
+			Branch:      "main",
+			CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
+		}).Replace(ctx))
+		existingPatch := patch.Patch{
+			Id:         mgobson.NewObjectId(),
+			Project:    "mq-project",
+			Alias:      evergreen.CommitQueueAlias,
+			Status:     evergreen.VersionStarted,
+			CreateTime: time.Now(),
+			GithubMergeData: thirdparty.GithubMergeGroup{
+				Org:     orgName,
+				Repo:    repoName,
+				HeadSHA: headSHA,
+			},
+		}
+		require.NoError(t, existingPatch.Insert(ctx))
+
+		intent := newMergeIntent(t, "merge-queue-patch-recovery-duplicate")
+		j, ok := NewGitHubPatchIntentProcessor(env, mgobson.NewObjectId(), intent, "mq-project").(*patchIntentProcessor)
+		require.True(t, ok)
+		j.Run(ctx)
+		require.NoError(t, j.Error())
+		assert.Empty(t, j.gitHubError)
+
+		patches, err := patch.Find(ctx, db.Query(bson.M{}))
+		require.NoError(t, err)
+		require.Len(t, patches, 1)
+		assert.Equal(t, existingPatch.Id, patches[0].Id)
+
+		dbIntent, err := patch.FindIntent(ctx, intent.ID(), patch.GithubMergeIntentType)
+		require.NoError(t, err)
+		require.NotNil(t, dbIntent)
+		assert.True(t, dbIntent.IsProcessed())
+
+		var intentInfos []patch.GitHubIntentInfo
+		require.NoError(t, db.FindAllQ(ctx, patch.GitHubIntentInfoCollection, db.Query(nil), &intentInfos))
+		assert.Empty(t, intentInfos)
+		var subscriptions []event.Subscription
+		require.NoError(t, db.FindAllQ(ctx, event.SubscriptionsCollection, db.Query(nil), &subscriptions))
+		assert.Empty(t, subscriptions)
+		assert.False(t, env.InternalSender.HasMessage(), "should not send a GitHub status")
+	})
+}
+
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	resp, err := http.Get(s.diffURL)
 	s.Require().NoError(err)
@@ -1319,6 +1406,20 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert(s.ctx))
+
+	otherMergeGroupPatch := patch.Patch{
+		Id:         mgobson.NewObjectId(),
+		Project:    "commit-queue-sandbox",
+		Alias:      evergreen.CommitQueueAlias,
+		Status:     evergreen.VersionStarted,
+		CreateTime: time.Now(),
+		GithubMergeData: thirdparty.GithubMergeGroup{
+			Org:     orgName,
+			Repo:    repoName,
+			HeadSHA: "other-head-sha",
+		},
+	}
+	s.Require().NoError(otherMergeGroupPatch.Insert(s.ctx))
 
 	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 
