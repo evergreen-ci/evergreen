@@ -522,7 +522,7 @@ func FindProjectForVersion(ctx context.Context, versionID string) (string, error
 }
 
 // FindBaseVersionForVersion finds the base version for a given version ID.
-// Set repotackerOnly to true if you only want to get repotracker versions. Otherwise, if the version is a patch,
+// Set repotrackerOnly to true if you only want to get repotracker versions. Otherwise, if the version is a patch,
 // it will return the base version. If the version is a mainline commit, it will return the previously run mainline commit.
 func FindBaseVersionForVersion(ctx context.Context, versionID string, repotrackerOnly bool) (*Version, error) {
 	v, err := VersionFindOne(ctx, VersionById(versionID))

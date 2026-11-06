@@ -54,6 +54,11 @@ type Version {
   activated: Boolean
   author: String!
   authorEmail: String!
+  """
+  The mainline version this version is based on. If repotrackerOnly is true, only a version created by the
+  repotracker (gitter_request) is returned. Otherwise, the base version can have any mainline requester:
+  gitter_request, trigger_request, ad_hoc, or git_tag_request.
+  """
   baseVersion(repotrackerOnly: Boolean = false): Version
   branch: String!
   buildVariants(options: BuildVariantOptions!): [GroupedBuildVariant!]
