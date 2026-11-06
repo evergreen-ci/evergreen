@@ -372,8 +372,8 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 		Status:     evergreen.VersionSucceeded,
 		Project:    "myChildProject",
 		Activated:  true,
-		StartTime:  startTime,
-		FinishTime: startTime.Add(12 * time.Minute),
+		StartTime:  s.patchDoc.StartTime.Add(time.Minute),
+		FinishTime: s.patchDoc.StartTime.Add(12 * time.Minute),
 		Triggers: patch.TriggerInfo{
 			ParentPatch: s.patchDoc.Id.Hex(),
 		},
@@ -397,14 +397,14 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 	s.Equal(fmt.Sprintf("https://example.com/version/%s", s.patchDoc.Version), status.URL)
 	s.Equal("evergreen", status.Context)
 	s.Equal(message.GithubStateSuccess, status.State)
-	s.Equal("version finished in 10m0s", status.Description)
+	s.Equal("patch finished in 12m0s", status.Description)
 
 	// Child patch status
 	status = s.getAndValidateStatus(s.env.InternalSender)
 	s.Equal(fmt.Sprintf("https://example.com/version/%s/downstream-projects", childPatch.Id.Hex()), status.URL)
 	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
 	s.Equal(message.GithubStateSuccess, status.State)
-	s.Equal("child patch finished in 12m0s", status.Description)
+	s.Equal("patch finished in 11m0s", status.Description)
 
 	// Build status
 	status = s.getAndValidateStatus(s.env.InternalSender)
@@ -438,8 +438,8 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 		Status:     evergreen.VersionFailed,
 		Project:    "myChildProject",
 		Activated:  true,
-		StartTime:  startTime,
-		FinishTime: startTime.Add(12 * time.Minute),
+		StartTime:  s.patchDoc.StartTime.Add(time.Minute),
+		FinishTime: s.patchDoc.StartTime.Add(12 * time.Minute),
 		Triggers: patch.TriggerInfo{
 			ParentPatch: s.patchDoc.Id.Hex(),
 		},
@@ -465,14 +465,14 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 	s.Equal(fmt.Sprintf("https://example.com/version/%s", s.patchDoc.Version), status.URL)
 	s.Equal("evergreen", status.Context)
 	s.Equal(message.GithubStateFailure, status.State)
-	s.Equal("version finished in 10m0s", status.Description)
+	s.Equal("patch finished in 12m0s", status.Description)
 
 	// Child patch status
 	status = s.getAndValidateStatus(s.env.InternalSender)
 	s.Equal(fmt.Sprintf("https://example.com/version/%s/downstream-projects", childPatch.Id.Hex()), status.URL)
 	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
 	s.Equal(message.GithubStateFailure, status.State)
-	s.Equal("child patch finished in 12m0s", status.Description)
+	s.Equal("patch finished in 11m0s", status.Description)
 
 	// Build status
 	status = s.getAndValidateStatus(s.env.InternalSender)
@@ -584,6 +584,105 @@ func (s *githubStatusRefreshSuite) TestStatusPendingForCreatedButActivatedBuild(
 	status = s.getAndValidateStatus(s.env.InternalSender)
 	s.Equal("evergreen/myBuild", status.Context)
 	s.Equal(message.GithubStatePending, status.State)
+}
+
+func (s *githubStatusRefreshSuite) insertChildPatch(status string) patch.Patch {
+	childPatch := patch.Patch{
+		Id:         mgobson.NewObjectId(),
+		Status:     status,
+		Project:    "myChildProject",
+		Activated:  true,
+		StartTime:  s.patchDoc.StartTime.Add(time.Minute),
+		FinishTime: s.patchDoc.StartTime.Add(12 * time.Minute),
+		Triggers: patch.TriggerInfo{
+			ParentPatch: s.patchDoc.Id.Hex(),
+		},
+		DisplayNewUI: true,
+	}
+	s.Require().NoError(childPatch.Insert(s.ctx))
+	s.patchDoc.Triggers.ChildPatches = append(s.patchDoc.Triggers.ChildPatches, childPatch.Id.Hex())
+	return childPatch
+}
+
+func (s *githubStatusRefreshSuite) runRefreshJob() {
+	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
+	s.Require().True(ok)
+	job.env = s.env
+	job.Run(s.ctx)
+	s.Require().NoError(job.Error())
+}
+
+func (s *githubStatusRefreshSuite) TestParentStatusFailsWhenChildPatchFails() {
+	s.patchDoc.Status = evergreen.VersionSucceeded
+	s.insertChildPatch(evergreen.VersionFailed)
+
+	s.runRefreshJob()
+
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStateFailure, status.State)
+	s.Equal("patch finished in 12m0s", status.Description)
+
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
+	s.Equal(message.GithubStateFailure, status.State)
+	s.Equal("patch finished in 11m0s", status.Description)
+}
+
+func (s *githubStatusRefreshSuite) TestParentStatusSucceedsWhenParentAndChildPatchSucceed() {
+	s.patchDoc.Status = evergreen.VersionSucceeded
+	s.insertChildPatch(evergreen.VersionSucceeded)
+
+	s.runRefreshJob()
+
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+	s.Equal("patch finished in 12m0s", status.Description)
+
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+	s.Equal("patch finished in 11m0s", status.Description)
+}
+
+func (s *githubStatusRefreshSuite) TestParentStatusPendingWhenChildPatchIsRunning() {
+	s.patchDoc.Status = evergreen.VersionSucceeded
+	s.insertChildPatch(evergreen.VersionStarted)
+
+	s.runRefreshJob()
+
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStatePending, status.State)
+	s.Equal("tasks are running", status.Description)
+
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
+	s.Equal(message.GithubStatePending, status.State)
+	s.Equal("tasks are running", status.Description)
+}
+
+func (s *githubStatusRefreshSuite) TestPatchWithoutChildrenUsesOwnStatus() {
+	for _, tc := range []struct {
+		status string
+		state  message.GithubState
+	}{
+		{status: evergreen.VersionSucceeded, state: message.GithubStateSuccess},
+		{status: evergreen.VersionFailed, state: message.GithubStateFailure},
+	} {
+		s.patchDoc.Status = tc.status
+
+		s.runRefreshJob()
+
+		status := s.getAndValidateStatus(s.env.InternalSender)
+		s.Equal("evergreen", status.Context)
+		s.Equal(tc.state, status.State)
+		s.Equal("patch finished in 10m0s", status.Description)
+
+		_, ok := s.env.InternalSender.GetMessageSafe()
+		s.False(ok)
+	}
 }
 
 func (s *githubStatusRefreshSuite) getAndValidateStatus(sender *send.InternalSender) *message.GithubStatus {

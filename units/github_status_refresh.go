@@ -171,27 +171,30 @@ func (j *githubStatusRefreshJob) sendChildPatchStatuses(ctx context.Context) err
 		}
 
 		status.URL = childPatch.GetURL(j.urlBase)
-		status.State, status.Description = getGithubStateAndDescriptionForPatch(&childPatch)
+		status.State, status.Description = patch.GetGithubStateAndDescription(childPatch.Status, childPatch.StartTime, childPatch.FinishTime)
 		j.sendStatus(ctx, status)
 	}
 	return nil
 }
 
-func getGithubStateAndDescriptionForPatch(p *patch.Patch) (message.GithubState, string) {
-	var state message.GithubState
-	if p.Status == evergreen.VersionSucceeded {
-		state = message.GithubStateSuccess
-	} else if p.Status == evergreen.VersionFailed {
-		state = message.GithubStateFailure
-	} else {
-		return message.GithubStatePending, evergreen.PRTasksRunningDescription
+// getGithubStateAndDescriptionForPatch returns the GitHub state and
+// description for the patch's own status context. Parent patches report the
+// collective status of the parent and its child patches.
+func getGithubStateAndDescriptionForPatch(ctx context.Context, p *patch.Patch) (message.GithubState, string, error) {
+	if !p.IsParent() {
+		state, description := patch.GetGithubStateAndDescription(p.Status, p.StartTime, p.FinishTime)
+		return state, description, nil
 	}
-	duration := p.FinishTime.Sub(p.StartTime).String()
-	name := "version"
-	if p.IsChild() {
-		name = "child patch"
+	collectiveStatus, err := p.CollectiveStatus(ctx)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
 	}
-	return state, fmt.Sprintf("%s finished in %s", name, duration)
+	startTime, finishTime, err := p.GetCollectiveTimes(ctx)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "getting collective times for patch '%s'", p.Id.Hex())
+	}
+	state, description := patch.GetGithubStateAndDescription(collectiveStatus, startTime, finishTime)
+	return state, description, nil
 }
 
 func (j *githubStatusRefreshJob) sendBuildStatuses(ctx context.Context) {
@@ -258,7 +261,11 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 		Repo:    j.patch.GithubPatchData.BaseRepo,
 		Ref:     j.patch.GithubPatchData.HeadHash,
 	}
-	status.State, status.Description = getGithubStateAndDescriptionForPatch(j.patch)
+	status.State, status.Description, err = getGithubStateAndDescriptionForPatch(ctx, j.patch)
+	if err != nil {
+		j.AddError(err)
+		return
+	}
 
 	// Send patch status
 	j.sendStatus(ctx, status)
