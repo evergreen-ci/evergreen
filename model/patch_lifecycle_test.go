@@ -679,7 +679,7 @@ func TestMakePatchedConfig(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, projectData)
 			project := &Project{}
-			_, err = LoadProjectInto(ctx, projectData, nil, "", project)
+			_, _, err = LoadProjectInto(ctx, projectData, nil, "", project)
 			assert.NoError(t, err)
 			assert.Len(t, project.Tasks, 2)
 		}()
@@ -717,7 +717,7 @@ func TestMakePatchedConfigEmptyBase(t *testing.T) {
 	assert.NoError(t, err)
 
 	project := &Project{}
-	_, err = LoadProjectInto(ctx, projectData, nil, "", project)
+	_, _, err = LoadProjectInto(ctx, projectData, nil, "", project)
 	assert.NoError(t, err)
 	assert.NotNil(t, project)
 
@@ -1509,7 +1509,7 @@ buildvariants:
   tasks:
     - new_task
 `
-			pp, err := LoadProjectInto(ctx, []byte(projYAML), nil, pRef.Id, proj)
+			pp, _, err := LoadProjectInto(ctx, []byte(projYAML), nil, pRef.Id, proj)
 			require.NoError(t, err)
 			pp.Id = v.Id
 			require.NoError(t, pp.Insert(ctx))

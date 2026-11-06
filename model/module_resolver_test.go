@@ -176,7 +176,7 @@ include:
 			resolver := NewModuleResolver(projectRef, opts)
 
 			p := &Project{}
-			_, err := LoadProjectInto(t.Context(), mainConfig, &GetProjectOpts{
+			_, _, err := LoadProjectInto(t.Context(), mainConfig, &GetProjectOpts{
 				Ref:            projectRef,
 				Revision:       "main",
 				ReadFileFrom:   ReadFromGithub,

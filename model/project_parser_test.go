@@ -832,7 +832,7 @@ tasks:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	require.Len(t, proj.BuildVariants, 1)
@@ -853,7 +853,7 @@ tasks:
 - name: t1
 `
 
-	_, err = LoadProjectInto(ctx, []byte(ymlWithEmptyString), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(ymlWithEmptyString), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	require.Len(t, proj.BuildVariants, 1)
@@ -906,7 +906,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), opts, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(yml), opts, "id", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 
@@ -956,7 +956,7 @@ buildvariants:
 	}
 
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(yml), opts, "id", proj)
+	_, _, err := LoadProjectInto(t.Context(), []byte(yml), opts, "id", proj)
 	require.NoError(t, err)
 	require.NotNil(t, proj)
 	require.Len(t, proj.BuildVariants, 1)
@@ -987,7 +987,7 @@ tasks:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 
@@ -1014,7 +1014,7 @@ tasks:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 
@@ -1116,7 +1116,7 @@ tasks:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
@@ -1149,7 +1149,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(nonexistentTaskYml), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(nonexistentTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Contains(err.Error(), "contains unmatched criteria: 'notHere'")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
@@ -1181,7 +1181,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(duplicateTaskYml), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(duplicateTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Error(err)
 	assert.Contains(err.Error(), "execution task 'execTask3' is listed in more than 1 display task")
@@ -1207,7 +1207,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(conflictYml), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(conflictYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Error(err)
 	assert.Contains(err.Error(), "display task 'execTask1' cannot have the same name as an execution task")
@@ -1237,7 +1237,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(wildcardYml), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(wildcardYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
@@ -1271,7 +1271,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 2)
@@ -1306,7 +1306,7 @@ buildvariants:
 	opts := &GetProjectOpts{
 		UnmarshalStrict: true,
 	}
-	_, err := LoadProjectInto(ctx, []byte(exampleYml), opts, "example_project", &proj)
+	_, _, err := LoadProjectInto(ctx, []byte(exampleYml), opts, "example_project", &proj)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "field not_a_field not found")
 
@@ -1326,7 +1326,7 @@ buildvariants:
   tasks:
   - name: task1
 `
-	_, err = LoadProjectInto(ctx, []byte(yamlWithVariables), opts, "example_project", &proj)
+	_, _, err = LoadProjectInto(ctx, []byte(yamlWithVariables), opts, "example_project", &proj)
 	require.NoError(t, err)
 
 	// duplicates should error
@@ -1348,12 +1348,12 @@ buildvariants:
     tasks:
       - name: task1
 `
-	_, err = LoadProjectInto(ctx, []byte(yamlWithDup), opts, "example_project", &proj)
+	_, _, err = LoadProjectInto(ctx, []byte(yamlWithDup), opts, "example_project", &proj)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already defined")
 
 	// unless not using strict
-	_, err = LoadProjectInto(ctx, []byte(yamlWithDup), nil, "example_project", &proj)
+	_, _, err = LoadProjectInto(ctx, []byte(yamlWithDup), nil, "example_project", &proj)
 	assert.NoError(t, err)
 }
 
@@ -1467,7 +1467,7 @@ buildvariants:
 `
 
 		proj := &Project{}
-		_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+		_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 		require.NotNil(t, proj)
 		assert.NoError(t, err)
 		require.Len(t, proj.TaskGroups, 1)
@@ -1516,7 +1516,7 @@ buildvariants:
 `
 
 		proj := &Project{}
-		_, err := LoadProjectInto(ctx, []byte(wrongTaskYml), nil, "id", proj)
+		_, _, err := LoadProjectInto(ctx, []byte(wrongTaskYml), nil, "id", proj)
 		assert.NotNil(t, proj)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), `'example_task_group' has unmatched selector: 'example_task_3'`)
@@ -1553,7 +1553,7 @@ buildvariants:
 `
 
 		proj := &Project{}
-		_, err := LoadProjectInto(ctx, []byte(orderedYml), nil, "id", proj)
+		_, _, err := LoadProjectInto(ctx, []byte(orderedYml), nil, "id", proj)
 		require.NotNil(t, proj)
 		assert.NoError(t, err)
 		for i, tsk := range proj.TaskGroups[0].Tasks {
@@ -1591,7 +1591,7 @@ buildvariants:
 `
 
 		proj := &Project{}
-		_, err := LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
+		_, _, err := LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
 		require.NotNil(t, proj)
 		assert.NoError(t, err)
 		require.Len(t, proj.TaskGroups, 2)
@@ -1634,7 +1634,7 @@ buildvariants:
   - name: example_task_group
 `
 		proj := &Project{}
-		_, err := LoadProjectInto(ctx, []byte(validMaxHostYml), nil, "id", proj)
+		_, _, err := LoadProjectInto(ctx, []byte(validMaxHostYml), nil, "id", proj)
 		require.NotNil(t, proj)
 		assert.NoError(t, err)
 		require.Len(t, proj.TaskGroups, 1)
@@ -1668,7 +1668,7 @@ buildvariants:
   - name: example_task_group
 `
 		proj := &Project{}
-		_, err := LoadProjectInto(ctx, []byte(tagMaxHostYml), nil, "id", proj)
+		_, _, err := LoadProjectInto(ctx, []byte(tagMaxHostYml), nil, "id", proj)
 		require.NotNil(t, proj)
 		assert.NoError(t, err)
 		require.Len(t, proj.TaskGroups, 1)
@@ -1702,7 +1702,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1739,7 +1739,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1776,7 +1776,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1812,7 +1812,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1856,7 +1856,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	assert.Len(proj.BuildVariants, 3)
@@ -1908,7 +1908,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	assert.Len(proj.BuildVariants, 3)
@@ -1953,7 +1953,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(t, proj)
 	assert.NoError(t, err)
 	assert.Len(t, proj.Tasks, 2)
@@ -2000,7 +2000,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(t, proj)
 	assert.NoError(t, err)
 	assert.Len(t, proj.BuildVariants, 3)
@@ -2027,7 +2027,7 @@ tasks:
 	// Verify that the default is true
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(t, proj)
 	assert.NoError(t, err)
 	assert.True(t, proj.OomTracker)
@@ -2040,7 +2040,7 @@ tasks:
   - command: myCommand
 `
 	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(t, proj)
 	assert.NoError(t, err)
 	assert.False(t, proj.OomTracker)
@@ -3159,7 +3159,7 @@ patch_aliases:
 		LocalIncludeDir: dir,
 	}
 	project := &Project{}
-	pp, err := LoadProjectInto(t.Context(), []byte(mainYaml), opts, "my-project", project)
+	pp, _, err := LoadProjectInto(t.Context(), []byte(mainYaml), opts, "my-project", project)
 	require.NoError(t, err)
 
 	pc := pp.MergedProjectConfig("my-project")
@@ -3815,12 +3815,37 @@ func TestCollectAnchorsExpansionBombErrors(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "exceeded the maximum")
 
-	// The file must still parse via fallback, with the reason in decodeErr.
+	// Breaching the expansion limit is a fatal error, not a silent fallback.
+	pp, decodeErr, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
+	require.ErrorIs(t, err, errAnchorExpansionLimit)
+	assert.Nil(t, pp)
+	assert.NoError(t, decodeErr)
+}
+
+func TestCreateIntermediateProjectPreambleLimitErrors(t *testing.T) {
+	// A registry entry large enough that marshalling it exceeds the preamble cap.
+	big := strings.Repeat("x", maxAnchorPreambleBytes+1)
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(fmt.Sprintf("a: &a %q", big)), &node))
+
+	registry := &anchorRegistry{}
+	require.NoError(t, registry.mergeAnchorsFrom(&node))
+	require.Greater(t, registry.Length(), 0)
+
+	pp, decodeErr, err := createIntermediateProject([]byte("b: *a\n"), false, registry)
+	require.ErrorIs(t, err, errAnchorPreambleSize)
+	assert.Nil(t, pp)
+	assert.NoError(t, decodeErr)
+}
+
+func TestCreateIntermediateProjectNonLimitFailureFallsBack(t *testing.T) {
+	yml := "tasks:\n  - name: t1\ntasks:\n  - name: t2\n"
 	pp, decodeErr, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
 	require.NoError(t, err)
 	require.NotNil(t, pp)
 	require.Error(t, decodeErr)
-	assert.Contains(t, decodeErr.Error(), "exceeded the maximum")
+	assert.NotErrorIs(t, decodeErr, errAnchorExpansionLimit)
+	assert.NotErrorIs(t, decodeErr, errAnchorPreambleSize)
 }
 
 func TestExpandAliases(t *testing.T) {
@@ -4012,8 +4037,8 @@ tasks:
 }
 
 // TestBuildAnchorPreambleOversizedErrors verifies the preamble size cap: a
-// registry whose serialized form exceeds maxAnchorPreambleBytes must error so
-// the caller falls back to parsing without the preamble.
+// registry whose serialized form exceeds maxAnchorPreambleBytes must fail with
+// errAnchorPreambleSize.
 func TestBuildAnchorPreambleOversizedErrors(t *testing.T) {
 	registry := &anchorRegistry{
 		entries: []anchorEntry{
@@ -4026,8 +4051,7 @@ func TestBuildAnchorPreambleOversizedErrors(t *testing.T) {
 	}
 
 	_, err := buildAnchorPreamble(registry)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "exceeds the maximum")
+	require.ErrorIs(t, err, errAnchorPreambleSize)
 }
 
 // TestBasicCrossFileAnchor verifies that an anchor defined in the main project
@@ -4050,7 +4074,7 @@ tasks:
   - *common-step
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
@@ -4086,7 +4110,7 @@ tasks:
   - *shared-cmd
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t,
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
@@ -4125,7 +4149,7 @@ tasks:
     command: shell.exec
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t,
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
@@ -4167,7 +4191,7 @@ tasks:
   - *shared-step
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t,
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
@@ -4238,7 +4262,7 @@ buildvariants:
   - name: task-b
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t,
 			moduleInclude("file_a.yml", fileA),
 			moduleInclude("file_b.yml", fileB),
@@ -4305,7 +4329,7 @@ tasks:
       script: ./third.sh
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t,
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
@@ -4367,7 +4391,7 @@ buildvariants:
   - name: task-b
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t,
 			moduleInclude("shared.yml", sharedYAML),
 			moduleInclude("tasks_a.yml", tasksAYAML),
@@ -4406,7 +4430,7 @@ tasks:
 		opts := moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML))
 		opts.UnmarshalStrict = strict
 
-		pp, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", &Project{})
+		pp, _, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", &Project{})
 		require.NoError(t, err)
 
 		pc := pp.MergedProjectConfig("proj")
@@ -4432,7 +4456,7 @@ tasks:
   - *shared-step
 `
 	proj := &Project{}
-	pp, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	pp, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
@@ -4552,7 +4576,7 @@ tasks:
   - *cleanup-cmd
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t,
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
@@ -4588,7 +4612,7 @@ tasks:
   - *step
 `
 	proj := &Project{}
-	pp, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	pp, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
@@ -4621,7 +4645,7 @@ tasks:
 	proj := &Project{}
 	opts := moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML))
 	opts.UnmarshalStrict = true
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", proj)
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -4661,7 +4685,7 @@ tasks:
   - <<: [*base-cmd, *override-cmd]
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
@@ -4711,7 +4735,7 @@ buildvariants:
 `
 	proj := &Project{}
 	opts := moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML))
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", proj)
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", proj)
 	require.NoError(t, err)
 	require.Len(t, proj.Tasks, 2)
 	require.Len(t, proj.BuildVariants, 1)
@@ -4736,7 +4760,7 @@ tasks:
   - command: git.get_project
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
@@ -4772,7 +4796,7 @@ buildvariants:
   - name: templated-task
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
@@ -4804,7 +4828,7 @@ tasks:
   - *full-command
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
@@ -4869,7 +4893,7 @@ tasks:
 // flag so LoadProjectInto routes the translate step through the content-hash cache.
 func loadProjectIntoCached(t *testing.T, yml, projectID string) *Project {
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(yml), &GetProjectOpts{cacheEnabled: true}, projectID, proj)
+	_, _, err := LoadProjectInto(t.Context(), []byte(yml), &GetProjectOpts{cacheEnabled: true}, projectID, proj)
 	require.NoError(t, err)
 	return proj
 }
@@ -4878,9 +4902,9 @@ func TestLoadProjectIntoTranslationCache(t *testing.T) {
 	t.Run("FlagOffTranslatesEveryCallAndCachesNothing", func(t *testing.T) {
 		t.Cleanup(resetTranslationCacheForTesting)
 		proj := &Project{}
-		_, err := LoadProjectInto(t.Context(), []byte(cacheTestYML), nil, "id", proj)
+		_, _, err := LoadProjectInto(t.Context(), []byte(cacheTestYML), nil, "id", proj)
 		require.NoError(t, err)
-		_, err = LoadProjectInto(t.Context(), []byte(cacheTestYML), nil, "id", proj)
+		_, _, err = LoadProjectInto(t.Context(), []byte(cacheTestYML), nil, "id", proj)
 		require.NoError(t, err)
 		assert.Equal(t, 0, getTranslationCache().Len(), "cache stays empty when the flag is off")
 	})
@@ -4922,7 +4946,7 @@ func TestLoadProjectIntoTranslationCache(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				proj := &Project{}
-				_, err := LoadProjectInto(t.Context(), []byte(cacheTestYML), &GetProjectOpts{cacheEnabled: true}, "id", proj)
+				_, _, err := LoadProjectInto(t.Context(), []byte(cacheTestYML), &GetProjectOpts{cacheEnabled: true}, "id", proj)
 				assert.NoError(t, err)
 			}()
 		}
@@ -5004,7 +5028,7 @@ tasks:
 			go func() {
 				defer wg.Done()
 				proj := &Project{}
-				_, err := LoadProjectInto(t.Context(), []byte(cacheTestMutationYML), &GetProjectOpts{cacheEnabled: true}, "id", proj)
+				_, _, err := LoadProjectInto(t.Context(), []byte(cacheTestMutationYML), &GetProjectOpts{cacheEnabled: true}, "id", proj)
 				assert.NoError(t, err)
 				// If the copies shared backing arrays, concurrent sorts would trip the race detector.
 				sort.Stable(proj.BuildVariants)
@@ -5044,7 +5068,7 @@ func TestReadLocalInclude(t *testing.T) {
 // hashes for the cache key.
 func mustLoadIntermediate(t *testing.T, yml string) *ParserProject {
 	proj := &Project{}
-	pp, err := LoadProjectInto(t.Context(), []byte(yml), nil, "id", proj)
+	pp, _, err := LoadProjectInto(t.Context(), []byte(yml), nil, "id", proj)
 	require.NoError(t, err)
 	return pp
 }
@@ -5067,7 +5091,7 @@ tasks:
   - *setup-cmds
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 	require.Len(t, proj.Tasks, 1)
@@ -5095,7 +5119,7 @@ tasks:
     command: shell.exec
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+	_, _, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.Error(t, err)
 }
@@ -5116,7 +5140,7 @@ tasks:
   - *cmd
 `
 	proj := &Project{}
-	_, err := LoadProjectInto(t.Context(), []byte(yml), nil, "proj", proj)
+	_, _, err := LoadProjectInto(t.Context(), []byte(yml), nil, "proj", proj)
 	require.NoError(t, err)
 
 	byName := map[string]ProjectTask{}
@@ -5159,7 +5183,7 @@ tasks:
 	b.ResetTimer()
 	for range b.N {
 		proj := &Project{}
-		_, err := LoadProjectInto(b.Context(), []byte(mainYAML), opts, "proj", proj)
+		_, _, err := LoadProjectInto(b.Context(), []byte(mainYAML), opts, "proj", proj)
 		require.NoError(b, err)
 	}
 }
@@ -5185,4 +5209,83 @@ tasks:
 	require.Len(t, pp.Modules, 2)
 	assert.Equal(t, 1, pp.Modules[0].CloneDepth)
 	assert.Zero(t, pp.Modules[1].CloneDepth)
+}
+
+func TestLoadProjectIntoWarnsWhenCrossFileAnchorParsingFallsBack(t *testing.T) {
+	// yaml v3 rejects duplicate mapping keys, but the fallback parse accepts
+	// them via the yaml v2 fallback, so this file forces the fallback path.
+	yml := `
+functions:
+  f:
+    command: shell.exec
+functions:
+  g:
+    command: shell.exec
+`
+	t.Run("FallbackEmitsWarning", func(t *testing.T) {
+		opts := &GetProjectOpts{}
+		pp, warnings, err := LoadProjectInto(t.Context(), []byte(yml), opts, "proj", &Project{})
+		require.NoError(t, err)
+		require.NotNil(t, pp)
+		require.Len(t, warnings, 1)
+		assert.Contains(t, warnings[0], "cross-file YAML anchors")
+		assert.Contains(t, warnings[0], "mapping key")
+	})
+
+	t.Run("SuccessfulAnchorParseEmitsNoWarning", func(t *testing.T) {
+		opts := &GetProjectOpts{}
+		pp, warnings, err := LoadProjectInto(t.Context(), []byte("functions:\n  f:\n    command: shell.exec\n"), opts, "proj", &Project{})
+		require.NoError(t, err)
+		require.NotNil(t, pp)
+		assert.Empty(t, warnings)
+	})
+}
+
+func TestDecodeWithAnchorsReservedEvgAnchorsKey(t *testing.T) {
+	yml := `
+_evg_anchors:
+  - &unused
+    x: 1
+functions:
+  f:
+    command: shell.exec
+`
+	t.Run("NoPreambleWarnsAndStrips", func(t *testing.T) {
+		pp, decodeErr, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
+		require.NoError(t, err)
+		require.NoError(t, decodeErr)
+		// The reserved key must still be stripped from the parsed project.
+		require.Len(t, pp.Functions, 1)
+		require.Len(t, pp.parseWarnings, 1)
+		assert.Contains(t, pp.parseWarnings[0], "reserved top-level YAML key '_evg_anchors'")
+	})
+
+	t.Run("WithPreambleDoesNotWarn", func(t *testing.T) {
+		// A registry with entries means a preamble was prepended, so the
+		// _evg_anchors key belongs to Evergreen and must be removed silently.
+		registry := &anchorRegistry{}
+		var anchorNode yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte("anchors:\n- &dummy\n  x: 1\n"), &anchorNode))
+		require.NoError(t, registry.mergeAnchorsFrom(&anchorNode))
+
+		pp, decodeErr, err := createIntermediateProject([]byte(yml), false, registry)
+		require.NoError(t, err)
+		require.NoError(t, decodeErr)
+		require.Len(t, pp.Functions, 1)
+		// The duplicate user-defined key makes the anchor-based parse fall
+		// back, which has its own warning; assert only that the reserved-key
+		// warning is absent.
+		for _, warning := range pp.parseWarnings {
+			assert.NotContains(t, warning, "reserved top-level YAML key '_evg_anchors'")
+		}
+	})
+
+	t.Run("StrictModeStillWarns", func(t *testing.T) {
+		pp, decodeErr, err := createIntermediateProject([]byte(yml), true, &anchorRegistry{})
+		require.NoError(t, err)
+		require.NoError(t, decodeErr)
+		require.Len(t, pp.Functions, 1)
+		require.Len(t, pp.parseWarnings, 1)
+		assert.Contains(t, pp.parseWarnings[0], "reserved top-level YAML key '_evg_anchors'")
+	})
 }
