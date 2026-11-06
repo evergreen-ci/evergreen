@@ -215,52 +215,44 @@ func TestExtractBaseBranchFromHeadRef(t *testing.T) {
 	}
 }
 
-func TestFindUnprocessedGithubMergeIntentHeadSHAs(t *testing.T) {
+func TestFindUnprocessedGithubMergeIntents(t *testing.T) {
 	require.NoError(t, db.Clear(IntentCollection))
 	t.Cleanup(func() {
 		assert.NoError(t, db.Clear(IntentCollection))
 	})
 
-	insertMergeIntent := func(t *testing.T, msgID, headSHA string) Intent {
-		headRef := "refs/heads/gh-readonly-queue/main/pr-1-" + headSHA
-		mge := &github.MergeGroupEvent{
-			Org:  &github.Organization{Login: github.Ptr("my_org")},
-			Repo: &github.Repository{Name: github.Ptr("my_repo")},
-			MergeGroup: &github.MergeGroup{
-				HeadSHA: github.Ptr(headSHA),
-				HeadRef: github.Ptr(headRef),
-				BaseSHA: github.Ptr("base"),
-				HeadCommit: &github.Commit{
-					Message: github.Ptr("commit message"),
-					Author:  &github.CommitAuthor{Date: &github.Timestamp{Time: time.Now()}},
-				},
-			},
-		}
-		intent, err := NewGithubMergeIntent(t.Context(), msgID, AutomatedCaller, mge)
-		require.NoError(t, err)
-		require.NoError(t, intent.Insert(t.Context()))
-		return intent
-	}
-
-	insertMergeIntent(t, "recent", "recent_sha")
-
-	stale := insertMergeIntent(t, "stale", "stale_sha")
-	require.NoError(t, db.UpdateId(t.Context(), IntentCollection, stale.ID(), bson.M{
-		"$set": bson.M{createdAtKey: time.Now().Add(-2 * time.Hour)},
+	recent := time.Now().UTC().Round(time.Millisecond)
+	old := recent.Add(-2 * time.Hour)
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubMergeIntent{
+		DocumentID: "recent",
+		IntentType: GithubMergeIntentType,
+		HeadSHA:    "recent_sha",
+		CreatedAt:  recent,
+	}))
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubMergeIntent{
+		DocumentID: "old",
+		IntentType: GithubMergeIntentType,
+		HeadSHA:    "old_sha",
+		CreatedAt:  old,
+	}))
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubMergeIntent{
+		DocumentID: "processed",
+		IntentType: GithubMergeIntentType,
+		HeadSHA:    "processed_sha",
+		CreatedAt:  recent,
+		Processed:  true,
+	}))
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubIntent{
+		DocumentID: "pr",
+		IntentType: GithubIntentType,
+		HeadHash:   "pr_sha",
+		CreatedAt:  recent,
 	}))
 
-	processed := insertMergeIntent(t, "processed", "processed_sha")
-	require.NoError(t, processed.SetProcessed(t.Context()))
-
-	require.NoError(t, db.Insert(t.Context(), IntentCollection, bson.M{
-		"_id":         "pr_intent",
-		processedKey:  false,
-		intentTypeKey: GithubIntentType,
-		headHashKey:   "pr_sha",
-		createdAtKey:  time.Now(),
-	}))
-
-	headSHAs, err := FindUnprocessedGithubMergeIntentHeadSHAs(t.Context(), time.Now().Add(-30*time.Minute))
+	intents, err := FindUnprocessedGithubMergeIntents(t.Context())
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"recent_sha"}, headSHAs)
+	assert.ElementsMatch(t, []UnprocessedMergeIntent{
+		{ID: "recent", HeadSHA: "recent_sha", CreatedAt: recent},
+		{ID: "old", HeadSHA: "old_sha", CreatedAt: old},
+	}, intents)
 }
