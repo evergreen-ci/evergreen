@@ -284,7 +284,7 @@ func (s *PatchAbortSuite) SetupSuite() {
 	patches := []patch.Patch{
 		{Id: patch.NewId(s.objIds[0]), Version: version1, Activated: true, Project: projectRef.Id},
 		{Id: patch.NewId(s.objIds[1]), Version: version2, Activated: true, Project: projectRef.Id},
-		{Id: patch.NewId(s.objIds[2]), Activated: true, Project: projectRef.Id},
+		{Id: patch.NewId(s.objIds[2]), Activated: true, Project: projectRef.Id, Author: "user1"},
 	}
 	versions := []*serviceModel.Version{
 		{Id: version1},
@@ -389,7 +389,7 @@ func (s *PatchesChangeStatusSuite) SetupSuite() {
 	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
 	patches := []patch.Patch{
-		{Id: patch.NewId(s.objIds[0]), Version: "v1", Project: "proj", PatchNumber: 7},
+		{Id: patch.NewId(s.objIds[0]), Version: "v1", Project: "proj", PatchNumber: 7, Author: "user1"},
 		{Id: patch.NewId(s.objIds[1]), Version: "v1", Project: "proj", PatchNumber: 0},
 	}
 	for _, p := range patches {
@@ -433,6 +433,96 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 	s.Equal(7, p1.PatchNumber)
 	s.Equal(0, p2.PatchNumber)
 	s.True(p1.Activated)
+}
+
+func TestPatchOwnershipChecks(t *testing.T) {
+	const (
+		owner   = "owner"
+		other   = "other"
+		project = "proj"
+	)
+
+	setup := func(t *testing.T) (unfinalized, finalized patch.Patch) {
+		require.NoError(t, db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection, serviceModel.VersionCollection, build.Collection, task.Collection))
+		pRef := serviceModel.ProjectRef{Id: project, Identifier: project}
+		require.NoError(t, pRef.Insert(t.Context()))
+		unfinalized = patch.Patch{Id: mgobson.NewObjectId(), Author: owner, Project: project}
+		require.NoError(t, unfinalized.Insert(t.Context()))
+		finalized = patch.Patch{Id: mgobson.NewObjectId(), Author: owner, Project: project, Activated: true}
+		finalized.Version = finalized.Id.Hex()
+		require.NoError(t, finalized.Insert(t.Context()))
+		v := &serviceModel.Version{Id: finalized.Version}
+		require.NoError(t, v.Insert(t.Context()))
+		tsk := task.Task{Id: "t0", Version: finalized.Version, Activated: true, Status: evergreen.TaskStarted}
+		require.NoError(t, tsk.Insert(t.Context()))
+		return unfinalized, finalized
+	}
+	userCtx := func(t *testing.T, username string) context.Context {
+		return gimlet.AttachUser(t.Context(), &user.DBUser{Id: username})
+	}
+
+	t.Run("AbortUnfinalizedPatchByNonOwnerShouldBeForbidden", func(t *testing.T) {
+		p, _ := setup(t)
+		rh := makeAbortPatch().(*patchAbortHandler)
+		rh.patchId = p.Id.Hex()
+		resp := rh.Run(userCtx(t, other))
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+
+		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		assert.NotNil(t, dbPatch)
+	})
+
+	t.Run("AbortFinalizedPatchByNonOwnerShouldSucceed", func(t *testing.T) {
+		_, p := setup(t)
+		rh := makeAbortPatch().(*patchAbortHandler)
+		rh.patchId = p.Id.Hex()
+		resp := rh.Run(userCtx(t, other))
+		assert.Equal(t, http.StatusOK, resp.Status())
+
+		tsk, err := task.FindOneId(t.Context(), "t0")
+		require.NoError(t, err)
+		require.NotNil(t, tsk)
+		assert.True(t, tsk.Aborted)
+	})
+
+	t.Run("ActivateByNonOwnerShouldBeForbidden", func(t *testing.T) {
+		p, _ := setup(t)
+		rh := makeChangePatchStatus(testutil.NewEnvironment(t.Context(), t)).(*patchChangeStatusHandler)
+		rh.patchId = p.Id.Hex()
+		rh.Activated = utility.TruePtr()
+		resp := rh.Run(userCtx(t, other))
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+
+		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		require.NotNil(t, dbPatch)
+		assert.False(t, dbPatch.Activated)
+		assert.Empty(t, dbPatch.Version)
+	})
+
+	t.Run("DeactivateFinalizedPatchByNonOwnerShouldBeForbidden", func(t *testing.T) {
+		_, p := setup(t)
+		rh := makeChangePatchStatus(testutil.NewEnvironment(t.Context(), t)).(*patchChangeStatusHandler)
+		rh.patchId = p.Id.Hex()
+		rh.Activated = utility.FalsePtr()
+		resp := rh.Run(userCtx(t, other))
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+
+		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		require.NotNil(t, dbPatch)
+		assert.True(t, dbPatch.Activated)
+	})
+
+	t.Run("SetPriorityByNonOwnerShouldSucceed", func(t *testing.T) {
+		_, p := setup(t)
+		rh := makeChangePatchStatus(testutil.NewEnvironment(t.Context(), t)).(*patchChangeStatusHandler)
+		rh.patchId = p.Id.Hex()
+		rh.Priority = utility.ToInt64Ptr(5)
+		resp := rh.Run(userCtx(t, other))
+		assert.Equal(t, http.StatusOK, resp.Status())
+	})
 }
 
 ////////////////////////////////////////////////////////////////////////
