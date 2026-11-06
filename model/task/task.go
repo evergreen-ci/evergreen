@@ -4103,6 +4103,32 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
+// GetMonitoredHighValueWorkloadDuration returns the makespan of tasks tagged
+// monitored_high_value_workload. The caller must supply first-execution records.
+// The boolean is false when no tagged task has valid completed timings.
+func GetMonitoredHighValueWorkloadDuration(tasks []Task) (time.Duration, bool) {
+	var selected []Task
+	for _, t := range tasks {
+		if t.DisplayOnly ||
+			!slices.Contains(t.Tags, evergreen.MonitoredHighValueWorkloadTag) {
+			continue
+		}
+		if utility.IsZeroTime(t.StartTime) ||
+			utility.IsZeroTime(t.FinishTime) ||
+			t.FinishTime.Before(t.StartTime) {
+			continue
+		}
+		selected = append(selected, t)
+	}
+
+	if len(selected) == 0 {
+		return 0, false
+	}
+
+	_, makespan := GetTimeSpent(selected)
+	return makespan, true
+}
+
 // GetFormattedTimeSpent returns the total time_taken and makespan of tasks as a formatted string
 func GetFormattedTimeSpent(tasks []Task) (string, string) {
 	timeTaken, makespan := GetTimeSpent(tasks)
