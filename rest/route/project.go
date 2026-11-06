@@ -800,7 +800,7 @@ func makeGetProjectVersionsHandler() gimlet.RouteHandler {
 //	@Router			/projects/{project_id}/versions [get]
 //	@Security		Api-User || Api-Key
 //	@Param			project_id			path	string		true	"the project ID"
-//	@Param			skip				query	int			false	"Number of versions to skip."
+//	@Param			skip				query	int			false	"Number of versions to skip. Cannot exceed 1000 when include_builds is set."
 //	@Param			limit				query	int			false	"The number of versions to be returned per page of pagination. Defaults to 5, and cannot exceed 100."
 //	@Param			start				query	int			false	"The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified."
 //	@Param			revision_end		query	int			false	"Will return the versions that are greater than (and therefore more recent) or equal to revision number specified."
@@ -850,6 +850,9 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 
 	if h.opts.IncludeTasks && !h.opts.IncludeBuilds {
 		return errors.New("cannot include tasks without builds")
+	}
+	if h.opts.IncludeBuilds && h.opts.Skip > dbModel.MaxVersionsScannedWithBuilds {
+		return errors.Errorf("skip cannot exceed %d when including builds, use start to paginate instead", dbModel.MaxVersionsScannedWithBuilds)
 	}
 
 	// get some options from the query parameters for legacy usage

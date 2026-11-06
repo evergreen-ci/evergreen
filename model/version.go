@@ -808,13 +808,13 @@ type GetVersionsOptions struct {
 	CreatedBefore  time.Time `json:"created_before"`
 }
 
-// maxVersionsScannedWithBuilds bounds how many versions one GetVersionsWithOptions call joins against
-// builds and tasks.
-const maxVersionsScannedWithBuilds = 1000
+// MaxVersionsScannedWithBuilds bounds how many versions past the skip one GetVersionsWithOptions call joins
+// against builds and tasks. It also bounds the skip itself, which callers must validate.
+const MaxVersionsScannedWithBuilds = 1000
 
 // ErrVersionScanLimitExceeded is returned when a request including builds searches the maximum number of
 // versions without filling the page and older versions still remain.
-var ErrVersionScanLimitExceeded = errors.Errorf("searched %d versions without finding enough matches", maxVersionsScannedWithBuilds)
+var ErrVersionScanLimitExceeded = errors.Errorf("searched %d versions without finding enough matches", MaxVersionsScannedWithBuilds)
 
 // GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
 // the input GetVersionsOptions.
@@ -859,7 +859,7 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 	if opts.IncludeBuilds {
-		pipeline = append(pipeline, bson.M{"$limit": maxVersionsScannedWithBuilds})
+		pipeline = append(pipeline, bson.M{"$limit": MaxVersionsScannedWithBuilds + opts.Skip})
 	}
 
 	// initial projection of version items
@@ -958,7 +958,7 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 	pastLimit := []Version{}
 	q := db.Query(match).
 		Sort([]string{"-" + VersionRevisionOrderNumberKey}).
-		Skip(maxVersionsScannedWithBuilds).
+		Skip(MaxVersionsScannedWithBuilds + opts.Skip).
 		Limit(1).
 		WithFields(VersionIdKey)
 	if err := db.FindAllQSecondary(ctx, VersionCollection, q, &pastLimit); err != nil {

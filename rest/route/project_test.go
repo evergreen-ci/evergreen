@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -1237,6 +1238,50 @@ func TestGetProjectVersionsParseRequesters(t *testing.T) {
 			tCase(t)
 		})
 	}
+}
+
+func TestGetProjectVersionsParseSkip(t *testing.T) {
+	parse := func(t *testing.T, body string) error {
+		h := &getProjectVersionsHandler{}
+		req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", strings.NewReader(body))
+		require.NoError(t, err)
+		req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+		return h.Parse(t.Context(), req)
+	}
+
+	t.Run("SkipAboveMaxWithBuildsShouldError", func(t *testing.T) {
+		body := fmt.Sprintf(`{"include_builds": true, "skip": %d}`, serviceModel.MaxVersionsScannedWithBuilds+1)
+		assert.ErrorContains(t, parse(t, body), "skip cannot exceed")
+	})
+	t.Run("SkipAtMaxWithBuildsShouldSucceed", func(t *testing.T) {
+		body := fmt.Sprintf(`{"include_builds": true, "skip": %d}`, serviceModel.MaxVersionsScannedWithBuilds)
+		assert.NoError(t, parse(t, body))
+	})
+	t.Run("SkipAboveMaxWithoutBuildsShouldSucceed", func(t *testing.T) {
+		body := fmt.Sprintf(`{"skip": %d}`, serviceModel.MaxVersionsScannedWithBuilds+1)
+		assert.NoError(t, parse(t, body))
+	})
+}
+
+func TestGetProjectVersionsParseBodySize(t *testing.T) {
+	makeBody := func(size int) []byte {
+		prefix, suffix := `{"requesters": ["`, `"]}`
+		return []byte(prefix + strings.Repeat("a", size-len(prefix)-len(suffix)) + suffix)
+	}
+	parse := func(t *testing.T, body []byte) error {
+		h := &getProjectVersionsHandler{}
+		req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", bytes.NewReader(body))
+		require.NoError(t, err)
+		req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+		return h.Parse(t.Context(), req)
+	}
+
+	t.Run("BodyAtMaxSizeShouldSucceed", func(t *testing.T) {
+		assert.NoError(t, parse(t, makeBody(maxVersionsBodySize)))
+	})
+	t.Run("BodyOverMaxSizeShouldError", func(t *testing.T) {
+		assert.ErrorContains(t, parse(t, makeBody(maxVersionsBodySize+1)), "request body cannot exceed")
+	})
 }
 
 func TestGetProjectVersionsParseLimit(t *testing.T) {
