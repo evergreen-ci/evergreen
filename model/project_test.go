@@ -1690,7 +1690,7 @@ tasks:
   depends_on:
     - name: dist-test
 `
-	intermediate, _, _, err := createIntermediateProject([]byte(projYml), false, nil)
+	intermediate, _, err := createIntermediateProject([]byte(projYml), false, nil)
 	s.NoError(err)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)
@@ -3201,7 +3201,7 @@ tasks:
 			require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection))
 
 			project := &Project{}
-			pp, _, err := LoadProjectInto(ctx, []byte(patchedProject), nil, "", project, false)
+			pp, err := LoadProjectInto(ctx, []byte(patchedProject), nil, "", project)
 			require.NoError(t, err)
 
 			p := &patch.Patch{
@@ -3264,7 +3264,7 @@ patch_aliases:
 `
 
 	p := &Project{}
-	_, _, err := LoadProjectInto(ctx, []byte(projYml), nil, "", p, false)
+	_, err := LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.Require().NoError(err)
 
 	pc, err := CreateProjectConfig([]byte(projYml), "")

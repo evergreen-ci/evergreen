@@ -253,6 +253,19 @@ func addDistroWarning(distroWarnings map[string]string, distroName, warningNote 
 	distroWarnings[distroName] = fmt.Sprintf("\t%s\n\t%s", distroWarnings[distroName], warningNote)
 }
 
+// ParseWarningsToValidationErrors converts user-facing warnings stored on the
+// parser project into warning-level validation errors.
+func ParseWarningsToValidationErrors(pp *model.ParserProject) ValidationErrors {
+	var errs ValidationErrors
+	for _, warning := range pp.ParseWarnings() {
+		errs = append(errs, ValidationError{
+			Level:   Warning,
+			Message: warning,
+		})
+	}
+	return errs
+}
+
 // CheckProject calls the validating logic for a Project's configuration.
 // That is, ProjectErrors, ProjectWarnings, ProjectConfigErrors,
 // ProjectSettings, and AliasWarnings. If a respective item is nil,

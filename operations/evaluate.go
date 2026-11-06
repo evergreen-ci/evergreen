@@ -72,7 +72,7 @@ func Evaluate() cli.Command {
 				ReadFileFrom:    model.ReadFromLocal,
 				LocalIncludeDir: cwd,
 			}
-			_, _, err = model.LoadProjectInto(ctx, configBytes, opts, "", p, false)
+			_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
 			if err != nil {
 				return errors.Wrap(err, "loading project")
 			}

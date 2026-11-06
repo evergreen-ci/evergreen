@@ -56,7 +56,7 @@ buildvariants:
 
 func TestDetectorsAgainstSampleConfig(t *testing.T) {
 	var project model.Project
-	pp, _, err := model.LoadProjectInto(context.Background(), []byte(sampleConfig), nil, "sample", &project, false)
+	pp, err := model.LoadProjectInto(context.Background(), []byte(sampleConfig), nil, "sample", &project)
 	require.NoError(t, err)
 
 	counts := map[string]int{}
@@ -112,7 +112,7 @@ func TestMatrixDetectorReadsParserProject(t *testing.T) {
 	require.NotEmpty(t, matrixDet.Name, "matrices detector should be registered")
 
 	var project model.Project
-	pp, _, err := model.LoadProjectInto(context.Background(), []byte(matrixConfig), nil, "sample", &project, false)
+	pp, err := model.LoadProjectInto(context.Background(), []byte(matrixConfig), nil, "sample", &project)
 	require.NoError(t, err)
 
 	// The matrix is detectable on the parser project but expanded away on the
@@ -167,7 +167,7 @@ buildvariants:
 
 func TestCommandDetectorCountsNonTaskBlocks(t *testing.T) {
 	var project model.Project
-	pp, _, err := model.LoadProjectInto(context.Background(), []byte(nonTaskBlockConfig), nil, "sample", &project, false)
+	pp, err := model.LoadProjectInto(context.Background(), []byte(nonTaskBlockConfig), nil, "sample", &project)
 	require.NoError(t, err)
 
 	counts := map[string]int{}

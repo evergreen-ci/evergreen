@@ -167,7 +167,7 @@ func (s *CommandSuite) setUpConfigAndProject(projYml string) {
 	}
 	s.tc.taskConfig = config
 	p := model.Project{}
-	_, _, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", &p, false)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", &p)
 	s.NoError(err)
 	s.tc.taskConfig.Project = p
 

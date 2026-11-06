@@ -50,7 +50,7 @@ tasks:
 		RemotePath:   file,
 		ReadFileFrom: model.ReadFromLocal,
 	}
-	pp, _, err := model.LoadProjectInto(ctx, []byte(config), opts, pRef.Id, p, false)
+	pp, err := model.LoadProjectInto(ctx, []byte(config), opts, pRef.Id, p)
 	return model.ProjectInfo{
 		Project:             p,
 		IntermediateProject: pp,

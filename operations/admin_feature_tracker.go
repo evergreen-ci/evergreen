@@ -253,7 +253,7 @@ func ftAnalyzeFile(ctx context.Context, path string, dets []ftDetector) ftResult
 	// The dumped config is a merged parser project whose Include field has been
 	// cleared, so LoadProjectInto needs no network or DB access; nil opts is safe.
 	var project model.Project
-	pp, _, err := model.LoadProjectInto(ctx, data, nil, projectID, &project, false)
+	pp, err := model.LoadProjectInto(ctx, data, nil, projectID, &project)
 	if err != nil {
 		res.Err = fmt.Sprintf("parsing project: %v", err)
 		// LoadProjectInto fills the project even on error, so continue and detect.
@@ -449,7 +449,7 @@ var ftHTMLTemplate = template.Must(template.New("report").Funcs(template.FuncMap
 <table id="adoption" data-sort-col="2" data-sort-dir="desc">
   <caption>Feature adoption</caption>
   <thead><tr>
-    <th class="sortable" onclick="sortTable('adoption', 0, false)">Feature</th>
+    <th class="sortable" onclick="sortTable('adoption', 0)">Feature</th>
     <th>Description</th>
     <th class="sortable" data-dir="desc" onclick="sortTable('adoption', 2, true)">Projects using</th>
     <th>%</th>
@@ -470,9 +470,9 @@ var ftHTMLTemplate = template.Must(template.New("report").Funcs(template.FuncMap
   <caption>Per-project feature matrix (counts; click a header to sort)</caption>
   <thead>
     <tr>
-      <th class="sortable" onclick="sortTable('matrix', 0, false)">Project</th>
+      <th class="sortable" onclick="sortTable('matrix', 0)">Project</th>
       {{range $i, $d := .Detectors}}<th class="feature sortable" title="{{$d.Description}}" onclick="sortTable('matrix', {{add $i 1}}, true)">{{$d.Name}}</th>{{end}}
-      <th class="sortable" onclick="sortTable('matrix', {{add (len .Detectors) 1}}, false)">Parse error</th>
+      <th class="sortable" onclick="sortTable('matrix', {{add (len .Detectors) 1}})">Parse error</th>
     </tr>
   </thead>
   <tbody>

@@ -825,7 +825,7 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 
 func (s *GenerateSuite) TestCacheProjectData() {
 	var p Project
-	_, _, err := LoadProjectInto(s.ctx, []byte(sampleProjYAMLWithMultiFields), nil, "", &p, false)
+	_, err := LoadProjectInto(s.ctx, []byte(sampleProjYAMLWithMultiFields), nil, "", &p)
 	s.Require().NoError(err)
 	cached := cacheProjectData(&p)
 	expectedBVs := map[string]bool{
@@ -878,7 +878,7 @@ func (s *GenerateSuite) TestCacheProjectData() {
 
 func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	p := &Project{}
-	pp, _, err := LoadProjectInto(s.ctx, []byte(sampleProjYml), nil, "", p, false)
+	pp, err := LoadProjectInto(s.ctx, []byte(sampleProjYml), nil, "", p)
 	s.NoError(err)
 	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
@@ -915,7 +915,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	_, ok = newPP.Functions["new_function"]
 	s.True(ok)
 
-	pp, _, err = LoadProjectInto(s.ctx, []byte(sampleProjYmlNoFunctions), nil, "", p, false)
+	pp, err = LoadProjectInto(s.ctx, []byte(sampleProjYmlNoFunctions), nil, "", p)
 	s.NoError(err)
 	newPP, err = g.addGeneratedProjectToConfig(pp, cachedProject)
 	s.NoError(err)

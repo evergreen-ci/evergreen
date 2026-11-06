@@ -71,14 +71,9 @@ func (v *validateProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	pp, warnings, err := model.LoadProjectInto(ctx, v.input.ProjectYaml, opts, v.input.ProjectID, project, true)
+	pp, err := model.LoadProjectInto(ctx, v.input.ProjectYaml, opts, v.input.ProjectID, project)
 	errs := validator.ValidationErrors{}
-	for _, warning := range warnings {
-		errs = append(errs, validator.ValidationError{
-			Level:   validator.Warning,
-			Message: warning,
-		})
-	}
+	errs = append(errs, validator.ParseWarningsToValidationErrors(pp)...)
 	if err != nil {
 		validationErr.Message = err.Error()
 		errs = append(errs, validationErr)

@@ -436,7 +436,7 @@ tasks:
 	require.NoError(t, pRef.Insert(t.Context()))
 
 	p := &model.Project{}
-	pp, _, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p, false)
+	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
 	assert.NoError(t, err)
 	require.NotNil(t, pp)
 
@@ -539,7 +539,7 @@ tasks:
 	require.NoError(t, pRef.Insert(t.Context()))
 
 	p := &model.Project{}
-	pp, _, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p, false)
+	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
 	assert.NoError(t, err)
 
 	// Create new version to use for activating
@@ -1071,7 +1071,7 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, _, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p, false)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1118,7 +1118,7 @@ tasks:
 - name: task
 `
 	p := &model.Project{}
-	pp, _, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p, false)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.Require().NoError(err)
 
 	s.ref.TestSelection = model.TestSelectionSettings{
@@ -1164,7 +1164,7 @@ tasks:
   exec_timeout_secs: 3
 `
 	p := &model.Project{}
-	pp, _, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p, false)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1217,7 +1217,7 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, _, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p, false)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1273,7 +1273,7 @@ tasks:
       script: echo "test"
 `
 	p := &model.Project{}
-	pp, _, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p, false)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	vErrs := VersionErrors{
 		Errors:   []string{"err1"},
@@ -1319,7 +1319,7 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, _, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p, false)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	s.NotNil(pp)
 	//force a duplicate key error with the version
@@ -1364,7 +1364,7 @@ patch_aliases:
   task: task1
 `
 	p := &model.Project{}
-	pp, _, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p, false)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	s.NotNil(pp)
 	s.NoError(db.ClearCollections(model.ProjectConfigCollection))
@@ -1420,7 +1420,7 @@ tasks:
 - name: task3
 `
 	p := &model.Project{}
-	pp, _, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p, false)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1501,7 +1501,7 @@ tasks:
 - name: task3
 `
 			p := &model.Project{}
-			pp, _, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p, false)
+			pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 			s.NoError(err)
 			projectInfo := &model.ProjectInfo{
 				Ref:                 s.ref,
@@ -1581,7 +1581,7 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, _, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p, false)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1637,7 +1637,7 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, _, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p, false)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 
 	alias := model.ProjectAlias{
@@ -1694,7 +1694,7 @@ task_groups:
   - task2
 `
 	p := &model.Project{}
-	pp, _, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p, false)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 
 	alias := model.ProjectAlias{
@@ -1762,7 +1762,7 @@ tasks:
 - name: task3
 `
 	p := &model.Project{}
-	pp, _, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p, false)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 
 	alias := model.ProjectAlias{
@@ -2358,7 +2358,7 @@ tasks:
 			}
 
 			p := &model.Project{}
-			pp, _, err := model.LoadProjectInto(ctx, []byte(configYml), nil, projectRef.Id, p, false)
+			pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, projectRef.Id, p)
 			require.NoError(t, err)
 
 			projectInfo := &model.ProjectInfo{
