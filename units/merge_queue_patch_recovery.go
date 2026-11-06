@@ -107,11 +107,11 @@ func (j *mergeQueuePatchRecoveryJob) recoverProject(ctx context.Context, project
 		return nil
 	}
 
-	hasPatch, err := patch.HasDuplicateMergeQueuePatch(ctx, projectRef.Id, projectRef.Owner, projectRef.Repo, frontSHA)
+	existingPatchID, err := patch.FindDuplicateMergeQueuePatchID(ctx, projectRef.Id, projectRef.Owner, projectRef.Repo, frontSHA, "")
 	if err != nil {
 		return errors.Wrap(err, "checking for an existing merge queue patch")
 	}
-	if hasPatch {
+	if existingPatchID != "" {
 		return nil
 	}
 

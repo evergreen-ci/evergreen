@@ -400,6 +400,12 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.New("patch has no build variants or tasks")
 	}
 
+	// Check again right before inserting because another intent for the same merge group may have
+	// created its patch while this one was talking to GitHub.
+	if patchDoc.IsMergeQueuePatch() && j.hasDuplicateMergeQueuePatch(ctx, patchDoc, pref.Id) {
+		return nil
+	}
+
 	// set the patch number based on patch author
 	patchDoc.PatchNumber, err = j.user.IncPatchNumber(ctx)
 	if err != nil {
@@ -1250,7 +1256,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		patchDoc.GithubMergeData.HeadSHA,
 		githubHeadPRURL,
 	)
-	baseAttrs = append(baseAttrs, attribute.String(patch.MergeQueueAttrPatchID, patchDoc.Id.Hex()))
+	baseAttrs = append(baseAttrs, attribute.String(patch.MergeQueueAttrPatchID, j.PatchID.Hex()))
 	ctx, span := tracer.Start(ctx, patch.MergeQueuePatchProcessingSpan,
 		trace.WithAttributes(baseAttrs...))
 	defer span.End()
@@ -1270,39 +1276,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 
 	span.SetAttributes(attribute.String(patch.MergeQueueAttrProjectID, projectRef.Identifier))
 
-	// The same merge group can arrive more than once, for example when merge queue recovery creates a patch
-	// and the delayed GitHub webhook arrives afterwards. A second patch would run every task again and post
-	// a competing status for the same commit, so skip it without reporting anything to GitHub.
-	existingPatchID, err := patch.FindDuplicateMergeQueuePatchID(ctx, projectRef.Id, patchDoc.GithubMergeData.Org,
-		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.HeadSHA, j.PatchID)
-	if err != nil {
-		// Fall back to creating the patch rather than failing the merge group because the check could not run.
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message":     "could not check for an existing merge queue patch, creating patch anyway",
-			"job":         j.ID(),
-			"patch_id":    j.PatchID,
-			"project_id":  projectRef.Id,
-			"head_sha":    patchDoc.GithubMergeData.HeadSHA,
-			"intent_type": j.IntentType,
-			"intent_id":   j.IntentID,
-			"source":      "patch intents",
-		}))
-	} else if existingPatchID != "" {
-		span.SetAttributes(attribute.String(patch.MergeQueueAttrDuplicateOfPatchID, existingPatchID))
-		grip.Info(ctx, message.Fields{
-			"message":           "skipping duplicate merge queue patch because one already exists for the merge group",
-			"job":               j.ID(),
-			"patch_id":          j.PatchID,
-			"existing_patch_id": existingPatchID,
-			"project_id":        projectRef.Id,
-			"org":               patchDoc.GithubMergeData.Org,
-			"repo":              patchDoc.GithubMergeData.Repo,
-			"base_branch":       patchDoc.GithubMergeData.BaseBranch,
-			"head_sha":          patchDoc.GithubMergeData.HeadSHA,
-			"intent_type":       j.IntentType,
-			"intent_id":         j.IntentID,
-			"source":            "patch intents",
-		})
+	if j.hasDuplicateMergeQueuePatch(ctx, patchDoc, projectRef.Id) {
 		return false, nil
 	}
 
@@ -1325,6 +1299,44 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 	}
 
 	return true, nil
+}
+
+// hasDuplicateMergeQueuePatch reports whether another patch already exists for this merge queue patch's merge
+// group. The same merge group can arrive more than once, for example when merge queue recovery creates a patch
+// and the delayed GitHub webhook arrives afterwards. A second patch would run every task again and post a
+// competing status for the same commit, so callers should skip it without reporting anything to GitHub.
+func (j *patchIntentProcessor) hasDuplicateMergeQueuePatch(ctx context.Context, patchDoc *patch.Patch, projectID string) bool {
+	existingPatchID, err := patch.FindDuplicateMergeQueuePatchID(ctx, projectID, patchDoc.GithubMergeData.Org,
+		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.HeadSHA, j.PatchID)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message":     "could not check for an existing merge queue patch, creating patch anyway",
+			"job":         j.ID(),
+			"patch_id":    j.PatchID,
+			"project_id":  projectID,
+			"head_sha":    patchDoc.GithubMergeData.HeadSHA,
+			"intent_type": j.IntentType,
+			"intent_id":   j.IntentID,
+			"source":      "patch intents",
+		}))
+		return false
+	}
+	if existingPatchID == "" {
+		return false
+	}
+
+	trace.SpanFromContext(ctx).SetAttributes(attribute.String(patch.MergeQueueAttrDuplicateOfPatchID, existingPatchID))
+	grip.Info(ctx, message.Fields{
+		"message":           "skipping duplicate merge queue patch because one already exists for the merge group",
+		"job":               j.ID(),
+		"patch_id":          j.PatchID,
+		"existing_patch_id": existingPatchID,
+		"project_id":        projectID,
+		"head_sha":          patchDoc.GithubMergeData.HeadSHA,
+		"intent_id":         j.IntentID,
+		"source":            "patch intents",
+	})
+	return true
 }
 
 func (j *patchIntentProcessor) getChangedFilesForGithubMerge(ctx context.Context, patchDoc *patch.Patch) error {

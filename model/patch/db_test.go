@@ -905,56 +905,84 @@ func TestFindFinalizedMergeQueuePatchesMissingCompletionMetricsExcludesNonEligib
 	assert.Contains(t, patchIDs, failedEmit.Id)
 }
 
-func TestHasMergeQueuePatchForHeadSHASeesFinishedPatches(t *testing.T) {
-	t.Cleanup(func() { require.NoError(t, db.ClearCollections(Collection)) })
-	require.NoError(t, db.ClearCollections(Collection))
-
-	p := Patch{
-		Id:              bson.NewObjectId(),
-		Project:         "my-project",
-		Alias:           evergreen.CommitQueueAlias,
-		Status:          evergreen.VersionSucceeded,
-		CreateTime:      time.Now(),
-		GithubMergeData: thirdparty.GithubMergeGroup{Org: "10gen", Repo: "mongo", HeadSHA: "head-sha"},
-	}
-	require.NoError(t, db.Insert(t.Context(), Collection, p))
-
-	hasPatch, err := HasDuplicateMergeQueuePatch(t.Context(), "my-project", "10gen", "mongo", "head-sha")
-	require.NoError(t, err)
-	assert.True(t, hasPatch)
-
-	hasPatch, err = HasDuplicateMergeQueuePatch(t.Context(), "my-project", "10gen", "mongo", "other-head-sha")
-	require.NoError(t, err)
-	assert.False(t, hasPatch)
-}
-
 func TestFindDuplicateMergeQueuePatchID(t *testing.T) {
-	t.Cleanup(func() { require.NoError(t, db.ClearCollections(Collection)) })
-	require.NoError(t, db.ClearCollections(Collection))
-
-	p := Patch{
-		Id:              bson.NewObjectId(),
-		Project:         "my-project",
-		Alias:           evergreen.CommitQueueAlias,
-		Status:          evergreen.VersionStarted,
-		CreateTime:      time.Now(),
-		GithubMergeData: thirdparty.GithubMergeGroup{Org: "10gen", Repo: "mongo", HeadSHA: "head-sha"},
+	newMergeQueuePatch := func(headSHA string) Patch {
+		return Patch{
+			Id:              bson.NewObjectId(),
+			Project:         "my-project",
+			Alias:           evergreen.CommitQueueAlias,
+			Version:         "version-id",
+			Status:          evergreen.VersionSucceeded,
+			CreateTime:      time.Now().Add(-time.Hour),
+			GithubMergeData: thirdparty.GithubMergeGroup{Org: "10gen", Repo: "mongo", HeadSHA: headSHA},
+		}
 	}
-	require.NoError(t, db.Insert(t.Context(), Collection, p))
 
-	t.Run("SameHeadSHAShouldReturnExistingPatch", func(t *testing.T) {
-		existingID, err := FindDuplicateMergeQueuePatchID(t.Context(), "my-project", "10gen", "mongo", "head-sha", bson.NewObjectId())
-		require.NoError(t, err)
-		assert.Equal(t, p.Id.Hex(), existingID)
-	})
-	t.Run("DifferentHeadSHAShouldReturnNothing", func(t *testing.T) {
-		existingID, err := FindDuplicateMergeQueuePatchID(t.Context(), "my-project", "10gen", "mongo", "other-head-sha", "")
-		require.NoError(t, err)
-		assert.Empty(t, existingID)
-	})
-	t.Run("ExcludedPatchShouldReturnNothing", func(t *testing.T) {
-		existingID, err := FindDuplicateMergeQueuePatchID(t.Context(), "my-project", "10gen", "mongo", "head-sha", p.Id)
-		require.NoError(t, err)
-		assert.Empty(t, existingID)
-	})
+	for tName, tCase := range map[string]struct {
+		modify     func(p *Patch)
+		excludeOwn bool
+		headSHA    string
+		expectDup  bool
+	}{
+		"FinalizedPatchWithSameHeadSHAShouldBeFound": {
+			expectDup: true,
+		},
+		"DifferentHeadSHAShouldNotBeFound": {
+			headSHA: "other-head-sha",
+		},
+		"ExcludedPatchIDShouldNotBeFound": {
+			excludeOwn: true,
+		},
+		"DifferentProjectShouldNotBeFound": {
+			modify: func(p *Patch) { p.Project = "other-project" },
+		},
+		"NonMergeQueueAliasShouldNotBeFound": {
+			modify: func(p *Patch) { p.Alias = evergreen.GithubPRAlias },
+		},
+		"PatchOlderThanOneDayShouldNotBeFound": {
+			modify: func(p *Patch) { p.CreateTime = time.Now().Add(-25 * time.Hour) },
+		},
+		"OldUnfinalizedPatchShouldNotBeFound": {
+			modify: func(p *Patch) {
+				p.Version = ""
+				p.Status = evergreen.VersionCreated
+				p.CreateTime = time.Now().Add(-time.Hour)
+			},
+		},
+		"RecentUnfinalizedPatchShouldBeFound": {
+			modify: func(p *Patch) {
+				p.Version = ""
+				p.Status = evergreen.VersionCreated
+				p.CreateTime = time.Now().Add(-time.Minute)
+			},
+			expectDup: true,
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			t.Cleanup(func() { require.NoError(t, db.ClearCollections(Collection)) })
+
+			p := newMergeQueuePatch("head-sha")
+			if tCase.modify != nil {
+				tCase.modify(&p)
+			}
+			require.NoError(t, db.Insert(t.Context(), Collection, p))
+
+			headSHA := "head-sha"
+			if tCase.headSHA != "" {
+				headSHA = tCase.headSHA
+			}
+			var excludeID bson.ObjectId
+			if tCase.excludeOwn {
+				excludeID = p.Id
+			}
+			existingID, err := FindDuplicateMergeQueuePatchID(t.Context(), "my-project", "10gen", "mongo", headSHA, excludeID)
+			require.NoError(t, err)
+			if tCase.expectDup {
+				assert.Equal(t, p.Id.Hex(), existingID)
+			} else {
+				assert.Empty(t, existingID)
+			}
+		})
+	}
 }
