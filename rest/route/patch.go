@@ -80,6 +80,19 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", p.patchId))
 	}
 
+	if p.Activated != nil {
+		patchDoc, err := foundPatch.ToService()
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting patch to service model"))
+		}
+		if !dbModel.UserCanModifyPatch(ctx, user, patchDoc) {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusForbidden,
+				Message:    fmt.Sprintf("user '%s' is not authorized to change activation of patch '%s'", user.Username(), p.patchId),
+			})
+		}
+	}
+
 	if p.Priority != nil {
 		priority := *p.Priority
 		if ok := validPriority(ctx, priority, *foundPatch.ProjectId, user); !ok {
@@ -496,6 +509,25 @@ func (p *patchAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (p *patchAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
+	existingPatch, err := patch.FindOneId(ctx, p.patchId)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", p.patchId))
+	}
+	if existingPatch == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch '%s' not found", p.patchId),
+		})
+	}
+	// Aborting a finalized patch only aborts its tasks, which any user who can
+	// edit the project's tasks may do, but aborting an unfinalized patch
+	// deletes it.
+	if existingPatch.Version == "" && !dbModel.UserCanModifyPatch(ctx, usr, *existingPatch) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("user '%s' is not authorized to abort patch '%s'", usr.Username(), p.patchId),
+		})
+	}
 	if err := data.AbortPatch(ctx, p.patchId, usr.Id); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting patch '%s'", p.patchId))
 	}
