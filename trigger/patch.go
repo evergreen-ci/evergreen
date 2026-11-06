@@ -309,14 +309,10 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 		finishTime = time.Now()
 	}
 
+	data.githubState, data.githubDescription = patch.GetGithubStateAndDescription(collectiveStatus, startTime, finishTime)
 	if collectiveStatus == evergreen.VersionSucceeded {
 		data.PastTenseStatus = "succeeded"
 		slackColor = evergreenSuccessColor
-		data.githubState = message.GithubStateSuccess
-		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(startTime).String())
-	} else if collectiveStatus == evergreen.VersionFailed {
-		data.githubState = message.GithubStateFailure
-		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(startTime).String())
 	}
 
 	if t.patch.IsGithubPRPatch() {

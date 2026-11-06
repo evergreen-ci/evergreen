@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -1015,4 +1016,23 @@ func GetCollectiveStatusFromPatchStatuses(ctx context.Context, statuses []string
 		return evergreen.VersionSucceeded
 	}
 	return evergreen.VersionCreated
+}
+
+// GetGithubStateAndDescription returns the GitHub status state and description
+// to report for a patch with the given status, which may be a collective
+// status. A zero finish time is treated as the current time.
+func GetGithubStateAndDescription(status string, startTime, finishTime time.Time) (message.GithubState, string) {
+	var state message.GithubState
+	switch status {
+	case evergreen.VersionSucceeded:
+		state = message.GithubStateSuccess
+	case evergreen.VersionFailed:
+		state = message.GithubStateFailure
+	default:
+		return message.GithubStatePending, evergreen.PRTasksRunningDescription
+	}
+	if utility.IsZeroTime(finishTime) {
+		finishTime = time.Now()
+	}
+	return state, fmt.Sprintf("patch finished in %s", finishTime.Sub(startTime).String())
 }
