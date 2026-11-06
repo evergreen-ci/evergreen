@@ -214,3 +214,45 @@ func TestExtractBaseBranchFromHeadRef(t *testing.T) {
 		})
 	}
 }
+
+func TestFindUnprocessedGithubMergeIntents(t *testing.T) {
+	require.NoError(t, db.Clear(IntentCollection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.Clear(IntentCollection))
+	})
+
+	recent := time.Now().UTC().Round(time.Millisecond)
+	old := recent.Add(-2 * time.Hour)
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubMergeIntent{
+		DocumentID: "recent",
+		IntentType: GithubMergeIntentType,
+		HeadSHA:    "recent_sha",
+		CreatedAt:  recent,
+	}))
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubMergeIntent{
+		DocumentID: "old",
+		IntentType: GithubMergeIntentType,
+		HeadSHA:    "old_sha",
+		CreatedAt:  old,
+	}))
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubMergeIntent{
+		DocumentID: "processed",
+		IntentType: GithubMergeIntentType,
+		HeadSHA:    "processed_sha",
+		CreatedAt:  recent,
+		Processed:  true,
+	}))
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubIntent{
+		DocumentID: "pr",
+		IntentType: GithubIntentType,
+		HeadHash:   "pr_sha",
+		CreatedAt:  recent,
+	}))
+
+	intents, err := FindUnprocessedGithubMergeIntents(t.Context())
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []UnprocessedMergeIntent{
+		{ID: "recent", HeadSHA: "recent_sha", CreatedAt: recent},
+		{ID: "old", HeadSHA: "old_sha", CreatedAt: old},
+	}, intents)
+}
