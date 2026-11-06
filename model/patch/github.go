@@ -345,12 +345,18 @@ func HasNewerGithubIntent(ctx context.Context, baseRepoName string, prNumber int
 }
 
 // FindUnprocessedGithubMergeIntentHeadSHAs returns the head SHAs of GitHub merge
-// queue intents that have not yet been processed into a patch. The merge queue
-// patch recovery job uses these to avoid creating a duplicate patch for a merge
-// group whose webhook intent is still in flight.
-func FindUnprocessedGithubMergeIntentHeadSHAs(ctx context.Context) ([]string, error) {
+// queue intents created after createdAfter that have not yet been processed into
+// a patch. The merge queue patch recovery job uses these to avoid creating a
+// duplicate patch for a merge group whose webhook intent is still in flight.
+// Older unprocessed intents are excluded because their processing job was likely
+// lost and they would otherwise block recovery indefinitely.
+func FindUnprocessedGithubMergeIntentHeadSHAs(ctx context.Context, createdAfter time.Time) ([]string, error) {
 	var intents []githubMergeIntent
-	err := db.FindAllQ(ctx, IntentCollection, db.Query(bson.M{processedKey: false, intentTypeKey: GithubMergeIntentType}), &intents)
+	err := db.FindAllQ(ctx, IntentCollection, db.Query(bson.M{
+		processedKey:  false,
+		intentTypeKey: GithubMergeIntentType,
+		createdAtKey:  bson.M{"$gt": createdAfter},
+	}), &intents)
 	if err != nil {
 		return nil, err
 	}

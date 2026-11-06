@@ -23,6 +23,10 @@ import (
 const (
 	mergeQueuePatchRecoveryJobName = "merge-queue-patch-recovery"
 	minimumStuckTime               = 5 * time.Minute
+	// pendingIntentMaxAge is how long an unprocessed merge intent is treated as
+	// still in flight. Intents normally process within seconds, so an older
+	// unprocessed intent most likely lost its processor job.
+	pendingIntentMaxAge = 30 * time.Minute
 )
 
 func init() {
@@ -71,10 +75,10 @@ func (j *mergeQueuePatchRecoveryJob) Run(ctx context.Context) {
 		return
 	}
 
-	// A merge group whose webhook intent has been received but not yet processed
-	// into a patch already has a pending intent. Treat those head SHAs as covered
-	// so we never create a second patch for the same merge group.
-	pendingHeadSHAs, err := patch.FindUnprocessedGithubMergeIntentHeadSHAs(ctx)
+	// A merge group whose webhook intent was recently received but not yet
+	// processed into a patch already has a pending intent. Treat those head SHAs
+	// as covered so we never create a second patch for the same merge group.
+	pendingHeadSHAs, err := patch.FindUnprocessedGithubMergeIntentHeadSHAs(ctx, time.Now().Add(-pendingIntentMaxAge))
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "finding unprocessed merge queue intents"))
 		return
