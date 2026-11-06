@@ -1,0 +1,9 @@
+{
+  project(projectIdentifier: "project-commits-test") {
+    commits(options: { limit: 301 }) {
+      versions {
+        id
+      }
+    }
+  }
+}

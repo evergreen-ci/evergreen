@@ -1,0 +1,42 @@
+{
+  "versions": [
+    {
+      "_id": "repo-version-4",
+      "identifier": "project-commits-test",
+      "r": "gitter_request",
+      "activated": true,
+      "order": 4
+    },
+    {
+      "_id": "tag-version-3",
+      "identifier": "project-commits-test",
+      "r": "git_tag_request",
+      "activated": true,
+      "order": 3
+    },
+    {
+      "_id": "repo-version-2",
+      "identifier": "project-commits-test",
+      "r": "gitter_request",
+      "activated": true,
+      "order": 2
+    },
+    {
+      "_id": "repo-version-1",
+      "identifier": "project-commits-test",
+      "r": "gitter_request",
+      "activated": true,
+      "order": 1
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "project-commits-test",
+      "identifier": "project-commits-test"
+    },
+    {
+      "_id": "empty-project",
+      "identifier": "empty-project"
+    }
+  ]
+}
