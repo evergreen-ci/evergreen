@@ -379,14 +379,20 @@ func sourceCachePlanKeyParts(key string) (namespace, revision string) {
 
 func TestSourceCachePlan(t *testing.T) {
 	for tName, tCase := range map[string]struct {
-		requester   string
-		head        string
-		insertPatch bool
-		want        [][2]string
+		requester    string
+		head         string
+		insertPatch  bool
+		want         [][2]string
+		tagTriggered bool
 	}{
 		"MainlineRestoresTheBaseArtifact": {
 			requester: evergreen.RepotrackerVersionRequester,
 			want:      [][2]string{{"base", "abc123"}},
+		},
+		"GitTagBuildIsMarkedTagTriggered": {
+			requester:    evergreen.GitTagRequester,
+			want:         [][2]string{{"base", "abc123"}},
+			tagTriggered: true,
 		},
 		"PullRequestRestoresThePRHeadThenTheBaseArtifact": {
 			requester: evergreen.GithubPRRequester,
@@ -429,6 +435,7 @@ func TestSourceCachePlan(t *testing.T) {
 			// is not the tested revision needs a PR checked out over it.
 			for _, restoreKey := range plan.restoreKeys {
 				assert.Equal(t, restoreKey.Revision != plan.saveKey.Revision, restoreKey.PRCheckout)
+				assert.Equal(t, tCase.tagTriggered, restoreKey.TagTriggered)
 			}
 		})
 	}

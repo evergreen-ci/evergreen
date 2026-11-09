@@ -752,12 +752,25 @@ func (h *attachFilesHandler) Parse(ctx context.Context, r *http.Request) error {
 		grip.Error(ctx, message)
 		return errors.Wrap(err, message)
 	}
+	// Drop invalid links rather than rejecting the request so that a bad link
+	// doesn't fail the task or prevent its valid artifacts from being attached.
+	files, err := artifact.RemoveInvalidLinks(h.files)
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
+		"message":           "dropping invalid artifact links",
+		"task_id":           h.taskID,
+		"num_files":         len(h.files),
+		"num_files_dropped": len(h.files) - len(files),
+	}))
+	h.files = files
 	return nil
 }
 
 // Run updates file mappings for a task or build
 func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 	t := MustHaveTask(ctx)
+	if len(h.files) == 0 {
+		return gimlet.NewJSONResponse(fmt.Sprintf("No valid artifact files to attach for task %s", t.Id))
+	}
 
 	discoverAndCacheBucketLifecycleRules(ctx, t, h.files)
 
@@ -2033,18 +2046,15 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(fmt.Sprintf("Successfully created check run for  '%v'", t.Id))
 }
 
-// POST /rest/v2/task/{task_id}/github_dynamic_access_token/{owner}/{repo}
 // POST /rest/v2/task/{task_id}/github_dynamic_access_token/{owner}
 // This route is used to create user-used GitHub access token for a task.
 // It returns an installation token using the task's project's GitHub app and
 // gets the intersecting permissions from the requester's permission group and the
-// permissions requested. The repo is only sent by older agents and can be
-// removed along with the {owner}/{repo} route once they're no longer running.
+// permissions requested.
 // See createInstallationToken for tokens created with our own GitHub app,
 // for example to use for cloning sources and modules.
 type createGitHubDynamicAccessToken struct {
 	owner  string
-	repo   string
 	taskID string
 
 	permissions    github.InstallationPermissions
@@ -2065,7 +2075,6 @@ func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 	if h.owner = gimlet.GetVars(r)["owner"]; h.owner == "" {
 		return errors.New("missing owner")
 	}
-	h.repo = gimlet.GetVars(r)["repo"]
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task_id")
 	}
@@ -2170,7 +2179,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	// This cannot use a cached token because if the token was shared, it
 	// wouldn't be possible to revoke them without revoking tokens that other
 	// tasks could be using.
-	token, permissions, err := githubAppAuth.CreateInstallationToken(ctx, h.owner, h.repo, &github.InstallationTokenOptions{
+	token, permissions, err := githubAppAuth.CreateInstallationToken(ctx, h.owner, "", &github.InstallationTokenOptions{
 		Permissions: permissions,
 	})
 	if err != nil {
@@ -2178,11 +2187,10 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 			"message":    "creating installation token",
 			"task_id":    t.Id,
 			"owner":      h.owner,
-			"repo":       h.repo,
 			"project_id": t.Project,
 			"app_id":     githubAppAuth.AppID,
 		}))
-		wrappedErr := errors.Wrapf(err, "creating installation token for '%s/%s'", h.owner, h.repo)
+		wrappedErr := errors.Wrapf(err, "creating installation token for '%s'", h.owner)
 		if ctx.Err() != nil {
 			// Context errors are transient and retryable with,
 			// so return an internal error to allow the agent to retry.
@@ -2193,7 +2201,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		return gimlet.MakeJSONErrorResponder(wrappedErr)
 	}
 	if token == "" {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("no installation token returned for '%s/%s'", h.owner, h.repo))
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("no installation token returned for '%s'", h.owner))
 	}
 
 	return gimlet.NewJSONResponse(&apimodels.Token{

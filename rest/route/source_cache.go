@@ -290,6 +290,9 @@ func buildSourceCachePlan(ctx context.Context, t *task.Task, pRef *model.Project
 	if err != nil {
 		return nil, errors.Wrap(err, "resolving the PR head")
 	}
+	// A git-tag build's own git describe --tags only works on a tree that has
+	// the trigger tag, so the agent must know a refresh failure cost it the tag.
+	tagTriggered := evergreen.IsGitTagRequester(t.Requester)
 
 	candidates := []sourceCacheCandidate{{revision: t.Revision, namespace: namespace}}
 	if prRevision != "" && prRevision != t.Revision {
@@ -307,7 +310,7 @@ func buildSourceCachePlan(ctx context.Context, t *task.Task, pRef *model.Project
 		key := evergreen.SourceCacheObjectKey(pRef.Owner, pRef.Repo, candidate.namespace, req.Branch, candidate.revision, req.CloneDepth, req.RecurseSubmodules)
 		// A restore key whose tree is not the tested revision needs the PR checked
 		// out over it, so the agent never re-derives that from the key pair.
-		restoreKey := apimodels.SourceCacheRestoreKey{Revision: candidate.revision, Key: key, PRCheckout: candidate.revision != saveRevision}
+		restoreKey := apimodels.SourceCacheRestoreKey{Revision: candidate.revision, Key: key, PRCheckout: candidate.revision != saveRevision, TagTriggered: tagTriggered}
 		plan.restoreKeys = append(plan.restoreKeys, restoreKey)
 		if i == 0 {
 			plan.saveKey = restoreKey

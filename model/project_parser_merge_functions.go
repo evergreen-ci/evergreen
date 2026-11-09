@@ -277,13 +277,6 @@ func (pp *ParserProject) mergeProjectConfigFields(toMerge *ParserProject) {
 	}
 
 	var redefined []string
-	if other.TaskAnnotationSettings != nil {
-		if pcf.TaskAnnotationSettings != nil {
-			redefined = append(redefined, "task_annotation_settings")
-		} else {
-			pcf.TaskAnnotationSettings = other.TaskAnnotationSettings
-		}
-	}
 	if other.BuildBaronSettings != nil {
 		if pcf.BuildBaronSettings != nil {
 			redefined = append(redefined, "build_baron_settings")

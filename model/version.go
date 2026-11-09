@@ -618,6 +618,7 @@ func (v *Version) GetHighestTaskExecution(ctx context.Context) (int, error) {
 type VersionBuildStatus struct {
 	BuildVariant     string                `bson:"build_variant" json:"id"`
 	DisplayName      string                `bson:"display_name,omitempty" json:"display_name,omitempty"`
+	Tags             []string              `bson:"tags,omitempty" json:"-"`
 	BuildId          string                `bson:"build_id,omitempty" json:"build_id,omitempty"`
 	BatchTimeTasks   []BatchTimeTaskStatus `bson:"batchtime_tasks,omitempty" json:"batchtime_tasks,omitempty"`
 	ActivationStatus `bson:",inline"`
@@ -675,6 +676,7 @@ type SourceModule struct {
 var (
 	VersionBuildStatusIdKey             = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildId")
 	VersionBuildStatusDisplayNameKey    = bsonutil.MustHaveTag(VersionBuildStatus{}, "DisplayName")
+	VersionBuildStatusTagsKey           = bsonutil.MustHaveTag(VersionBuildStatus{}, "Tags")
 	VersionBuildStatusVariantKey        = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildVariant")
 	VersionBuildStatusActivatedKey      = bsonutil.MustHaveTag(VersionBuildStatus{}, "Activated")
 	VersionBuildStatusBatchTimeTasksKey = bsonutil.MustHaveTag(VersionBuildStatus{}, "BatchTimeTasks")
@@ -1010,13 +1012,22 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 	if utility.IsZeroTime(ingestTime) {
 		ingestTime = v.CreateTime
 	}
-	resolver := NewModuleResolver(projectRef, ModuleResolverOpts{
-		VersionID:  v.Id,
-		Revision:   v.Revision,
-		Requester:  v.Requester,
-		IngestTime: ingestTime,
-	})
-	return resolver.Manifest(ctx, v, moduleList)
+	opts := ModuleResolverOpts{
+		VersionID:           v.Id,
+		Revision:            v.Revision,
+		Requester:           v.Requester,
+		RevisionOrderNumber: v.RevisionOrderNumber,
+		IngestTime:          ingestTime,
+	}
+	if v.TriggerModule != "" {
+		opts.TriggeringModuleCommit = &manifest.Module{
+			Owner:    v.TriggerOwner,
+			Repo:     v.TriggerRepo,
+			Branch:   v.TriggerBranch,
+			Revision: v.TriggerSHA,
+		}
+	}
+	return NewModuleResolver(projectRef, opts).Manifest(ctx, v, moduleList)
 }
 
 // setChangedModules records which modules changed compared to the version's

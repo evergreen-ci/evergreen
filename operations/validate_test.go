@@ -169,7 +169,7 @@ func TestValidateFile(t *testing.T) {
 				path = filepath.Join(t.TempDir(), "project.yml")
 				require.NoError(t, os.WriteFile(path, sampleYAML, 0644))
 			}
-			err := validateFile(&ClientSettings{}, path, testCase.quiet, testCase.errorOnWarnings, nil, "", false)
+			err := validateFile(&ClientSettings{}, path, testCase.quiet, testCase.errorOnWarnings, nil, "")
 
 			if testCase.expectErr != "" {
 				assert.ErrorContains(t, err, testCase.expectErr)
@@ -190,8 +190,6 @@ func TestLoadProjectYAML(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		useNonexistentPath bool
 		fileContent        []byte
-		serviceFlagErr     error
-		cliAnchors         bool
 		expectErr          string
 	}{
 		"SucceedsWithValidFile": {},
@@ -203,20 +201,12 @@ func TestLoadProjectYAML(t *testing.T) {
 			fileContent: []byte("invalid: [yaml: bad"),
 			expectErr:   "invalid configuration",
 		},
-		"SucceedsWithWarningWhenGetServiceFlagsFails": {
-			serviceFlagErr: errors.New("not authorized"),
-		},
-		"CrossFileAnchorYAMLFailsWithoutFlag": {
+		"CrossFileAnchorYAMLSucceeds": {
 			fileContent: crossFileAnchorMainYAML,
-			expectErr:   "invalid configuration",
-		},
-		"CrossFileAnchorYAMLSucceedsWithCLIFlag": {
-			fileContent: crossFileAnchorMainYAML,
-			cliAnchors:  true,
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			mockClient = &client.Mock{MockServiceFlagErr: testCase.serviceFlagErr}
+			mockClient = &client.Mock{}
 			var path string
 			if testCase.useNonexistentPath {
 				path = filepath.Join("nonexistent", "file.yml")
@@ -228,7 +218,7 @@ func TestLoadProjectYAML(t *testing.T) {
 				path = filepath.Join(t.TempDir(), "project.yml")
 				require.NoError(t, os.WriteFile(path, content, 0644))
 			}
-			projectYaml, err := loadProjectYAML(&ClientSettings{}, path, false, false, nil, "", testCase.cliAnchors)
+			projectYaml, err := loadProjectYAML(&ClientSettings{}, path, false, false, nil, "")
 
 			if testCase.expectErr != "" {
 				assert.ErrorContains(t, err, testCase.expectErr)

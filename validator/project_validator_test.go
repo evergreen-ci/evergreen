@@ -1831,12 +1831,29 @@ func TestValidateProjectLimits(t *testing.T) {
 		errs := validateProjectLimits(t.Context(), settings, project, &model.ProjectRef{}, false)
 		require.Len(t, errs, 1)
 		assert.Equal(t, Error, errs[0].Level)
-		assert.Contains(t, "project's total number of tasks (100) exceeds maximum limit (10)", errs[0].Message)
+		assert.Equal(t, "project's total number of non-virtual tasks (100) exceeds maximum limit (10)", errs[0].Message)
 	})
 	t.Run("SucceedsWithNoMaxTaskLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{}
 		project := makeProjectWithDoubleNumTasks(50)
 		assert.Empty(t, validateProjectLimits(t.Context(), settings, project, &model.ProjectRef{}, false))
+	})
+	t.Run("IgnoresVirtualTasksTowardLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxTasksPerVersion: 6,
+			},
+		}
+		project := makeProjectWithDoubleNumTasks(50)
+		for i := 3; i < len(project.Tasks); i++ {
+			project.Tasks[i].Virtual = true
+		}
+		assert.Empty(t, validateProjectLimits(t.Context(), settings, project, &model.ProjectRef{}, false))
+
+		project.Tasks[3].Virtual = false
+		errs := validateProjectLimits(t.Context(), settings, project, &model.ProjectRef{}, false)
+		require.Len(t, errs, 1)
+		assert.Equal(t, "project's total number of non-virtual tasks (8) exceeds maximum limit (6)", errs[0].Message)
 	})
 }
 
@@ -5439,4 +5456,47 @@ func TestValidateSourceCacheMode(t *testing.T) {
 
 	ref.SourceCacheMode = model.SourceCacheMode("LATEST_AND_GREATEST")
 	assert.NotEmpty(t, validateSourceCacheMode(t.Context(), nil, nil, ref, false))
+}
+
+func TestHasPathTraversal(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		prefix       string
+		expTraversal bool
+	}{
+		"EmptyPrefix":             {prefix: ""},
+		"SimplePrefix":            {prefix: "modules"},
+		"NestedPrefix":            {prefix: "modules/subdir"},
+		"ParentComponent":         {prefix: "../escape", expTraversal: true},
+		"MultipleParents":         {prefix: "../../escape", expTraversal: true},
+		"DotDotFilenameIsAllowed": {prefix: "..backup"},
+		"AbsolutePath":            {prefix: "/etc", expTraversal: true},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			assert.Equal(t, testCase.expTraversal, hasPathTraversal(testCase.prefix))
+		})
+	}
+}
+
+func TestCheckModulePrefixesRejectsTraversalPrefix(t *testing.T) {
+	project := &model.Project{
+		Modules: model.ModuleList{
+			{
+				Name:   "module",
+				Branch: "main",
+				Repo:   "git@github.com:foo/bar.git",
+				Owner:  "foo",
+				Prefix: "../../escape",
+			},
+		},
+	}
+
+	errs := checkModulePrefixes(project)
+	require.NotEmpty(t, errs)
+	found := false
+	for _, err := range errs {
+		if err.Level == Error && strings.Contains(err.Message, "cannot be absolute or contain '..'") {
+			found = true
+		}
+	}
+	assert.True(t, found, "expected an error-level validation failure for the traversal prefix")
 }

@@ -17,6 +17,7 @@ type simpleUser struct {
 func (u *simpleUser) DisplayName() string                                       { return u.Name }
 func (u *simpleUser) Email() string                                             { return u.EmailAddress }
 func (u *simpleUser) Username() string                                          { return u.UserId }
+func (u *simpleUser) OktaID() string                                            { return "" }
 func (u *simpleUser) IsNil() bool                                               { return u == nil }
 func (u *simpleUser) GetAPIKey() string                                         { return u.APIKey }
 func (u *simpleUser) GetAccessToken() string                                    { return "" }

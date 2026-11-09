@@ -45,6 +45,14 @@ After making changes, run `make lint-<package>` for each affected package and ve
 
 Adding a `ServiceFlags` field requires running `make test-service-graphql`.
 
+CI also runs three "linter"-tagged checks that `make lint-<package>` does not cover. Run them before pushing:
+
+```bash
+make modernize                        # check-modernize-*: gopls modernizers, e.g. strings.Split in a range → strings.SplitSeq
+make swaggo-install swaggo-format     # verify-swaggo-fmt: realigns swagger comment tabs (or check only: bash scripts/verify-swaggo-fmt.sh)
+make test-rest-openapi                # response fields in rest/model that are pointers/slices/maps without omitempty need extensions:"x-nullable" or "!x-nullable"
+```
+
 ### CLI Changes
 
 Whenever modifying the `operations/` package (CLI commands), increment `ClientVersion` in `config.go`.
@@ -174,6 +182,21 @@ AI-assisted code is welcome, but the author is responsible for the final result.
 * Generated tests should be meaningful: prune cases that are impossible, redundant, or that test the mock rather than
   the code under test.
 * Check for performance anti-patterns the AI commonly introduces (DB calls inside deep loops, redundant queries).
+
+### Security
+For any change that touches routes, GraphQL resolvers or fields, agent or host endpoints, permissions, shell or git
+commands, host setup scripts, outbound HTTP, file paths, notifications, or secrets, load the `evergreen-secure-coding`
+skill (`.claude/skills/evergreen-secure-coding/SKILL.md`). The non-negotiables:
+* Authorize the exact object being acted on, before acting on it. Routes with an ID in the path need authorization
+  middleware in `Wrap(...)`; `requireUser` only authenticates.
+* Apply every check to all surfaces that reach the same operation (REST v2, `service/`, GraphQL, agent routes) in the
+  same PR.
+* Derive authorization scope from the path-bound object only, never from query strings, GraphQL operation names, or
+  request bodies. Authorize every ID in a list and both ends of a copy or attach.
+* Agent and host routes use the identity from the auth middleware (`MustHaveTask`, `MustHaveHost`), never IDs from the
+  request.
+* Quote shell values with `util.ShellQuote`, never expand admin settings expansions in user-influenced strings, fetch
+  user-influenced URLs only through an SSRF-guarded client, and contain paths built from untrusted data.
 
 ## AI Tooling
 

@@ -2138,7 +2138,6 @@ type APIServiceFlags struct {
 	TaskDispatchDisabled               bool `json:"task_dispatch_disabled"`
 	HostInitDisabled                   bool `json:"host_init_disabled"`
 	LargeParserProjectsDisabled        bool `json:"large_parser_projects_disabled"`
-	CrossFileYAMLAnchorsEnabled        bool `json:"cross_file_yaml_anchors_enabled"`
 	MonitorDisabled                    bool `json:"monitor_disabled"`
 	MergeQueueRecoveryEnabled          bool `json:"merge_queue_recovery_enabled"`
 	AlertsDisabled                     bool `json:"alerts_disabled"`
@@ -2193,8 +2192,7 @@ type APIServiceFlags struct {
 
 // APIServiceFlagsResponse contains service flags used by Evergreen clients.
 type APIServiceFlagsResponse struct {
-	DebugSpawnHostDisabled      bool `json:"debug_spawn_host_disabled"`
-	CrossFileYAMLAnchorsEnabled bool `json:"cross_file_yaml_anchors_enabled"`
+	DebugSpawnHostDisabled bool `json:"debug_spawn_host_disabled"`
 }
 
 type APIProjectTasksPair struct {
@@ -2612,7 +2610,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
 		as.HostInitDisabled = v.HostInitDisabled
 		as.LargeParserProjectsDisabled = v.LargeParserProjectsDisabled
-		as.CrossFileYAMLAnchorsEnabled = v.CrossFileYAMLAnchorsEnabled
 		as.MonitorDisabled = v.MonitorDisabled
 		as.MergeQueueRecoveryEnabled = v.MergeQueueRecoveryEnabled
 		as.AlertsDisabled = v.AlertsDisabled
@@ -2670,7 +2667,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		TaskDispatchDisabled:                 as.TaskDispatchDisabled,
 		HostInitDisabled:                     as.HostInitDisabled,
 		LargeParserProjectsDisabled:          as.LargeParserProjectsDisabled,
-		CrossFileYAMLAnchorsEnabled:          as.CrossFileYAMLAnchorsEnabled,
 		MonitorDisabled:                      as.MonitorDisabled,
 		MergeQueueRecoveryEnabled:            as.MergeQueueRecoveryEnabled,
 		AlertsDisabled:                       as.AlertsDisabled,

@@ -353,7 +353,7 @@ file.
 [Version-controlled project settings configurations](Project-and-Distro-Settings#version-control) may be defined
 in included files as well as the main config file. Alias lists (e.g. `patch_aliases`, `github_pr_aliases`) are
 combined across all files in include order, with the main config file's entries first. Settings structs
-(`task_annotation_settings`, `build_baron_settings`, `workstation_config`) may only be defined in one file;
+(`build_baron_settings`, `workstation_config`) may only be defined in one file;
 defining them in multiple files is a validation error.
 
 ```yaml
@@ -363,15 +363,13 @@ include:
     module: module_name
 ```
 
-#### YAML Anchors (Beta)
-
-Cross-file YAML anchor support is in beta. It must be enabled either globally by an Evergreen admin via the **Cross-file YAML anchors** service flag, or per-invocation using the `--cross-file-anchors` flag on `evergreen patch`, `evergreen evaluate`, or `evergreen validate`. The CLI flag is useful for testing your config before the feature is enabled globally for your project.
+#### YAML Anchors
 
 YAML anchors (`&name`) and aliases (`*name`) are supported within a single file and across include files.
 
 An anchor defined in the main config file or in an earlier include file can be referenced as an alias in any later include file. Files are processed in the order they are listed in `include`, so an alias can only refer to an anchor that was defined in a file that appears earlier in the list (or in the main config file).
 
-Note: [version-controlled project settings configurations](Project-and-Distro-Settings#version-control) are not yet supported in combination with YAML anchors; they are not processed when `--yaml-anchors` is enabled.
+Note: [version-controlled project settings configurations](Project-and-Distro-Settings#version-control) are not yet supported in combination with YAML anchors; they are not processed when YAML anchors are enabled.
 
 ```yaml
 # main evergreen.yml — defines an anchor for reuse
@@ -481,8 +479,10 @@ Manifest" will contain details on how the modules were parsed from YAML and
 which git revisions are being used. If no modules have been defined, the
 "Version Manifest" will not appear at all in the Spruce UI.
 
-For mainline commits and [trigger versions](Project-and-Distro-Settings#project-triggers), a new
-manifest will be created that uses the latest revision available for each module.
+For mainline commits and [trigger versions](Project-and-Distro-Settings#project-triggers), each module moves to
+the newest revision Evergreen knows about, unless that's older than what the previous version used, in which case the
+previous revision is kept. A version created by a push level trigger from a module only moves that module to the
+commit that triggered it, and keeps every other module at the revision the previous version used.
 
 For manual patches, GitHub PRs, and periodic builds, by default, the git revisions in the
 version manifest will be inherited from its base version (i.e. the mainline commit version of the patch's base git revision).
@@ -502,6 +502,8 @@ Each module in the manifest records a `selection_rule` explaining how its revisi
 - `github_fallback`: the newest commit on the module branch according to GitHub. This is used when Evergreen hasn't
   received a push for the module branch before the version was created, and for patches that use `auto_update`.
 - `base_version`: inherited from the base version's manifest.
+- `carried_forward`: kept from the previous mainline or trigger version's manifest, for example because a different
+  module triggered the version.
 
 The manifest also records `changed_modules`, the modules that were added, removed, or moved to a different commit
 compared to the version in `previous_version_id`. For patches, that's the base version. Otherwise, it's the previous

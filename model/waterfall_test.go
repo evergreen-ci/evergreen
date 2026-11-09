@@ -881,3 +881,143 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 		})
 	}
 }
+
+func TestWaterfallTagFilters(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
+	})
+
+	requester := evergreen.RepotrackerVersionRequester
+	versions := []Version{
+		{
+			Id: "v1", Identifier: "project", Requester: requester, RevisionOrderNumber: 100, Activated: utility.TruePtr(),
+			BuildIds: []string{"b1", "b2"},
+			BuildVariants: []VersionBuildStatus{
+				{BuildId: "b1", BuildVariant: "alpha", DisplayName: "Alpha", Tags: []string{"linux"}, ActivationStatus: ActivationStatus{Activated: true}},
+				{BuildId: "b2", BuildVariant: "beta", DisplayName: "Beta", Tags: []string{"arm"}},
+			},
+		},
+		{
+			Id: "v2", Identifier: "project", Requester: requester, RevisionOrderNumber: 101, Activated: utility.TruePtr(),
+			BuildIds: []string{"b3"},
+			BuildVariants: []VersionBuildStatus{
+				{BuildId: "b3", BuildVariant: "beta", DisplayName: "Beta", Tags: []string{"arm"}, ActivationStatus: ActivationStatus{Activated: true}},
+			},
+		},
+		{Id: "v3", Identifier: "project", Requester: requester, RevisionOrderNumber: 102, Activated: utility.TruePtr()},
+	}
+	for i := range versions {
+		require.NoError(t, versions[i].Insert(t.Context()))
+	}
+	builds := []build.Build{
+		{Id: "b1", Version: "v1", BuildVariant: "alpha", DisplayName: "Alpha", Activated: true, Tags: []string{"linux"}},
+		{Id: "b2", Version: "v1", BuildVariant: "beta", DisplayName: "Beta", Tags: []string{"arm"}},
+		{Id: "b3", Version: "v2", BuildVariant: "beta", DisplayName: "Beta", Activated: true, Tags: []string{"arm"}},
+	}
+	for i := range builds {
+		require.NoError(t, builds[i].Insert(t.Context()))
+	}
+	tasks := []task.Task{
+		{Id: "t1", DisplayName: "Owned", Project: "project", Version: "v1", RevisionOrderNumber: 100, Requester: requester, BuildId: "b1", BuildVariant: "alpha", BuildVariantDisplayName: "Alpha", BuildVariantTags: []string{"linux"}, Tags: []string{"team"}, Activated: true, DisplayStatusCache: evergreen.TaskFailed},
+		{Id: "t2", DisplayName: "Other", Project: "project", Version: "v1", RevisionOrderNumber: 100, Requester: requester, BuildId: "b1", BuildVariant: "alpha", BuildVariantDisplayName: "Alpha", BuildVariantTags: []string{"linux"}, Tags: []string{"other"}, Activated: true, DisplayStatusCache: evergreen.TaskSucceeded},
+		{Id: "t3", DisplayName: "Inactive Build", Project: "project", Version: "v1", RevisionOrderNumber: 100, Requester: requester, BuildId: "b2", BuildVariant: "beta", BuildVariantDisplayName: "Beta", BuildVariantTags: []string{"arm"}, Tags: []string{"team"}, Activated: true, DisplayStatusCache: evergreen.TaskFailed},
+		{Id: "t4", DisplayName: "Other Version", Project: "project", Version: "v2", RevisionOrderNumber: 101, Requester: requester, BuildId: "b3", BuildVariant: "beta", BuildVariantDisplayName: "Beta", BuildVariantTags: []string{"arm"}, Tags: []string{"team"}, Activated: true, DisplayStatusCache: evergreen.TaskSucceeded},
+		{Id: "display", DisplayName: "Display", Project: "project", Version: "v1", RevisionOrderNumber: 100, Requester: requester, BuildId: "b1", BuildVariant: "alpha", BuildVariantDisplayName: "Alpha", BuildVariantTags: []string{"linux"}, DisplayOnly: true, ExecutionTasks: []string{"exec1", "exec2"}, Activated: true, DisplayStatusCache: evergreen.TaskFailed},
+		{Id: "exec1", DisplayName: "Execution One", Project: "project", Version: "v1", RevisionOrderNumber: 100, Requester: requester, BuildId: "b1", BuildVariant: "alpha", BuildVariantDisplayName: "Alpha", BuildVariantTags: []string{"linux"}, DisplayTaskId: utility.ToStringPtr("display"), Tags: []string{"display-team"}, Activated: true, DisplayStatusCache: evergreen.TaskFailed},
+		{Id: "exec2", DisplayName: "Execution Two", Project: "project", Version: "v1", RevisionOrderNumber: 100, Requester: requester, BuildId: "b1", BuildVariant: "alpha", BuildVariantDisplayName: "Alpha", BuildVariantTags: []string{"linux"}, DisplayTaskId: utility.ToStringPtr("display"), Tags: []string{"display-team"}, Activated: true, DisplayStatusCache: evergreen.TaskFailed},
+	}
+	for i := range tasks {
+		require.NoError(t, tasks[i].Insert(t.Context()))
+	}
+
+	t.Run("VersionVariantTags", func(t *testing.T) {
+		for _, tc := range []struct {
+			name string
+			opts WaterfallOptions
+			want []string
+		}{
+			{name: "NoTagsIncludesUntaggedVersions", want: []string{"v3", "v2", "v1"}},
+			{name: "MatchesAnyVariantTag", opts: WaterfallOptions{VariantTags: []string{"linux", "arm"}}, want: []string{"v2", "v1"}},
+			{name: "TagsAreExactAndCaseSensitive", opts: WaterfallOptions{VariantTags: []string{"Linux"}}, want: []string{}},
+			{name: "MatchesVariantNameAndTagOnSameBuild", opts: WaterfallOptions{Variants: []string{"Alpha"}, VariantCaseSensitive: true, VariantTags: []string{"arm"}}, want: []string{}},
+			{name: "OmitsInactiveTaggedBuilds", opts: WaterfallOptions{VariantTags: []string{"arm"}, OmitInactiveBuilds: true}, want: []string{"v2"}},
+			{name: "PaginatesMatchingVariants", opts: WaterfallOptions{VariantTags: []string{"arm"}, MinOrder: 100}, want: []string{"v2"}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				tc.opts.Limit = 5
+				tc.opts.Requesters = []string{requester}
+				found, err := GetActiveWaterfallVersions(t.Context(), "project", tc.opts)
+				require.NoError(t, err)
+				ids := []string{}
+				for _, v := range found {
+					ids = append(ids, v.Id)
+				}
+				assert.Equal(t, tc.want, ids)
+			})
+		}
+	})
+
+	t.Run("TaskFilteredVersions", func(t *testing.T) {
+		for _, tc := range []struct {
+			name string
+			opts WaterfallOptions
+			want []string
+		}{
+			{name: "MatchesTaskTags", opts: WaterfallOptions{TaskTags: []string{"team"}}, want: []string{"v2", "v1"}},
+			{name: "CombinesTaskAndVariantTags", opts: WaterfallOptions{TaskTags: []string{"team"}, VariantTags: []string{"linux"}}, want: []string{"v1"}},
+			{name: "MatchesExecutionTaskTagsWhenSelectingVersions", opts: WaterfallOptions{TaskTags: []string{"display-team"}, Tasks: []string{"Execution"}, TaskCaseSensitive: true, Statuses: []string{evergreen.TaskFailed}}, want: []string{"v1"}},
+			{name: "TagsDoNotMatchAcrossTasks", opts: WaterfallOptions{TaskTags: []string{"other"}, VariantTags: []string{"arm"}}, want: []string{}},
+			{name: "DoesNotOmitInactiveBuildsWhenSelectingByTask", opts: WaterfallOptions{TaskTags: []string{"team"}, VariantTags: []string{"arm"}, Statuses: []string{evergreen.TaskFailed}, OmitInactiveBuilds: true}, want: []string{"v1"}},
+			{name: "MatchesAnyTaskTag", opts: WaterfallOptions{TaskTags: []string{"missing", "team"}}, want: []string{"v2", "v1"}},
+			{name: "TagsAreExactAndCaseSensitive", opts: WaterfallOptions{TaskTags: []string{"TEAM"}}, want: []string{}},
+			{name: "PaginatesBackwardWithTagFilters", opts: WaterfallOptions{TaskTags: []string{"team"}, MinOrder: 100}, want: []string{"v2"}},
+			{name: "PaginatesForwardWithTagFilters", opts: WaterfallOptions{TaskTags: []string{"team"}, MaxOrder: 101}, want: []string{"v1"}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				tc.opts.Limit = 5
+				tc.opts.Requesters = []string{requester}
+				searchOffset := 103
+				if tc.opts.MinOrder != 0 {
+					searchOffset = tc.opts.MinOrder
+				} else if tc.opts.MaxOrder != 0 {
+					searchOffset = tc.opts.MaxOrder
+				}
+				found, err := GetActiveVersionsByTaskFilters(t.Context(), "project", tc.opts, searchOffset)
+				require.NoError(t, err)
+				ids := []string{}
+				for _, v := range found {
+					ids = append(ids, v.Id)
+				}
+				assert.Equal(t, tc.want, ids)
+			})
+		}
+	})
+
+	t.Run("VersionBuilds", func(t *testing.T) {
+		for _, tc := range []struct {
+			name string
+			opts WaterfallOptions
+			want map[string][]string
+		}{
+			{name: "NoTagsPreservesAllTasks", want: map[string][]string{"b1": {"display", "t2", "t1"}, "b2": {"t3"}}},
+			{name: "MatchesTaskAndVariantTags", opts: WaterfallOptions{TaskTags: []string{"team"}, VariantTags: []string{"linux"}}, want: map[string][]string{"b1": {"t1"}}},
+			{name: "OmitsDisplayTaskWhenOnlyExecutionTasksHaveMatchingTags", opts: WaterfallOptions{TaskTags: []string{"display-team"}}, want: map[string][]string{}},
+			{name: "AppliesStatusToTaggedTask", opts: WaterfallOptions{TaskTags: []string{"team"}, Statuses: []string{evergreen.TaskSucceeded}}, want: map[string][]string{}},
+			{name: "OmitsInactiveTaggedBuilds", opts: WaterfallOptions{VariantTags: []string{"arm"}, OmitInactiveBuilds: true}, want: map[string][]string{}},
+			{name: "MatchesAnyVariantTag", opts: WaterfallOptions{VariantTags: []string{"missing", "arm"}}, want: map[string][]string{"b2": {"t3"}}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				found, err := GetVersionBuilds(t.Context(), versions[0], tc.opts)
+				require.NoError(t, err)
+				got := map[string][]string{}
+				for _, b := range found {
+					for _, task := range b.Tasks {
+						got[b.Id] = append(got[b.Id], task.Id)
+					}
+				}
+				assert.Equal(t, tc.want, got)
+			})
+		}
+	})
+}
