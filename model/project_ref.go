@@ -2950,8 +2950,6 @@ func (p *ProjectRef) isValidCron(ctx context.Context, proposedCron time.Time, no
 	if mostRecentCommit == nil {
 		return true, nil
 	}
-	// The duplicate-cron check reads batchtime tasks, which live in a dedicated
-	// collection.
 	if _, err := mostRecentCommit.GetBuildVariants(ctx); err != nil {
 		return false, errors.Wrap(err, "getting build variant info for version")
 	}
@@ -2993,14 +2991,69 @@ func (p *ProjectRef) GetActivationTimeForTask(ctx context.Context, t *BuildVaria
 		return time.Now(), nil
 	}
 
-	lastActivatedTask, err := FindLastActivatedBatchTimeTask(ctx, p.Id, t.Variant, t.Name)
+	lastActivated, err := findLastActivatedTaskBatchTime(ctx, p.Id, t.Variant, t.Name)
 	if err != nil {
-		return versionCreateTime, errors.Wrap(err, "finding last activated batchtime task")
+		return versionCreateTime, errors.Wrapf(err, "finding last activated batchtime task '%s' in build variant '%s'", t.Name, t.Variant)
 	}
-	if lastActivatedTask == nil {
+	if lastActivated == nil {
 		return versionCreateTime, nil
 	}
-	return lastActivatedTask.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTimeForTask(t))), nil
+	return lastActivated.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTimeForTask(t))), nil
+}
+
+// findLastActivatedTaskBatchTime returns the batchtime task status for the
+// given build variant and task from the most recent version in which that task
+// was activated, or nil if there is no such version.
+func findLastActivatedTaskBatchTime(ctx context.Context, projectID, bvName, taskName string) (*BatchTimeTaskStatus, error) {
+	// In newer versions, task batchtime info is stored in a separate
+	// collection.
+	bt, err := VersionTaskBatchTimesFindByLastTaskActivation(ctx, projectID, bvName, taskName)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding batchtime task activation")
+	}
+	// In the legacy case, versions may still have task batchtime stored
+	// directly in the version doc, so check for that as well.
+	v, err := VersionFindOne(ctx, VersionByLastTaskActivation(projectID, bvName, taskName).WithFields(VersionBuildVariantsKey, VersionRevisionOrderNumberKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding batchtime task activation")
+	}
+
+	if v != nil && (bt == nil || v.RevisionOrderNumber >= bt.Order) {
+		// The last activated task is in a version that has the legacy batchtime
+		// task status stored in the version doc, so return that.
+		return batchTimeTaskStatusFor(v.BuildVariants, bvName, taskName), nil
+	}
+
+	if bt == nil {
+		return nil, nil
+	}
+
+	return batchTimeTaskStatusFor(versionBuildVariantsFromTaskBatchTimes(bt.BuildVariants), bvName, taskName), nil
+}
+
+func versionBuildVariantsFromTaskBatchTimes(bt []BuildVariantTaskBatchTime) []VersionBuildStatus {
+	buildStatuses := make([]VersionBuildStatus, len(bt))
+	for i, v := range bt {
+		buildStatuses[i] = VersionBuildStatus{
+			BuildVariant:   v.BuildVariant,
+			BatchTimeTasks: v.BatchTimeTasks,
+		}
+	}
+	return buildStatuses
+}
+
+func batchTimeTaskStatusFor(buildStatuses []VersionBuildStatus, bvName, taskName string) *BatchTimeTaskStatus {
+	for i := range buildStatuses {
+		if buildStatuses[i].BuildVariant != bvName {
+			continue
+		}
+		for j := range buildStatuses[i].BatchTimeTasks {
+			if buildStatuses[i].BatchTimeTasks[j].TaskName == taskName {
+				return &buildStatuses[i].BatchTimeTasks[j]
+			}
+		}
+	}
+	return nil
 }
 
 // isValidBVCron checks is a build variant cron is valid.

@@ -76,9 +76,8 @@ type Version struct {
 	// is not always loaded in version document queries because it can be large.
 	// See (Version).GetBuildVariants to fetch this field.
 	BuildVariants []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
-	// buildVariantsLoaded tracks whether BuildVariants has been fully loaded,
-	// including batchtime tasks from their dedicated collection. It is not
-	// persisted.
+	// buildVariantsLoaded caches whether BuildVariants has already been loaded,
+	// including batchtime tasks.
 	buildVariantsLoaded bool   `bson:"-" json:"-"`
 	PeriodicBuildID     string `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
 	Aborted             bool   `bson:"aborted,omitempty" json:"aborted,omitempty"`
@@ -349,11 +348,9 @@ func (v *Version) UpdatePreGenerationProjectStorageMethod(ctx context.Context, m
 }
 
 // GetBuildVariants returns the build variants for the version, including their
-// batchtime tasks. The build variant statuses are stored in the version
-// document, but the batchtime tasks are stored in a dedicated collection, so
-// this loads from both. If the version already has build variants cached, it'll
-// use that; otherwise, it will load the build variants from the DB. If the
-// version does not exist in the DB yet, it'll return v's own in-memory
+// batchtime tasks.
+// The version only loads build variants if it hasn't do so already. If the
+// version does not exist in the DB yet, it'll return the version's in-memory
 // BuildVariants, if any.
 func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, error) {
 	if v.buildVariantsLoaded {
@@ -365,10 +362,6 @@ func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, e
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding version '%s'", v.Id)
 		}
-		// If the version is nil, then the version doesn't exist in the DB, so it's
-		// safe to assume that BuildVariants is not populated. This intentionally
-		// does not error if the version doesn't exist in the DB so that this method
-		// can be called even if the version hasn't been inserted into the DB yet.
 		if versionWithBuildVariants != nil && versionWithBuildVariants.BuildVariants != nil {
 			v.BuildVariants = versionWithBuildVariants.BuildVariants
 		} else {
@@ -376,16 +369,31 @@ func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, e
 		}
 	}
 
-	btt, err := VersionBatchTimeTasksFindOne(ctx, v.Id)
+	// In newer versions, the task batchtimes are stored in a separate
+	// collection, so populate those if they're not already loaded.
+	bt, err := VersionTaskBatchTimesFindOne(ctx, v.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding batchtime tasks for version '%s'", v.Id)
 	}
-	if btt != nil {
-		attachBatchTimeTasks(v.BuildVariants, btt.Variants)
+	if bt != nil {
+		attachTaskBatchTimes(v.BuildVariants, bt.BuildVariants)
 	}
 
 	v.buildVariantsLoaded = true
 	return v.BuildVariants, nil
+}
+
+// attachTaskBatchTimes sets each build variant's batchtime tasks.
+func attachTaskBatchTimes(bvs []VersionBuildStatus, btt []BuildVariantTaskBatchTime) {
+	taskBatchTimesForBV := make(map[string][]BatchTimeTaskStatus, len(btt))
+	for _, v := range btt {
+		taskBatchTimesForBV[v.BuildVariant] = v.BatchTimeTasks
+	}
+	for i := range bvs {
+		if tasks, ok := taskBatchTimesForBV[bvs[i].BuildVariant]; ok {
+			bvs[i].BatchTimeTasks = tasks
+		}
+	}
 }
 
 // versionS3CostBSONFields returns BSON pairs for the S3-only cost fields; EC2/EBS fields are managed by UpdateAggregateTaskCosts.

@@ -375,21 +375,6 @@ db.versions.createIndex({
     "build_variants_status.activated": "1"
 })
 
-//======version_batchtime_tasks=====//
-db.version_batchtime_tasks.ensureIndex({
-    "identifier": 1,
-    "r": 1,
-    "ignored": 1,
-    "order": -1
-})
-db.version_batchtime_tasks.ensureIndex({
-    "identifier": 1,
-    "r": 1,
-    "variants.build_variant": 1,
-    "variants.batchtime_tasks.task_name": 1,
-    "variants.batchtime_tasks.activated": 1
-})
-
 //======test_logs=====//
 db.test_logs.ensureIndex({
     "execution": 1,
