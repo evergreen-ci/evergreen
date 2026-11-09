@@ -70,6 +70,7 @@ const (
 	graphiteKind = "GITHUB_ACTIONS"
 
 	githubWebhookEventOtelAttribute = "evergreen.github.webhook_event"
+	githubWebhookRepoOtelAttribute  = "evergreen.github.webhook_repo"
 	githubWebhookLagMsOtelAttribute = "evergreen.github.webhook_lag_ms"
 
 	// maxGitHubWebhookLag is the longest webhook lag that's recorded. Longer
@@ -190,14 +191,29 @@ func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo stri
 	return (fromApp && !hasApp) || (!fromApp && hasApp)
 }
 
-// recordWebhookLag sets the webhook's event type and, if it can be measured,
-// how late GitHub delivered it on the request span.
+// recordWebhookLag sets the webhook's event type, repo and, if it can be
+// measured, how late GitHub delivered it on the request span.
 func (gh *githubHookApi) recordWebhookLag(ctx context.Context) {
 	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.String(githubWebhookEventOtelAttribute, gh.eventType))
+	span.SetAttributes(
+		attribute.String(githubWebhookEventOtelAttribute, gh.eventType),
+		attribute.String(githubWebhookRepoOtelAttribute, webhookRepo(gh.event)),
+	)
 	if lag, ok := githubWebhookLag(gh.event, gh.receivedAt); ok {
 		span.SetAttributes(attribute.Int64(githubWebhookLagMsOtelAttribute, lag.Milliseconds()))
 	}
+}
+
+// webhookRepo returns the full name (owner/name) of the event's base repo, or
+// an empty string if the event has no repo.
+func webhookRepo(event any) string {
+	switch e := event.(type) {
+	case *github.PushEvent:
+		return e.GetRepo().GetFullName()
+	case interface{ GetRepo() *github.Repository }:
+		return e.GetRepo().GetFullName()
+	}
+	return ""
 }
 
 // githubWebhookLag returns how long after the event happened the webhook was
@@ -205,19 +221,17 @@ func (gh *githubHookApi) recordWebhookLag(ctx context.Context) {
 // or the lag is implausible.
 func githubWebhookLag(event any, receivedAt time.Time) (time.Duration, bool) {
 	sentAt := webhookSentAt(event)
-	if sentAt.IsZero() || sentAt.After(receivedAt) {
+	if sentAt.IsZero() {
 		return 0, false
 	}
 	lag := receivedAt.Sub(sentAt)
-	if lag > maxGitHubWebhookLag {
-		return 0, false
-	}
-	return lag, true
+	return lag, lag >= 0 && lag <= maxGitHubWebhookLag
 }
 
 // webhookSentAt returns when GitHub says the event happened, or the zero time
-// if the event has no timestamp set by GitHub. Commit timestamps are never
-// used because the commit author controls them.
+// if the event has no reliable timestamp set by GitHub. Commit timestamps are
+// never used because the commit author controls them. Branch and tag deletions
+// are skipped because GitHub may not update the repo's pushed_at for them.
 func webhookSentAt(event any) time.Time {
 	switch e := event.(type) {
 	case *github.PullRequestEvent:
@@ -227,6 +241,9 @@ func webhookSentAt(event any) time.Time {
 			return e.GetPullRequest().GetUpdatedAt().Time
 		}
 	case *github.PushEvent:
+		if e.GetDeleted() {
+			return time.Time{}
+		}
 		return e.GetRepo().GetPushedAt().Time
 	case *github.IssueCommentEvent:
 		if e.GetAction() == githubActionCreated {

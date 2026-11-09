@@ -29,6 +29,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/attribute"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 type GithubWebhookRouteSuite struct {
@@ -710,27 +713,33 @@ func TestGitHubWebhookLag(t *testing.T) {
 	}
 
 	for name, tc := range map[string]struct {
-		event     any
-		expectLag bool
+		event       any
+		expectOK    bool
+		expectedLag time.Duration
 	}{
 		"PullRequestOpenedUsesUpdatedAt": {
-			event:     prEvent(githubActionOpened, sentAt),
-			expectLag: true,
-		},
-		"PullRequestSynchronizeUsesUpdatedAt": {
-			event:     prEvent(githubActionSynchronize, sentAt),
-			expectLag: true,
+			event:       prEvent(githubActionOpened, sentAt),
+			expectOK:    true,
+			expectedLag: 30 * time.Second,
 		},
 		"PullRequestIgnoredActionHasNoLag": {
 			event: prEvent("edited", sentAt),
 		},
 		"PushUsesRepoPushedAt": {
-			event:     &github.PushEvent{Repo: &github.PushEventRepository{PushedAt: ts(sentAt)}},
-			expectLag: true,
+			event:       &github.PushEvent{Repo: &github.PushEventRepository{PushedAt: ts(sentAt)}},
+			expectOK:    true,
+			expectedLag: 30 * time.Second,
+		},
+		"DeletedBranchPushHasNoLag": {
+			event: &github.PushEvent{
+				Deleted: utility.TruePtr(),
+				Repo:    &github.PushEventRepository{PushedAt: ts(sentAt)},
+			},
 		},
 		"CreatedIssueCommentUsesCreatedAt": {
-			event:     commentEvent(githubActionCreated),
-			expectLag: true,
+			event:       commentEvent(githubActionCreated),
+			expectOK:    true,
+			expectedLag: 30 * time.Second,
 		},
 		"EditedIssueCommentHasNoLag": {
 			event: commentEvent("edited"),
@@ -741,14 +750,18 @@ func TestGitHubWebhookLag(t *testing.T) {
 				MergeGroup: &github.MergeGroup{HeadCommit: &github.Commit{Committer: &github.CommitAuthor{Date: ts(sentAt)}}},
 			},
 		},
-		"CheckRunHasNoLag": {
-			event: &github.CheckRunEvent{Action: utility.ToStringPtr(githubActionRerequested)},
-		},
-		"PingHasNoLag": {
-			event: &github.PingEvent{},
-		},
 		"MissingTimestampHasNoLag": {
 			event: &github.PullRequestEvent{Action: utility.ToStringPtr(githubActionOpened)},
+		},
+		"ZeroLagIsAccepted": {
+			event:       prEvent(githubActionOpened, receivedAt),
+			expectOK:    true,
+			expectedLag: 0,
+		},
+		"LagAtMaxIsAccepted": {
+			event:       prEvent(githubActionOpened, receivedAt.Add(-maxGitHubWebhookLag)),
+			expectOK:    true,
+			expectedLag: maxGitHubWebhookLag,
 		},
 		"FutureTimestampIsDiscarded": {
 			event: prEvent(githubActionOpened, receivedAt.Add(time.Minute)),
@@ -759,12 +772,60 @@ func TestGitHubWebhookLag(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			lag, ok := githubWebhookLag(tc.event, receivedAt)
-			require.Equal(t, tc.expectLag, ok)
-			if tc.expectLag {
-				assert.Equal(t, 30*time.Second, lag)
-			} else {
-				assert.Zero(t, lag)
+			require.Equal(t, tc.expectOK, ok)
+			if tc.expectOK {
+				assert.Equal(t, tc.expectedLag, lag)
 			}
 		})
 	}
+}
+
+func TestRecordWebhookLag(t *testing.T) {
+	receivedAt := time.Now()
+	repo := &github.Repository{FullName: utility.ToStringPtr("evergreen-ci/evergreen")}
+
+	recordAttributes := func(t *testing.T, gh *githubHookApi) map[attribute.Key]attribute.Value {
+		spanRecorder := tracetest.NewSpanRecorder()
+		tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
+		ctx, span := tp.Tracer("test").Start(t.Context(), "request")
+		gh.recordWebhookLag(ctx)
+		span.End()
+
+		ended := spanRecorder.Ended()
+		require.Len(t, ended, 1)
+		attrs := map[attribute.Key]attribute.Value{}
+		for _, kv := range ended[0].Attributes() {
+			attrs[kv.Key] = kv.Value
+		}
+		return attrs
+	}
+
+	t.Run("MeasurableLagSetsAllAttributes", func(t *testing.T) {
+		attrs := recordAttributes(t, &githubHookApi{
+			eventType: "pull_request",
+			event: &github.PullRequestEvent{
+				Action:      utility.ToStringPtr(githubActionOpened),
+				Repo:        repo,
+				PullRequest: &github.PullRequest{UpdatedAt: &github.Timestamp{Time: receivedAt.Add(-2 * time.Second)}},
+			},
+			receivedAt: receivedAt,
+		})
+		assert.Equal(t, "pull_request", attrs[githubWebhookEventOtelAttribute].AsString())
+		assert.Equal(t, "evergreen-ci/evergreen", attrs[githubWebhookRepoOtelAttribute].AsString())
+		require.Contains(t, attrs, attribute.Key(githubWebhookLagMsOtelAttribute))
+		assert.EqualValues(t, 2000, attrs[githubWebhookLagMsOtelAttribute].AsInt64())
+	})
+	t.Run("UnmeasurableLagOmitsLagAttribute", func(t *testing.T) {
+		attrs := recordAttributes(t, &githubHookApi{
+			eventType: "merge_group",
+			event: &github.MergeGroupEvent{
+				Action: utility.ToStringPtr(githubActionChecksRequested),
+				Repo:   repo,
+			},
+			receivedAt: receivedAt,
+		})
+		assert.Equal(t, "merge_group", attrs[githubWebhookEventOtelAttribute].AsString())
+		assert.Equal(t, "evergreen-ci/evergreen", attrs[githubWebhookRepoOtelAttribute].AsString())
+		assert.NotContains(t, attrs, attribute.Key(githubWebhookLagMsOtelAttribute))
+	})
 }
