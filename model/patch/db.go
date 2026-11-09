@@ -589,14 +589,8 @@ func FindMergeQueuePatchesByProject(ctx context.Context, projectID string) ([]Pa
 
 // FindDuplicateMergeQueuePatchID returns the ID of a merge queue patch created in the last 24 hours
 // for this project, org, repo, and head SHA, ignoring the patch with excludeID if it's set. It only
-// considers patches that are finalized or were created within gracePeriod, since those may still be
-// finalizing. It returns an empty ID if there is no such patch.
-//
-// gracePeriod should be the patch intent job's max run time. Patches are inserted before they're
-// finalized, and once the job's max run time has passed, the job that inserted the patch has been
-// cancelled, so an older unfinalized patch is a leftover and shouldn't block a new one. In practice
-// saving to finalizing takes about 14 seconds at the median and 36 seconds at p99, so the grace
-// period only matters for slow or interrupted jobs.
+// considers patches that are finalized or were created within gracePeriod, which is how long an
+// unfinalized patch counts as still being created. It returns an empty ID if there is no such patch.
 func FindDuplicateMergeQueuePatchID(ctx context.Context, projectID, org, repo, headSHA string, excludeID mgobson.ObjectId, gracePeriod time.Duration) (string, error) {
 	now := time.Now()
 	query := bson.M{

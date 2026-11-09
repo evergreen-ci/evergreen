@@ -107,6 +107,8 @@ func (j *mergeQueuePatchRecoveryJob) recoverProject(ctx context.Context, project
 		return nil
 	}
 
+	// We use the patch intent job's timeout as the grace period because once it has passed, the job that
+	// inserted the patch has been cancelled, so an older unfinalized patch is a leftover and shouldn't block a new one.
 	existingPatchID, err := patch.FindDuplicateMergeQueuePatchID(ctx, projectRef.Id, projectRef.Owner, projectRef.Repo, frontSHA, "", maxPatchIntentJobTime)
 	if err != nil {
 		return errors.Wrap(err, "checking for an existing merge queue patch")

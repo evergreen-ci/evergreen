@@ -1306,6 +1306,8 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 // and the delayed GitHub webhook arrives afterwards. A second patch would run every task again and post a
 // competing status for the same commit, so callers should skip it without reporting anything to GitHub.
 func (j *patchIntentProcessor) hasDuplicateMergeQueuePatch(ctx context.Context, patchDoc *patch.Patch, projectID string) bool {
+	// We use the patch intent job's timeout as the grace period because once it has passed, the job that
+	// inserted the patch has been cancelled, so an older unfinalized patch is a leftover and shouldn't block a new one.
 	existingPatchID, err := patch.FindDuplicateMergeQueuePatchID(ctx, projectID, patchDoc.GithubMergeData.Org,
 		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.HeadSHA, j.PatchID, maxPatchIntentJobTime)
 	if err != nil {
