@@ -1,6 +1,7 @@
 package notification
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -72,7 +73,7 @@ func TestInsertFailedWebhook(t *testing.T) {
 		// The Authorization header carries a credential and must not be
 		// retained.
 		assert.Empty(t, failedWebhook.Headers.Get(event.WebhookAuthorizationHeader))
-		assert.NotZero(t, failedWebhook.SentAt)
+		assert.NotZero(t, failedWebhook.FailedAt)
 	})
 
 	t.Run("NonProjectNotificationIsIgnored", func(t *testing.T) {
@@ -108,21 +109,21 @@ func TestFindFailedWebhooks(t *testing.T) {
 			Project:        "evergreen",
 			URL:            "https://example.com/hook",
 			Error:          "old failure",
-			SentAt:         now.Add(-2 * time.Hour),
+			FailedAt:       now.Add(-2 * time.Hour),
 		},
 		{
 			NotificationID: "webhook-new",
 			Project:        "evergreen",
 			URL:            "https://example.com/other-hook",
 			Error:          "new failure",
-			SentAt:         now.Add(-1 * time.Hour),
+			FailedAt:       now.Add(-1 * time.Hour),
 		},
 		{
 			NotificationID: "webhook-other-project",
 			Project:        "spruce",
 			URL:            "https://example.com/hook",
 			Error:          "other project failure",
-			SentAt:         now,
+			FailedAt:       now,
 		},
 	} {
 		require.NoError(t, db.Insert(t.Context(), FailedWebhookCollection, &failure))
@@ -156,5 +157,32 @@ func TestFindFailedWebhooks(t *testing.T) {
 		failedWebhooks, err := FindFailedWebhooks(t.Context(), []string{"unknown-project"}, "", 10)
 		require.NoError(t, err)
 		assert.Empty(t, failedWebhooks)
+	})
+}
+
+func TestFindFailedWebhooksCapsLimit(t *testing.T) {
+	require.NoError(t, db.Clear(FailedWebhookCollection))
+	t.Cleanup(func() { assert.NoError(t, db.Clear(FailedWebhookCollection)) })
+
+	failures := make([]any, 0, failedWebhookMaxLimit+1)
+	for i := 0; i <= failedWebhookMaxLimit; i++ {
+		failures = append(failures, &FailedWebhook{
+			NotificationID: fmt.Sprintf("webhook-%d", i),
+			Project:        "evergreen",
+			FailedAt:       time.Now(),
+		})
+	}
+	require.NoError(t, db.InsertManyUnordered(t.Context(), FailedWebhookCollection, failures...))
+
+	t.Run("ZeroLimitUsesMaxLimit", func(t *testing.T) {
+		failedWebhooks, err := FindFailedWebhooks(t.Context(), []string{"evergreen"}, "", 0)
+		require.NoError(t, err)
+		assert.Len(t, failedWebhooks, failedWebhookMaxLimit)
+	})
+
+	t.Run("OverMaxLimitIsCapped", func(t *testing.T) {
+		failedWebhooks, err := FindFailedWebhooks(t.Context(), []string{"evergreen"}, "", failedWebhookMaxLimit+1)
+		require.NoError(t, err)
+		assert.Len(t, failedWebhooks, failedWebhookMaxLimit)
 	})
 }

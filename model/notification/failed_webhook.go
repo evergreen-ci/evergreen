@@ -13,13 +13,18 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// FailedWebhookCollection stores webhook notifications that failed to deliver.
-const FailedWebhookCollection = "failed_webhooks"
+const (
+	// FailedWebhookCollection stores webhook notifications that failed to deliver.
+	FailedWebhookCollection = "failed_webhooks"
+
+	// The maximum number of failed webhooks returned when the caller does not provide a positive limit.
+	failedWebhookMaxLimit = 500
+)
 
 var (
-	failedWebhookProjectKey = bsonutil.MustHaveTag(FailedWebhook{}, "Project")
-	failedWebhookURLKey     = bsonutil.MustHaveTag(FailedWebhook{}, "URL")
-	failedWebhookSentAtKey  = bsonutil.MustHaveTag(FailedWebhook{}, "SentAt")
+	failedWebhookProjectKey  = bsonutil.MustHaveTag(FailedWebhook{}, "Project")
+	failedWebhookURLKey      = bsonutil.MustHaveTag(FailedWebhook{}, "URL")
+	failedWebhookFailedAtKey = bsonutil.MustHaveTag(FailedWebhook{}, "FailedAt")
 )
 
 type FailedWebhook struct {
@@ -27,7 +32,7 @@ type FailedWebhook struct {
 	Project        string      `bson:"project,omitempty"`
 	URL            string      `bson:"url"`
 	Error          string      `bson:"error"`
-	SentAt         time.Time   `bson:"sent_at"`
+	FailedAt       time.Time   `bson:"failed_at"`
 	Body           []byte      `bson:"body,omitempty"`
 	Headers        http.Header `bson:"headers,omitempty"`
 }
@@ -65,7 +70,7 @@ func InsertFailedWebhook(ctx context.Context, n *Notification, sendErr error) er
 		Project:        n.Project,
 		URL:            webhook.URL,
 		Error:          sendErr.Error(),
-		SentAt:         time.Now().Truncate(time.Millisecond),
+		FailedAt:       time.Now().Truncate(time.Millisecond),
 		Body:           webhook.Body,
 		Headers:        headers,
 	}
@@ -80,6 +85,7 @@ func InsertFailedWebhook(ctx context.Context, n *Notification, sendErr error) er
 }
 
 // FindFailedWebhooks returns failed webhook deliveries for the given projects.
+// The limit is capped at failedWebhookMaxLimit.
 func FindFailedWebhooks(ctx context.Context, projects []string, url string, limit int) ([]FailedWebhook, error) {
 	query := bson.M{
 		failedWebhookProjectKey: bson.M{"$in": projects},
@@ -88,8 +94,12 @@ func FindFailedWebhooks(ctx context.Context, projects []string, url string, limi
 		query[failedWebhookURLKey] = url
 	}
 
+	if limit <= 0 || limit > failedWebhookMaxLimit {
+		limit = failedWebhookMaxLimit
+	}
+
 	failedWebhooks := []FailedWebhook{}
-	q := db.Query(query).Sort([]string{"-" + failedWebhookSentAtKey}).Limit(limit)
+	q := db.Query(query).Sort([]string{"-" + failedWebhookFailedAtKey}).Limit(limit)
 	if err := db.FindAllQ(ctx, FailedWebhookCollection, q, &failedWebhooks); err != nil {
 		return nil, errors.Wrap(err, "finding failed webhooks")
 	}
