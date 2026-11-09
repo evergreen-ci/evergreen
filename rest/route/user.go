@@ -21,8 +21,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -235,22 +233,6 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 		}
 		return gimlet.NewTextInternalErrorResponse(err.Error())
-	}
-	expanded := false
-	for permission, level := range newRole.Permissions {
-		if level > h.permissions.Permissions[permission] {
-			expanded = true
-			break
-		}
-	}
-	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool("permissions.grant.expanded", expanded))
-	if expanded {
-		grip.Warning(ctx, message.Fields{
-			"message":               "permission role exceeds requested access",
-			"role":                  newRole.ID,
-			"requested_permissions": h.permissions.Permissions,
-			"granted_permissions":   newRole.Permissions,
-		})
 	}
 	if err = u.AddRole(ctx, newRole.ID); err != nil {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
