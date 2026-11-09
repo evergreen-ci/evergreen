@@ -568,11 +568,12 @@ func (j *patchIntentProcessor) createGitHubSubscriptions(ctx context.Context, p 
 // createGithubMergeSubscription creates a subscription on a commit for the GitHub merge queue.
 func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context, p *patch.Patch) error {
 	catcher := grip.NewBasicCatcher()
-	ghSub := event.NewGithubMergeAPISubscriber(event.GithubMergeSubscriber{
+	mergeGroupTarget := event.GithubMergeSubscriber{
 		Owner: p.GithubMergeData.Org,
 		Repo:  p.GithubMergeData.Repo,
 		Ref:   p.GithubMergeData.HeadSHA,
-	})
+	}
+	ghSub := event.NewGithubMergeAPISubscriber(mergeGroupTarget)
 
 	patchSub := event.NewExpiringPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
 	catcher.Wrap(patchSub.Upsert(ctx), "inserting patch subscription for GitHub merge queue")
@@ -582,12 +583,9 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 	if p.IsParent() {
 		// add a subscription on each child patch to report its status to github when it's done.
 		for _, childPatch := range p.Triggers.ChildPatches {
-			childGhStatusSub := event.NewGithubMergeAPISubscriber(event.GithubMergeSubscriber{
-				Owner:   p.GithubPatchData.BaseOwner,
-				Repo:    p.GithubPatchData.BaseRepo,
-				Ref:     p.GithubPatchData.HeadHash,
-				ChildId: childPatch,
-			})
+			childTarget := mergeGroupTarget
+			childTarget.ChildId = childPatch
+			childGhStatusSub := event.NewGithubMergeAPISubscriber(childTarget)
 			patchSub := event.NewExpiringPatchChildOutcomeSubscription(childPatch, childGhStatusSub)
 			catcher.Wrap(patchSub.Upsert(ctx), "inserting child patch subscription for GitHub MQ")
 		}

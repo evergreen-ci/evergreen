@@ -3104,6 +3104,57 @@ func TestGitHubStatusRuleTarget(t *testing.T) {
 	})
 }
 
+func TestCreateGitHubMergeSubscriptionTargetsMergeGroupForChildPatches(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(event.SubscriptionsCollection, evergreen.ConfigCollection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, evergreen.ConfigCollection))
+	})
+	require.NoError(t, evergreen.SetServiceFlags(ctx, evergreen.ServiceFlags{GithubStatusAPIDisabled: true}))
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	patchID := mgobson.NewObjectId()
+	childIDs := []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+	p := &patch.Patch{
+		Id: patchID,
+		GithubMergeData: thirdparty.GithubMergeGroup{
+			Org:        "merge-owner",
+			Repo:       "merge-repo",
+			BaseBranch: "main",
+			HeadSHA:    "merge-head-sha",
+		},
+		Triggers: patch.TriggerInfo{ChildPatches: childIDs},
+	}
+	j := &patchIntentProcessor{PatchID: patchID, env: env}
+
+	require.NoError(t, j.createGitHubMergeSubscription(ctx, p))
+
+	subs := []event.Subscription{}
+	require.NoError(t, db.FindAllQ(ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &subs))
+	// The parent has a patch and a build subscription, plus one per child.
+	require.Len(t, subs, 2+len(childIDs))
+
+	var foundChildIDs []string
+	for _, sub := range subs {
+		require.Equal(t, event.GithubMergeSubscriberType, sub.Subscriber.Type)
+		target, ok := sub.Subscriber.Target.(*event.GithubMergeSubscriber)
+		require.True(t, ok)
+		assert.Equal(t, "merge-owner", target.Owner)
+		assert.Equal(t, "merge-repo", target.Repo)
+		assert.Equal(t, "merge-head-sha", target.Ref)
+		if target.ChildId == "" {
+			continue
+		}
+		foundChildIDs = append(foundChildIDs, target.ChildId)
+		assert.Equal(t, target.ChildId, sub.Filter.ID)
+		assert.Equal(t, event.ResourceTypePatch, sub.ResourceType)
+		assert.Equal(t, event.TriggerOutcome, sub.Trigger)
+	}
+	assert.ElementsMatch(t, childIDs, foundChildIDs)
+}
+
 func TestIsUserAuthorized(t *testing.T) {
 	t.Run("ForkPRExternalCollaboratorPermissionChecksBaseRepository", func(t *testing.T) {
 		originalGitHubUserInOrganization := githubUserInOrganization
