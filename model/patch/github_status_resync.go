@@ -16,6 +16,10 @@ import (
 // send.
 const GitHubStatusResyncCollection = "github_status_resyncs"
 
+// GitHubStatusResyncMaxAge is how long after the last failed send a patch's
+// statuses are still resent. It matches the TTL index on last_failed_at.
+const GitHubStatusResyncMaxAge = 6 * time.Hour
+
 // GitHubStatusResync marks a patch whose GitHub statuses are out of date
 // because sending one of them failed.
 type GitHubStatusResync struct {
@@ -58,6 +62,18 @@ func FindGitHubStatusResync(ctx context.Context, patchID string) (*GitHubStatusR
 		return nil, errors.Wrapf(err, "finding GitHub status resync for patch '%s'", patchID)
 	}
 	return resync, nil
+}
+
+// FindDueGitHubStatusResyncs returns up to limit patches whose statuses need to
+// be resent, with merge queue patches first and then the patches that have been
+// out of date the longest.
+func FindDueGitHubStatusResyncs(ctx context.Context, limit int) ([]GitHubStatusResync, error) {
+	q := db.Query(bson.M{gitHubStatusResyncLastFailedAtKey: bson.M{"$gte": time.Now().Add(-GitHubStatusResyncMaxAge)}}).
+		Sort([]string{"-" + gitHubStatusResyncIsMergeQueueKey, gitHubStatusResyncDirtySinceKey}).
+		Limit(limit)
+	resyncs := []GitHubStatusResync{}
+	err := db.FindAllQ(ctx, GitHubStatusResyncCollection, q, &resyncs)
+	return resyncs, errors.Wrap(err, "finding due GitHub status resyncs")
 }
 
 // ClearGitHubStatusResync removes the patch's mark unless a send failed at or

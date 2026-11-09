@@ -42,6 +42,17 @@ func NewGithubStatusRefreshJob(p *patch.Patch) amboy.Job {
 	return job
 }
 
+// NewGithubStatusResyncRefreshJob returns a job that resends the GitHub
+// statuses of a patch whose statuses failed to send. The job ID is unique per
+// patch and run time.
+func NewGithubStatusResyncRefreshJob(patchID string, ts time.Time) amboy.Job {
+	job := makeGithubStatusRefreshJob()
+	job.FetchID = patchID
+
+	job.SetID(fmt.Sprintf("%s:resync-%s-%s", githubStatusRefreshJobName, patchID, ts.Format(TSFormat)))
+	return job
+}
+
 type githubStatusRefreshJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment

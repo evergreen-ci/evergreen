@@ -3,8 +3,10 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -14,7 +16,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-const cronsRemoteFiveMinuteJobName = "crons-remote-five-minute"
+const (
+	cronsRemoteFiveMinuteJobName = "crons-remote-five-minute"
+
+	// githubStatusResyncBatchSize caps how many patches have their GitHub
+	// statuses resent per run, since each patch sends a status per build and
+	// child patch.
+	githubStatusResyncBatchSize = 20
+)
 
 func init() {
 	registry.AddJobType(cronsRemoteFiveMinuteJobName, NewCronRemoteFiveMinuteJob)
@@ -55,6 +64,7 @@ func (j *cronsRemoteFiveMinuteJob) Run(ctx context.Context) {
 		PopulateMergeQueueMetricsJobs(),
 		PopulateMergeQueueCompletionMetricsFallbackJobs(),
 		PopulateLargeParserProjectTaskStatsJob(),
+		PopulateGitHubStatusResyncJobs(),
 	}
 
 	queue := j.env.RemoteQueue()
@@ -75,4 +85,38 @@ func (j *cronsRemoteFiveMinuteJob) Run(ctx context.Context) {
 		"num":   len(ops),
 		"errs":  j.ErrorCount,
 	})
+}
+
+// PopulateGitHubStatusResyncJobs enqueues jobs to resend the GitHub statuses of
+// patches whose statuses failed to send.
+func PopulateGitHubStatusResyncJobs() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		jobs, err := githubStatusResyncJobs(ctx, utility.RoundPartOfHour(5))
+		if err != nil {
+			return err
+		}
+		return errors.Wrap(amboy.EnqueueManyUniqueJobs(ctx, queue, jobs), "enqueueing GitHub status resync jobs")
+	}
+}
+
+func githubStatusResyncJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting service flags")
+	}
+	// Statuses that can't be sent while the GitHub status API is disabled stay
+	// marked so they're resent once it's turned back on.
+	if flags.GithubStatusResyncDisabled || flags.GithubStatusAPIDisabled {
+		return nil, nil
+	}
+
+	resyncs, err := patch.FindDueGitHubStatusResyncs(ctx, githubStatusResyncBatchSize)
+	if err != nil {
+		return nil, err
+	}
+	jobs := make([]amboy.Job, 0, len(resyncs))
+	for _, resync := range resyncs {
+		jobs = append(jobs, NewGithubStatusResyncRefreshJob(resync.PatchID, ts))
+	}
+	return jobs, nil
 }
