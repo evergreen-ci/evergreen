@@ -44,6 +44,9 @@ type ServiceFlags struct {
 	PodDiagnosticsDisabled             bool `bson:"pod_diagnostics_disabled" json:"pod_diagnostics_disabled"`
 	RetryFailedLogMoveEnabled          bool `bson:"retry_failed_log_move_enabled" json:"retry_failed_log_move_enabled"`
 	ProjectTranslationCacheEnabled     bool `bson:"project_translation_cache_enabled" json:"project_translation_cache_enabled"`
+	// GithubStatusResyncDisabled stops Evergreen from resending GitHub
+	// statuses that failed to send.
+	GithubStatusResyncDisabled bool `bson:"github_status_resync_disabled" json:"github_status_resync_disabled"`
 	// TaskQueueAutoUnscheduleDisabled stops the scheduler from unscheduling the patch tasks in a
 	// distro queue that has reached set threshold.
 	TaskQueueAutoUnscheduleDisabled bool `bson:"task_queue_auto_unschedule_disabled" json:"task_queue_auto_unschedule_disabled"`
@@ -123,6 +126,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			podDiagnosticsDisabledKey:               c.PodDiagnosticsDisabled,
 			retryFailedLogMoveEnabledKey:            c.RetryFailedLogMoveEnabled,
 			projectTranslationCacheEnabledKey:       c.ProjectTranslationCacheEnabled,
+			githubStatusResyncDisabledKey:           c.GithubStatusResyncDisabled,
 			secondaryReadsDisabledKey:               c.SecondaryReadsDisabled,
 			apiRateLimiterDisabledKey:               c.APIRateLimiterDisabled,
 			graphqlComplexityLimiterDisabledKey:     c.GraphQLComplexityLimiterDisabled,
