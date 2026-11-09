@@ -1542,8 +1542,8 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting module owner and repo '%s'", module.Name)
 	}
-	if err := opts.moduleRepoChecker.check(ctx, repoOwner, repoName); err != nil {
-		return nil, errors.Wrapf(err, "checking repo for module '%s'", module.Name)
+	if err := opts.moduleRepoChecker.check(ctx, module.Name, repoOwner, repoName); err != nil {
+		return nil, err
 	}
 	pRef := *opts.Ref
 	pRef.Owner = repoOwner

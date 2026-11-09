@@ -61,17 +61,26 @@ func ValidatePatchModuleRepos(ctx context.Context, p *patch.Patch, projectRef *P
 			return errors.Wrapf(err, "checking repo for module '%s'", module.Name)
 		}
 		if !allowed {
-			untrusted = append(untrusted, module.Name)
+			untrusted = append(untrusted, fmt.Sprintf("'%s' (%s/%s)", module.Name, owner, repo))
 		}
 	}
 	if len(untrusted) > 0 {
-		return untrustedModuleReposError{modules: untrusted}
+		return c.untrustedError(untrusted...)
 	}
 	return nil
 }
 
+// IsUntrustedModuleReposError returns whether err is because a patch uses
+// module repos it isn't allowed to use.
+func IsUntrustedModuleReposError(err error) bool {
+	var untrustedErr untrustedModuleReposError
+	return errors.As(err, &untrustedErr)
+}
+
 type untrustedModuleReposError struct {
-	modules []string
+	modules     []string
+	projectRepo string
+	isPRPatch   bool
 }
 
 func (e untrustedModuleReposError) Error() string {
@@ -84,7 +93,10 @@ type patchModuleRepoChecker struct {
 	patch      *patch.Patch
 	mu         sync.Mutex
 	committed  map[string]bool
-	results    map[string]bool
+	// siblings holds the module repos declared by other projects tracking the
+	// same repo.
+	siblings map[string]bool
+	results  map[string]bool
 }
 
 func newPatchModuleRepoChecker(projectRef *ProjectRef, p *patch.Patch) *patchModuleRepoChecker {
@@ -95,6 +107,14 @@ func newPatchModuleRepoChecker(projectRef *ProjectRef, p *patch.Patch) *patchMod
 		projectRef: projectRef,
 		patch:      p,
 		results:    map[string]bool{},
+	}
+}
+
+func (c *patchModuleRepoChecker) untrustedError(modules ...string) error {
+	return untrustedModuleReposError{
+		modules:     modules,
+		projectRepo: c.projectRef.Owner + "/" + c.projectRef.Repo,
+		isPRPatch:   c.patch.IsGithubPRPatch(),
 	}
 }
 
@@ -113,25 +133,31 @@ func (c *patchModuleRepoChecker) allows(ctx context.Context, owner, repo string)
 	if c.committed[key] {
 		return true, nil
 	}
-	trusted, ok := c.results[key]
-	if !ok {
-		var err error
-		trusted, err = c.isTrustedOnGitHub(ctx, owner, GitHubAppTokenRepo(repo))
-		if err != nil {
+	if trusted, ok := c.results[key]; ok {
+		return trusted, nil
+	}
+
+	trusted, gitHubErr := c.isTrustedOnGitHub(ctx, owner, GitHubAppTokenRepo(repo))
+	if !trusted {
+		if err := c.loadSiblings(ctx); err != nil {
 			return false, err
 		}
-		c.results[key] = trusted
+		trusted = c.siblings[key]
 	}
+	if !trusted && gitHubErr != nil {
+		return false, gitHubErr
+	}
+	c.results[key] = trusted
 	return trusted, nil
 }
 
-func (c *patchModuleRepoChecker) check(ctx context.Context, owner, repo string) error {
+func (c *patchModuleRepoChecker) check(ctx context.Context, name, owner, repo string) error {
 	allowed, err := c.allows(ctx, owner, repo)
 	if err != nil {
 		return err
 	}
 	if !allowed {
-		return errors.Errorf("repo '%s/%s' is private, so patches can't use it until a mainline version declares it", owner, repo)
+		return c.untrustedError(fmt.Sprintf("'%s' (%s/%s)", name, owner, repo))
 	}
 	return nil
 }
@@ -165,43 +191,85 @@ func (c *patchModuleRepoChecker) load(ctx context.Context) error {
 	if c.committed != nil {
 		return nil
 	}
+	committed := map[string]bool{moduleRepoKey(c.projectRef.Owner, c.projectRef.Repo): true}
 
-	var manifests []manifest.Manifest
 	base, err := manifest.FindOne(ctx, manifest.ByBaseProjectAndRevision(c.projectRef.Id, c.patch.Githash))
 	if err != nil {
 		return errors.Wrapf(err, "finding manifest for base revision '%s'", c.patch.Githash)
 	}
 	if base != nil {
-		manifests = append(manifests, *base)
+		addManifestModuleRepos(committed, *base)
 	}
+	if err := addCommittedModuleRepos(ctx, committed, c.projectRef.Id); err != nil {
+		return err
+	}
+	c.committed = committed
+	return nil
+}
+
+// loadSiblings loads the module repos declared by other projects tracking the
+// same repo. Hidden projects are skipped since they only run PR patches.
+func (c *patchModuleRepoChecker) loadSiblings(ctx context.Context) error {
+	if c.siblings != nil {
+		return nil
+	}
+	sameRepo := []bson.M{{ProjectRefOwnerKey: c.projectRef.Owner, ProjectRefRepoKey: c.projectRef.Repo}}
+	if c.projectRef.RepoRefId != "" {
+		sameRepo = append(sameRepo, bson.M{ProjectRefRepoRefIdKey: c.projectRef.RepoRefId})
+	}
+	var refs []ProjectRef
+	err := db.FindAllQ(ctx, ProjectRefCollection, db.Query(bson.M{
+		"$or":               sameRepo,
+		ProjectRefIdKey:     bson.M{"$ne": c.projectRef.Id},
+		ProjectRefHiddenKey: bson.M{"$ne": true},
+	}).WithFields(ProjectRefIdKey), &refs)
+	if err != nil {
+		return errors.Wrap(err, "finding other projects for the repo")
+	}
+
+	siblings := map[string]bool{}
+	for _, ref := range refs {
+		if err := addCommittedModuleRepos(ctx, siblings, ref.Id); err != nil {
+			return err
+		}
+	}
+	c.siblings = siblings
+	return nil
+}
+
+// addCommittedModuleRepos adds the module repos declared by the project's
+// recent versions whose config is committed to the tracked branch.
+func addCommittedModuleRepos(ctx context.Context, repos map[string]bool, projectID string) error {
 	versions, err := VersionFind(ctx, db.Query(bson.M{
-		VersionIdentifierKey: c.projectRef.Id,
+		VersionIdentifierKey: projectID,
 		VersionRequesterKey:  bson.M{"$in": committedConfigRequesters},
 	}).WithFields(VersionIdKey).Sort([]string{"-" + VersionRevisionOrderNumberKey}).Limit(committedManifestLookback))
 	if err != nil {
-		return errors.Wrap(err, "finding recent mainline versions")
+		return errors.Wrapf(err, "finding recent mainline versions for project '%s'", projectID)
 	}
-	if len(versions) > 0 {
-		ids := make([]string, 0, len(versions))
-		for _, v := range versions {
-			ids = append(ids, v.Id)
-		}
-		recent, err := manifest.Find(ctx, manifest.ByIds(ids))
-		if err != nil {
-			return errors.Wrap(err, "finding recent mainline manifests")
-		}
-		manifests = append(manifests, recent...)
+	if len(versions) == 0 {
+		return nil
 	}
-
-	c.committed = map[string]bool{moduleRepoKey(c.projectRef.Owner, c.projectRef.Repo): true}
+	ids := make([]string, 0, len(versions))
+	for _, v := range versions {
+		ids = append(ids, v.Id)
+	}
+	manifests, err := manifest.Find(ctx, manifest.ByIds(ids))
+	if err != nil {
+		return errors.Wrapf(err, "finding recent mainline manifests for project '%s'", projectID)
+	}
 	for _, m := range manifests {
-		for _, mod := range m.Modules {
-			if mod != nil {
-				c.committed[moduleRepoKey(mod.Owner, mod.Repo)] = true
-			}
-		}
+		addManifestModuleRepos(repos, m)
 	}
 	return nil
+}
+
+func addManifestModuleRepos(repos map[string]bool, m manifest.Manifest) {
+	for _, mod := range m.Modules {
+		if mod != nil {
+			repos[moduleRepoKey(mod.Owner, mod.Repo)] = true
+		}
+	}
 }
 
 func moduleRepoKey(owner, repo string) string {

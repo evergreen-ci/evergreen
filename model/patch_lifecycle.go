@@ -877,8 +877,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 	}
 
 	if err := ValidatePatchModuleRepos(ctx, p, projectRef, project.Modules); err != nil {
-		var untrustedErr untrustedModuleReposError
-		if errors.As(err, &untrustedErr) {
+		if IsUntrustedModuleReposError(err) {
 			return nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: err.Error()}
 		}
 		return nil, err
@@ -1266,7 +1265,7 @@ func prefetchAutoUpdateModuleRevisions(ctx context.Context, p *patch.Patch, proj
 				continue
 			}
 			// Patch creation reports modules that use untrusted repos.
-			if err := opts.moduleRepoChecker.check(ctx, owner, repo); err != nil {
+			if err := opts.moduleRepoChecker.check(ctx, module.Name, owner, repo); err != nil {
 				continue
 			}
 			mfstModule, err := getManifestModule(ctx, projectRef, module, evergreen.PatchVersionRequester, p.IngestTime)

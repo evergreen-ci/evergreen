@@ -345,10 +345,15 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if errs := validator.CheckPatchedProjectConfigErrors(ctx, patchedProjectConfig).AtLevel(validator.Error); len(errs) != 0 {
 		validationCatcher.Errorf("invalid patched project config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
-	validationCatcher.Wrap(model.ValidatePatchModuleRepos(ctx, patchDoc, pref, patchedProject.Modules), "validating module repos")
 	if validationCatcher.HasErrors() {
 		j.gitHubError = ProjectFailsValidation
 		return errors.Wrapf(validationCatcher.Resolve(), "invalid patched project config")
+	}
+	if err = model.ValidatePatchModuleRepos(ctx, patchDoc, pref, patchedProject.Modules); err != nil {
+		if model.IsUntrustedModuleReposError(err) {
+			j.gitHubError = untrustedModuleRepos
+		}
+		return errors.Wrap(err, "validating module repos")
 	}
 	// Don't create patches for github PRs if the only changes are in ignored files.
 	if patchDoc.IsGithubPRPatch() && patchedProject.IgnoresAllFiles(patchDoc.FilesChanged()) {
