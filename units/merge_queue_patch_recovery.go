@@ -107,7 +107,7 @@ func (j *mergeQueuePatchRecoveryJob) recoverProject(ctx context.Context, project
 		return nil
 	}
 
-	existingPatchID, err := patch.FindDuplicateMergeQueuePatchID(ctx, projectRef.Id, projectRef.Owner, projectRef.Repo, frontSHA, "")
+	existingPatchID, err := patch.FindDuplicateMergeQueuePatchID(ctx, projectRef.Id, projectRef.Owner, projectRef.Repo, frontSHA, "", maxPatchIntentJobTime)
 	if err != nil {
 		return errors.Wrap(err, "checking for an existing merge queue patch")
 	}

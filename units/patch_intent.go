@@ -1307,7 +1307,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 // competing status for the same commit, so callers should skip it without reporting anything to GitHub.
 func (j *patchIntentProcessor) hasDuplicateMergeQueuePatch(ctx context.Context, patchDoc *patch.Patch, projectID string) bool {
 	existingPatchID, err := patch.FindDuplicateMergeQueuePatchID(ctx, projectID, patchDoc.GithubMergeData.Org,
-		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.HeadSHA, j.PatchID)
+		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.HeadSHA, j.PatchID, maxPatchIntentJobTime)
 	if err != nil {
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":     "could not check for an existing merge queue patch, creating patch anyway",

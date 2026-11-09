@@ -976,7 +976,7 @@ func TestFindDuplicateMergeQueuePatchID(t *testing.T) {
 			if tCase.excludeOwn {
 				excludeID = p.Id
 			}
-			existingID, err := FindDuplicateMergeQueuePatchID(t.Context(), "my-project", "10gen", "mongo", headSHA, excludeID)
+			existingID, err := FindDuplicateMergeQueuePatchID(t.Context(), "my-project", "10gen", "mongo", headSHA, excludeID, 10*time.Minute)
 			require.NoError(t, err)
 			if tCase.expectDup {
 				assert.Equal(t, p.Id.Hex(), existingID)
