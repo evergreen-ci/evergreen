@@ -587,9 +587,12 @@ func FindMergeQueuePatchesByProject(ctx context.Context, projectID string) ([]Pa
 	return Find(ctx, db.Query(query))
 }
 
-// HasDuplicateMergeQueuePatch reports whether a patch exists for the merge patch with this
-// project, org, repo, and head SHA.
-func HasDuplicateMergeQueuePatch(ctx context.Context, projectID, org, repo, headSHA string) (bool, error) {
+// FindDuplicateMergeQueuePatchID returns the ID of a merge queue patch created in the last 24 hours
+// for this project, org, repo, and head SHA, ignoring the patch with excludeID if it's set. It only
+// considers patches that are finalized or were created within gracePeriod, which is how long an
+// unfinalized patch counts as still being created. It returns an empty ID if there is no such patch.
+func FindDuplicateMergeQueuePatchID(ctx context.Context, projectID, org, repo, headSHA string, excludeID mgobson.ObjectId, gracePeriod time.Duration) (string, error) {
+	now := time.Now()
 	query := bson.M{
 		AliasKey:   evergreen.CommitQueueAlias,
 		ProjectKey: projectID,
@@ -597,15 +600,25 @@ func HasDuplicateMergeQueuePatch(ctx context.Context, projectID, org, repo, head
 		bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupRepoKey):    repo,
 		bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupHeadSHAKey): headSHA,
 		CreateTimeKey: bson.M{
-			"$gte": time.Now().Add(-24 * time.Hour),
+			"$gte": now.Add(-24 * time.Hour),
 		},
+		"$or": []bson.M{
+			{VersionKey: bson.M{"$nin": []any{"", nil}}},
+			{CreateTimeKey: bson.M{"$gte": now.Add(-gracePeriod)}},
+		},
+	}
+	if excludeID.Valid() {
+		query[IdKey] = bson.M{"$ne": excludeID}
 	}
 
 	patches, err := Find(ctx, db.Query(query).WithFields(IdKey).Limit(1))
 	if err != nil {
-		return false, errors.Wrap(err, "finding merge queue patches by head SHA")
+		return "", errors.Wrap(err, "finding merge queue patches by head SHA")
 	}
-	return len(patches) > 0, nil
+	if len(patches) == 0 {
+		return "", nil
+	}
+	return patches[0].Id.Hex(), nil
 }
 
 // FindFinalizedMergeQueuePatchesMissingCompletionMetrics returns finalized merge queue patches that did not receive
