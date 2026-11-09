@@ -3,7 +3,6 @@ package trigger
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
@@ -256,17 +255,15 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 	})
 
 	data := commonTemplateData{
-		ID:                t.patch.Id.Hex(),
-		EventID:           t.event.ID,
-		SubscriptionID:    sub.ID,
-		DisplayName:       t.patch.Id.Hex(),
-		Description:       t.patch.Description,
-		Object:            event.ObjectPatch,
-		Project:           projectName,
-		PastTenseStatus:   collectiveStatus,
-		apiModel:          &api,
-		githubState:       message.GithubStatePending,
-		githubDescription: evergreen.PRTasksRunningDescription,
+		ID:              t.patch.Id.Hex(),
+		EventID:         t.event.ID,
+		SubscriptionID:  sub.ID,
+		DisplayName:     t.patch.Id.Hex(),
+		Description:     t.patch.Description,
+		Object:          event.ObjectPatch,
+		Project:         projectName,
+		PastTenseStatus: collectiveStatus,
+		apiModel:        &api,
 	}
 
 	if t.patch.IsChild() {
@@ -296,17 +293,9 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 	}
 
 	slackColor := evergreenFailColor
-	startTime := t.patch.StartTime
-	finishTime := t.patch.FinishTime
-	if t.patch.IsParent() {
-		var err error
-		startTime, finishTime, err = t.patch.GetCollectiveTimes(ctx)
-		if err != nil {
-			return nil, errors.Wrapf(err, "getting collective times for patch '%s'", t.patch.Id)
-		}
-	}
-	if utility.IsZeroTime(finishTime) {
-		finishTime = time.Now()
+	startTime, finishTime, err := t.patch.GetCollectiveTimes(ctx)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting collective times for patch '%s'", t.patch.Id)
 	}
 
 	data.githubState, data.githubDescription = patch.GetGithubStateAndDescription(collectiveStatus, startTime, finishTime)

@@ -367,20 +367,7 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 	}
 	s.NoError(t1.Insert(s.ctx))
 
-	childPatch := patch.Patch{
-		Id:         mgobson.NewObjectId(),
-		Status:     evergreen.VersionSucceeded,
-		Project:    "myChildProject",
-		Activated:  true,
-		StartTime:  s.patchDoc.StartTime.Add(time.Minute),
-		FinishTime: s.patchDoc.StartTime.Add(12 * time.Minute),
-		Triggers: patch.TriggerInfo{
-			ParentPatch: s.patchDoc.Id.Hex(),
-		},
-		DisplayNewUI: true,
-	}
-	s.NoError(childPatch.Insert(s.ctx))
-	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
+	childPatch := s.insertChildPatch(evergreen.VersionSucceeded)
 	s.patchDoc.Status = evergreen.VersionSucceeded
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
@@ -433,22 +420,7 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 	}
 	s.NoError(t1.Insert(s.ctx))
 
-	childPatch := patch.Patch{
-		Id:         mgobson.NewObjectId(),
-		Status:     evergreen.VersionFailed,
-		Project:    "myChildProject",
-		Activated:  true,
-		StartTime:  s.patchDoc.StartTime.Add(time.Minute),
-		FinishTime: s.patchDoc.StartTime.Add(12 * time.Minute),
-		Triggers: patch.TriggerInfo{
-			ParentPatch: s.patchDoc.Id.Hex(),
-		},
-		DisplayNewUI: true,
-	}
-	s.NoError(childPatch.Insert(s.ctx))
-	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
-	s.patchDoc.Status = evergreen.VersionSucceeded
-
+	childPatch := s.insertChildPatch(evergreen.VersionFailed)
 	s.patchDoc.Status = evergreen.VersionFailed
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
@@ -629,23 +601,6 @@ func (s *githubStatusRefreshSuite) TestParentStatusFailsWhenChildPatchFails() {
 	s.Equal("patch finished in 11m0s", status.Description)
 }
 
-func (s *githubStatusRefreshSuite) TestParentStatusSucceedsWhenParentAndChildPatchSucceed() {
-	s.patchDoc.Status = evergreen.VersionSucceeded
-	s.insertChildPatch(evergreen.VersionSucceeded)
-
-	s.runRefreshJob()
-
-	status := s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal("evergreen", status.Context)
-	s.Equal(message.GithubStateSuccess, status.State)
-	s.Equal("patch finished in 12m0s", status.Description)
-
-	status = s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
-	s.Equal(message.GithubStateSuccess, status.State)
-	s.Equal("patch finished in 11m0s", status.Description)
-}
-
 func (s *githubStatusRefreshSuite) TestParentStatusPendingWhenChildPatchIsRunning() {
 	s.patchDoc.Status = evergreen.VersionSucceeded
 	s.insertChildPatch(evergreen.VersionStarted)
@@ -664,25 +619,58 @@ func (s *githubStatusRefreshSuite) TestParentStatusPendingWhenChildPatchIsRunnin
 }
 
 func (s *githubStatusRefreshSuite) TestPatchWithoutChildrenUsesOwnStatus() {
-	for _, tc := range []struct {
-		status string
-		state  message.GithubState
-	}{
-		{status: evergreen.VersionSucceeded, state: message.GithubStateSuccess},
-		{status: evergreen.VersionFailed, state: message.GithubStateFailure},
-	} {
-		s.patchDoc.Status = tc.status
+	s.patchDoc.Status = evergreen.VersionFailed
 
-		s.runRefreshJob()
+	s.runRefreshJob()
 
-		status := s.getAndValidateStatus(s.env.InternalSender)
-		s.Equal("evergreen", status.Context)
-		s.Equal(tc.state, status.State)
-		s.Equal("patch finished in 10m0s", status.Description)
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStateFailure, status.State)
+	s.Equal("patch finished in 10m0s", status.Description)
 
-		_, ok := s.env.InternalSender.GetMessageSafe()
-		s.False(ok)
+	_, ok := s.env.InternalSender.GetMessageSafe()
+	s.False(ok)
+}
+
+func (s *githubStatusRefreshSuite) TestParentStatusPendingWhenChildPatchHasNotStarted() {
+	s.patchDoc.Status = evergreen.VersionSucceeded
+	s.insertChildPatch(evergreen.VersionCreated)
+
+	s.runRefreshJob()
+
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStatePending, status.State)
+	s.Equal("tasks are running", status.Description)
+}
+
+func (s *githubStatusRefreshSuite) TestMissingChildPatchSkipsParentStatusAndSendsOtherStatuses() {
+	b := build.Build{
+		Id:           "b1",
+		BuildVariant: "myBuild",
+		Version:      s.patchDoc.Version,
+		Status:       evergreen.BuildStarted,
 	}
+	s.NoError(b.Insert(s.ctx))
+	s.patchDoc.Status = evergreen.VersionSucceeded
+	s.insertChildPatch(evergreen.VersionSucceeded)
+	missingChildID := mgobson.NewObjectId().Hex()
+	s.patchDoc.Triggers.ChildPatches = append(s.patchDoc.Triggers.ChildPatches, missingChildID)
+
+	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
+	s.Require().True(ok)
+	job.env = s.env
+	job.Run(s.ctx)
+	s.ErrorContains(job.Error(), fmt.Sprintf("child patch '%s' not found", missingChildID))
+
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
+
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/myBuild", status.Context)
+
+	_, ok = s.env.InternalSender.GetMessageSafe()
+	s.False(ok)
 }
 
 func (s *githubStatusRefreshSuite) TestMergeQueuePatchSendsStatusesToMergeGroup() {
@@ -720,19 +708,16 @@ func (s *githubStatusRefreshSuite) TestMergeQueuePatchSendsStatusesToMergeGroup(
 	status := s.getStatus(s.env.InternalSender)
 	s.validateMergeGroupTarget(status)
 	s.Equal("evergreen", status.Context)
-	s.Equal(message.GithubStateSuccess, status.State)
 
 	// Child patch status
 	status = s.getStatus(s.env.InternalSender)
 	s.validateMergeGroupTarget(status)
 	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
-	s.Equal(message.GithubStateSuccess, status.State)
 
 	// Build status
 	status = s.getStatus(s.env.InternalSender)
 	s.validateMergeGroupTarget(status)
 	s.Equal("evergreen/myBuild", status.Context)
-	s.Equal(message.GithubStateSuccess, status.State)
 }
 
 func (s *githubStatusRefreshSuite) TestPatchWithoutGitHubTargetErrors() {
@@ -742,10 +727,31 @@ func (s *githubStatusRefreshSuite) TestPatchWithoutGitHubTargetErrors() {
 	s.Require().True(ok)
 	job.env = s.env
 	job.Run(s.ctx)
-	s.Error(job.Error())
+	s.ErrorContains(job.Error(), "has no GitHub owner, repo, and ref to send statuses to")
 
 	_, ok = s.env.InternalSender.GetMessageSafe()
 	s.False(ok, "no status should be sent without a GitHub target")
+}
+
+func (s *githubStatusRefreshSuite) TestMergeQueuePatchWithIncompleteMergeDataErrors() {
+	for name, mergeData := range map[string]thirdparty.GithubMergeGroup{
+		"EmptyMergeData":    {},
+		"HeadSHAWithoutOrg": {Repo: "mongo", HeadSHA: "a7e4d1c9b2f3e8a6d5c4b3a2f1e0d9c8b7a6f5e4"},
+	} {
+		s.Run(name, func() {
+			s.patchDoc.Alias = evergreen.CommitQueueAlias
+			s.patchDoc.GithubMergeData = mergeData
+
+			job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
+			s.Require().True(ok)
+			job.env = s.env
+			job.Run(s.ctx)
+			s.ErrorContains(job.Error(), "has no GitHub owner, repo, and ref to send statuses to")
+
+			_, ok = s.env.InternalSender.GetMessageSafe()
+			s.False(ok, "no status should be sent without a merge group target")
+		})
+	}
 }
 
 func (s *githubStatusRefreshSuite) validateMergeGroupTarget(status *message.GithubStatus) {

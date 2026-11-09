@@ -207,11 +207,8 @@ func (p *Patch) IsFinished() bool {
 // it returns the earliest start time and latest finish time across all patches.
 // For non-parent patches or parents without children, it returns the patch's own times.
 func (p *Patch) GetCollectiveTimes(ctx context.Context) (startTime, finishTime time.Time, err error) {
-	startTime = p.StartTime
-	finishTime = p.FinishTime
-
 	if !p.IsParent() || len(p.Triggers.ChildPatches) == 0 {
-		return startTime, finishTime, nil
+		return p.StartTime, p.FinishTime, nil
 	}
 
 	childPatches, err := Find(ctx, ByStringIds(ctx, p.Triggers.ChildPatches))
@@ -219,6 +216,16 @@ func (p *Patch) GetCollectiveTimes(ctx context.Context) (startTime, finishTime t
 		return time.Time{}, time.Time{}, errors.Wrap(err, "getting child patches for collective time calculations")
 	}
 
+	startTime, finishTime = GetCollectiveTimesFromPatches(p, childPatches)
+	return startTime, finishTime, nil
+}
+
+// GetCollectiveTimesFromPatches returns the earliest start time and latest
+// finish time across the parent patch and the given child patches. Zero
+// child times are ignored.
+func GetCollectiveTimesFromPatches(parent *Patch, childPatches []Patch) (startTime, finishTime time.Time) {
+	startTime = parent.StartTime
+	finishTime = parent.FinishTime
 	for _, childPatch := range childPatches {
 		if !childPatch.StartTime.IsZero() && (startTime.IsZero() || childPatch.StartTime.Before(startTime)) {
 			startTime = childPatch.StartTime
@@ -227,8 +234,7 @@ func (p *Patch) GetCollectiveTimes(ctx context.Context) (startTime, finishTime t
 			finishTime = childPatch.FinishTime
 		}
 	}
-
-	return startTime, finishTime, nil
+	return startTime, finishTime
 }
 
 // SetDescription sets a patch's description in the database
@@ -780,7 +786,7 @@ func (p *Patch) CollectiveStatus(ctx context.Context) (string, error) {
 			return "", errors.Wrapf(err, "getting child patch '%s' ", childPatchId)
 		}
 		if cp == nil {
-			return "", errors.Wrapf(err, "child patch '%s' not found", childPatchId)
+			return "", errors.Errorf("child patch '%s' not found", childPatchId)
 		}
 		allStatuses = append(allStatuses, cp.Status)
 	}

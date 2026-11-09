@@ -2,6 +2,7 @@ package patch
 
 import (
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -436,6 +438,42 @@ func TestGetCollectiveStatusFromPatchStatuses(t *testing.T) {
 
 	created := []string{evergreen.VersionCreated}
 	assert.Equal(t, evergreen.VersionCreated, GetCollectiveStatusFromPatchStatuses(t.Context(), created))
+}
+
+func TestGetGithubStateAndDescription(t *testing.T) {
+	startTime := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	finishTime := startTime.Add(10 * time.Minute)
+
+	t.Run("SucceededReturnsSuccessWithDuration", func(t *testing.T) {
+		state, description := GetGithubStateAndDescription(evergreen.VersionSucceeded, startTime, finishTime)
+		assert.Equal(t, message.GithubStateSuccess, state)
+		assert.Equal(t, "patch finished in 10m0s", description)
+	})
+	t.Run("FailedReturnsFailureWithDuration", func(t *testing.T) {
+		state, description := GetGithubStateAndDescription(evergreen.VersionFailed, startTime, finishTime)
+		assert.Equal(t, message.GithubStateFailure, state)
+		assert.Equal(t, "patch finished in 10m0s", description)
+	})
+	for name, status := range map[string]string{
+		"StartedReturnsPending": evergreen.VersionStarted,
+		"CreatedReturnsPending": evergreen.VersionCreated,
+		"AbortedReturnsPending": evergreen.VersionAborted,
+	} {
+		t.Run(name, func(t *testing.T) {
+			state, description := GetGithubStateAndDescription(status, startTime, finishTime)
+			assert.Equal(t, message.GithubStatePending, state)
+			assert.Equal(t, evergreen.PRTasksRunningDescription, description)
+		})
+	}
+	t.Run("ZeroFinishTimeUsesCurrentTime", func(t *testing.T) {
+		recentStart := time.Now().Add(-time.Minute)
+		state, description := GetGithubStateAndDescription(evergreen.VersionSucceeded, recentStart, time.Time{})
+		assert.Equal(t, message.GithubStateSuccess, state)
+		require.True(t, strings.HasPrefix(description, "patch finished in "))
+		duration, err := time.ParseDuration(strings.TrimPrefix(description, "patch finished in "))
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, duration, time.Minute)
+	})
 }
 
 func TestGetRequester(t *testing.T) {
