@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -689,4 +690,81 @@ func TestAddIntentForPRCommenterAuthorization(t *testing.T) {
 		err := gh.AddIntentForPR(t.Context(), makePR(), prUser, patch.AutomatedCaller, "", "", false)
 		assert.NoError(t, err)
 	})
+}
+
+func TestGitHubWebhookLag(t *testing.T) {
+	receivedAt := time.Now()
+	sentAt := receivedAt.Add(-30 * time.Second)
+	ts := func(t time.Time) *github.Timestamp { return &github.Timestamp{Time: t} }
+	prEvent := func(action string, updatedAt time.Time) *github.PullRequestEvent {
+		return &github.PullRequestEvent{
+			Action:      utility.ToStringPtr(action),
+			PullRequest: &github.PullRequest{UpdatedAt: ts(updatedAt)},
+		}
+	}
+	commentEvent := func(action string) *github.IssueCommentEvent {
+		return &github.IssueCommentEvent{
+			Action:  utility.ToStringPtr(action),
+			Comment: &github.IssueComment{CreatedAt: ts(sentAt)},
+		}
+	}
+
+	for name, tc := range map[string]struct {
+		event     any
+		expectLag bool
+	}{
+		"PullRequestOpenedUsesUpdatedAt": {
+			event:     prEvent(githubActionOpened, sentAt),
+			expectLag: true,
+		},
+		"PullRequestSynchronizeUsesUpdatedAt": {
+			event:     prEvent(githubActionSynchronize, sentAt),
+			expectLag: true,
+		},
+		"PullRequestIgnoredActionHasNoLag": {
+			event: prEvent("edited", sentAt),
+		},
+		"PushUsesRepoPushedAt": {
+			event:     &github.PushEvent{Repo: &github.PushEventRepository{PushedAt: ts(sentAt)}},
+			expectLag: true,
+		},
+		"CreatedIssueCommentUsesCreatedAt": {
+			event:     commentEvent(githubActionCreated),
+			expectLag: true,
+		},
+		"EditedIssueCommentHasNoLag": {
+			event: commentEvent("edited"),
+		},
+		"MergeGroupHasNoLag": {
+			event: &github.MergeGroupEvent{
+				Action:     utility.ToStringPtr(githubActionChecksRequested),
+				MergeGroup: &github.MergeGroup{HeadCommit: &github.Commit{Committer: &github.CommitAuthor{Date: ts(sentAt)}}},
+			},
+		},
+		"CheckRunHasNoLag": {
+			event: &github.CheckRunEvent{Action: utility.ToStringPtr(githubActionRerequested)},
+		},
+		"PingHasNoLag": {
+			event: &github.PingEvent{},
+		},
+		"MissingTimestampHasNoLag": {
+			event: &github.PullRequestEvent{Action: utility.ToStringPtr(githubActionOpened)},
+		},
+		"FutureTimestampIsDiscarded": {
+			event: prEvent(githubActionOpened, receivedAt.Add(time.Minute)),
+		},
+		"LagOverMaxIsDiscarded": {
+			event: prEvent(githubActionOpened, receivedAt.Add(-maxGitHubWebhookLag-time.Second)),
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			lag, ok := githubWebhookLag(tc.event, receivedAt)
+			require.Equal(t, tc.expectLag, ok)
+			if tc.expectLag {
+				assert.Equal(t, 30*time.Second, lag)
+			} else {
+				assert.Zero(t, lag)
+			}
+		})
+	}
 }

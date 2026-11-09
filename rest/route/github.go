@@ -28,10 +28,13 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
 	githubActionClosed          = "closed"
+	githubActionCreated         = "created"
 	githubActionOpened          = "opened"
 	githubActionSynchronize     = "synchronize"
 	githubActionReopened        = "reopened"
@@ -65,6 +68,13 @@ const (
 
 	// graphiteKind is what we have to pass into the Graphite CI API under current restrictions.
 	graphiteKind = "GITHUB_ACTIONS"
+
+	githubWebhookEventOtelAttribute = "evergreen.github.webhook_event"
+	githubWebhookLagMsOtelAttribute = "evergreen.github.webhook_lag_ms"
+
+	// maxGitHubWebhookLag is the longest webhook lag that's recorded. Longer
+	// lags are most likely manual redeliveries rather than GitHub delays.
+	maxGitHubWebhookLag = time.Hour
 )
 
 var (
@@ -79,12 +89,13 @@ type githubHookApi struct {
 	queue  amboy.Queue
 	secret []byte
 
-	event     any
-	eventType string
-	msgID     string
-	sc        data.Connector
-	settings  *evergreen.Settings
-	comments  githubComments
+	event      any
+	eventType  string
+	msgID      string
+	receivedAt time.Time
+	sc         data.Connector
+	settings   *evergreen.Settings
+	comments   githubComments
 
 	// isCommenterAuthorized checks whether a GitHub comment author is
 	// authorized to trigger CI. It can be overridden in tests.
@@ -125,6 +136,7 @@ func (gh *githubHookApi) Factory() gimlet.RouteHandler {
 }
 
 func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
+	gh.receivedAt = time.Now()
 	payload := getGitHubPayload(r.Context())
 	if payload == nil {
 		return gimlet.ErrorResponse{
@@ -178,6 +190,52 @@ func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo stri
 	return (fromApp && !hasApp) || (!fromApp && hasApp)
 }
 
+// recordWebhookLag sets the webhook's event type and, if it can be measured,
+// how late GitHub delivered it on the request span.
+func (gh *githubHookApi) recordWebhookLag(ctx context.Context) {
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(attribute.String(githubWebhookEventOtelAttribute, gh.eventType))
+	if lag, ok := githubWebhookLag(gh.event, gh.receivedAt); ok {
+		span.SetAttributes(attribute.Int64(githubWebhookLagMsOtelAttribute, lag.Milliseconds()))
+	}
+}
+
+// githubWebhookLag returns how long after the event happened the webhook was
+// received. It returns false if GitHub doesn't set a timestamp for the event
+// or the lag is implausible.
+func githubWebhookLag(event any, receivedAt time.Time) (time.Duration, bool) {
+	sentAt := webhookSentAt(event)
+	if sentAt.IsZero() || sentAt.After(receivedAt) {
+		return 0, false
+	}
+	lag := receivedAt.Sub(sentAt)
+	if lag > maxGitHubWebhookLag {
+		return 0, false
+	}
+	return lag, true
+}
+
+// webhookSentAt returns when GitHub says the event happened, or the zero time
+// if the event has no timestamp set by GitHub. Commit timestamps are never
+// used because the commit author controls them.
+func webhookSentAt(event any) time.Time {
+	switch e := event.(type) {
+	case *github.PullRequestEvent:
+		switch e.GetAction() {
+		case githubActionOpened, githubActionSynchronize, githubActionReopened, githubActionAutoBaseChange,
+			githubActionClosed, githubActionLabeled, githubActionUnlabeled:
+			return e.GetPullRequest().GetUpdatedAt().Time
+		}
+	case *github.PushEvent:
+		return e.GetRepo().GetPushedAt().Time
+	case *github.IssueCommentEvent:
+		if e.GetAction() == githubActionCreated {
+			return e.GetComment().GetCreatedAt().Time
+		}
+	}
+	return time.Time{}
+}
+
 func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	// GitHub occasionally aborts requests early before we are able to complete the full operation
 	// (for example enqueueing a PR to the commit queue). We therefore want to use a custom timeout without cancel.
@@ -208,6 +266,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
+		gh.recordWebhookLag(ctx)
 		if event.Action == nil {
 			err := gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
@@ -354,6 +413,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
+		gh.recordWebhookLag(ctx)
 		grip.Debug(ctx, message.Fields{
 			"source": "GitHub hook",
 			"msg_id": gh.msgID,
@@ -381,6 +441,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
+		gh.recordWebhookLag(ctx)
 		if err := gh.handleComment(ctx, event); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
