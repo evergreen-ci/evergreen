@@ -456,7 +456,7 @@ db.subscriptions.createIndex({
 db.failed_webhooks.createIndex({
     "failed_at": 1,
 }, {
-    expireAfterSeconds: 3 * 24 * 3600 // 3 days
+    expireAfterSeconds: 5 * 24 * 3600 // 5 days
 })
 db.failed_webhooks.ensureIndex({
     "project": 1,
