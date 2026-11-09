@@ -1029,12 +1029,11 @@ func GetCollectiveStatusFromPatchStatuses(ctx context.Context, statuses []string
 // status. A zero finish time is treated as the current time.
 func GetGithubStateAndDescription(status string, startTime, finishTime time.Time) (message.GithubState, string) {
 	var state message.GithubState
-	switch status {
-	case evergreen.VersionSucceeded:
+	if status == evergreen.VersionSucceeded {
 		state = message.GithubStateSuccess
-	case evergreen.VersionFailed:
+	} else if status == evergreen.VersionFailed {
 		state = message.GithubStateFailure
-	default:
+	} else {
 		return message.GithubStatePending, evergreen.PRTasksRunningDescription
 	}
 	if utility.IsZeroTime(finishTime) {
