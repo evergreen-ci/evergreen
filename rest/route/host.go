@@ -121,8 +121,8 @@ type hostIDGetHandler struct {
 //	@Tags			hosts
 //	@Router			/hosts/{host_id} [get]
 //	@Security		Api-User || Api-Key
-//	@Param			host_id	path		string	true	"the host ID"
-//	@Success		200		{object}	model.APIHost
+//	@Param			host_id	path	string	true	"the host ID"
+//	@Success		200		{array}	model.APIHost
 func (h *hostIDGetHandler) Factory() gimlet.RouteHandler {
 	return &hostIDGetHandler{}
 }
@@ -195,15 +195,17 @@ type hostGetHandler struct {
 
 // Factory creates an instance of the handler.
 //
-//	@Summary		Fetch hosts
-//	@Description	Returns a list of hosts.
-//	@Tags			hosts
-//	@Router			/hosts [get]
-//	@Security		Api-User || Api-Key
-//	@Param			start_at	query		string	false	"The identifier of the host to start at in the pagination"
-//	@Param			limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
-//	@Param			status		query		string	false	"A status of host to limit the results to"
-//	@Success		200			{object}	model.APIHost
+//	@Summary			Fetch hosts
+//	@Description		Returns a list of hosts.
+//	@Tags				hosts
+//	@Router				/hosts [get]
+//	@Security			Api-User || Api-Key
+//	@Param				host_id	query		string	false	"ID of the first host on the next page. Defaults to the most recent host."
+//	@Param				limit	query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
+//	@Param				status	query		string	false	"A status of host to limit the results to"
+//	@Success			200		{array}		model.APIHost
+//	@Header				200		{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."
+//	@x-pagination-type	"host-id-cursor"
 func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
 	return &hostGetHandler{}
 }
@@ -215,11 +217,11 @@ func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
 //	@Tags			hosts
 //	@Router			/users/{user_id}/hosts [get]
 //	@Security		Api-User || Api-Key
-//	@Param			user_id		path		string	true	"the user ID"
-//	@Param			start_at	query		string	false	"The identifier of the host to start at in the pagination"
-//	@Param			limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
-//	@Param			status		query		string	false	"A status of host to limit the results to"
-//	@Success		200			{object}	model.APIHost
+//	@Param			user_id	path	string	true	"the user ID"
+//	@Param			host_id	query	string	false	"ID of the first host on the next page. Defaults to the most recent host."
+//	@Param			limit	query	int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
+//	@Param			status	query	string	false	"A status of host to limit the results to"
+//	@Success		200		{array}	model.APIHost
 func (hgh *hostGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	vals := r.URL.Query()
 	hgh.url = util.HttpsUrl(r.Host)

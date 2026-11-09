@@ -45,19 +45,21 @@ func makeFetchTestsForTask(env evergreen.Environment, sc data.Connector) gimlet.
 
 // Factory creates an instance of the handler.
 //
-//	@Summary		Get tests from a task
-//	@Description	Fetches a paginated list of tests that ran as part of the given task. To filter the tasks, add the following parameters into the query string.
-//	@Tags			tests
-//	@Router			/tasks/{task_id}/tests [get]
-//	@Security		Api-User || Api-Key
-//	@Param			task_id		path	string	true	"task ID"
-//	@Param			start_at	query	int		false	"The page number to start at in the pagination"
-//	@Param			limit		query	int		false	"The number of tests to be returned per page of pagination. Defaults to 100"
-//	@Param			status		query	string	false	"A status of test to limit the results to."
-//	@Param			execution	query	int		false	"The 0-based number corresponding to the execution of the task. Defaults to 0, meaning the first time the task was run."
-//	@Param			test_name	query	string	false	"Only return the test matching the name."
-//	@Param			latest		query	bool	false	"Return tests from the latest execution. Cannot be used with execution."
-//	@Success		200			{array}	model.APITest
+//	@Summary			Get tests from a task
+//	@Description		Fetches a paginated list of tests that ran as part of the given task. To filter the tasks, add the following parameters into the query string.
+//	@Tags				tests
+//	@Router				/tasks/{task_id}/tests [get]
+//	@Security			Api-User || Api-Key
+//	@Param				task_id		path		string	true	"task ID"
+//	@Param				start_at	query		int		false	"Zero-based page number to start at. Each page holds up to 'limit' tests. Defaults to 0."
+//	@Param				limit		query		int		false	"The number of tests to be returned per page of pagination. Defaults to 100"
+//	@Param				status		query		string	false	"A status of test to limit the results to."
+//	@Param				execution	query		int		false	"The 0-based number corresponding to the execution of the task. Defaults to 0, meaning the first time the task was run."
+//	@Param				test_name	query		string	false	"Only return the test matching the name."
+//	@Param				latest		query		bool	false	"Return tests from the latest execution. Cannot be used with execution."
+//	@Success			200			{array}		model.APITest
+//	@Header				200			{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."
+//	@x-pagination-type	"page-number"
 func (hgh *testGetHandler) Factory() gimlet.RouteHandler {
 	return &testGetHandler{
 		env: hgh.env,

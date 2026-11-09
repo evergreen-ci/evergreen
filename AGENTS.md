@@ -65,6 +65,26 @@ Whenever modifying the `agent/` package, increment `AgentVersion` in `config.go`
 rollover. The format is the calendar date (`YYYY-MM-DD`); append a letter suffix (e.g. `2026-05-20a`)
 if there are multiple changes on the same day.
 
+### Swag Annotations (REST v2)
+
+REST v2 routes are documented with swag annotations; CI verifies formatting (`verify-swaggo-fmt`) and
+the generated spec (`rest/openapi` tests). After editing annotations, run `make swaggo-format` and
+`make swaggo-build`.
+
+* Type references resolve by package FOLDER name, not the Go import alias: write `model.APIPatch`
+  for `rest/model` even when the file imports it as `restModel`. `float` is not a valid `@Param`
+  type; use `number`.
+* `@x-` operation extensions require JSON values, e.g. `@x-pagination-type "time-cursor"`.
+* Keep annotation descriptions at most ~120 characters; `swag fmt` normalizes alignment, so do not
+  hand-format it.
+* Paginated routes must document the `Link` response header (`@Header ... Link "Pagination link to
+  the next page (rel=next) when more results exist. Follow it verbatim rather than constructing
+  URLs."`), an `@x-pagination-type` extension naming the pagination style, the cursor parameter's
+  meaning and default, and the limit's default and maximum. Reuse a pagination type listed in
+  `docs/API/REST-V2-Usage.mdx` before inventing a new one.
+* Verify cursor documentation against the code: the parameter name must match what the handler
+  reads and what the emitted Link header uses, and defaults must match what the code actually does.
+
 ### CI Self-Tests
 
 The Evergreen codebase has automated tests defined in `self-tests.yml`, which itself runs in Evergreen. For most tasks in
