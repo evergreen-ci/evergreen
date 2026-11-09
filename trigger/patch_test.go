@@ -451,6 +451,48 @@ func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedGitHubMergePatch() {
 	s.NotNil(n, "should create notification for aborted GitHub merge queue patch because the subscriber is the merge queue status check")
 }
 
+func (s *patchSuite) TestGenerateRecordsPatchIDForGitHubStatusNotifications() {
+	s.data.Status = evergreen.VersionSucceeded
+	githubSub := event.Subscriber{
+		Type: event.GithubPullRequestSubscriberType,
+		Target: &event.GithubPullRequestSubscriber{
+			Owner:    "evergreen-ci",
+			Repo:     "evergreen",
+			PRNumber: 448,
+			Ref:      "776f608b5b12cd27b8d931c8ee4ca0c13f857299",
+		},
+	}
+	githubSubscription := event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, githubSub)
+
+	s.Run("GitHubSubscriberRecordsPatchID", func() {
+		n, err := s.t.generate(s.ctx, &githubSubscription)
+		s.Require().NoError(err)
+		s.Require().NotNil(n)
+		s.Equal(s.patch.Id.Hex(), n.Metadata.PatchID)
+	})
+	s.Run("ChildPatchRecordsParentPatchID", func() {
+		childPatch, err := patch.FindOneId(s.ctx, "5aab4514f27e4f9984646d97")
+		s.Require().NoError(err)
+		s.Require().NotNil(childPatch)
+		t := makePatchTriggers().(*patchTriggers)
+		t.event = &s.event
+		t.data = s.data
+		t.patch = childPatch
+		t.uiConfig = s.t.uiConfig
+
+		n, err := t.generate(s.ctx, &githubSubscription)
+		s.Require().NoError(err)
+		s.Require().NotNil(n)
+		s.Equal(s.patch.Id.Hex(), n.Metadata.PatchID)
+	})
+	s.Run("OtherSubscriberDoesNotRecordPatchID", func() {
+		n, err := s.t.generate(s.ctx, &s.subs[0])
+		s.Require().NoError(err)
+		s.Require().NotNil(n)
+		s.Empty(n.Metadata.PatchID)
+	})
+}
+
 func (s *patchSuite) TestPatchStarted() {
 	n, err := s.t.patchStarted(s.ctx, &s.subs[0])
 	s.NoError(err)
