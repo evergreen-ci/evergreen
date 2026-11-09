@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -207,10 +208,9 @@ func (gh *githubHookApi) recordWebhookLag(ctx context.Context) {
 // webhookRepo returns the full name (owner/name) of the event's base repo, or
 // an empty string if the event has no repo.
 func webhookRepo(event any) string {
-	switch e := event.(type) {
-	case *github.PushEvent:
+	if e, ok := event.(*github.PushEvent); ok {
 		return e.GetRepo().GetFullName()
-	case interface{ GetRepo() *github.Repository }:
+	} else if e, ok := event.(interface{ GetRepo() *github.Repository }); ok {
 		return e.GetRepo().GetFullName()
 	}
 	return ""
@@ -233,19 +233,18 @@ func githubWebhookLag(event any, receivedAt time.Time) (time.Duration, bool) {
 // never used because the commit author controls them. Branch and tag deletions
 // are skipped because GitHub may not update the repo's pushed_at for them.
 func webhookSentAt(event any) time.Time {
-	switch e := event.(type) {
-	case *github.PullRequestEvent:
-		switch e.GetAction() {
-		case githubActionOpened, githubActionSynchronize, githubActionReopened, githubActionAutoBaseChange,
-			githubActionClosed, githubActionLabeled, githubActionUnlabeled:
+	if e, ok := event.(*github.PullRequestEvent); ok {
+		prActions := []string{githubActionOpened, githubActionSynchronize, githubActionReopened, githubActionAutoBaseChange,
+			githubActionClosed, githubActionLabeled, githubActionUnlabeled}
+		if slices.Contains(prActions, e.GetAction()) {
 			return e.GetPullRequest().GetUpdatedAt().Time
 		}
-	case *github.PushEvent:
+	} else if e, ok := event.(*github.PushEvent); ok {
 		if e.GetDeleted() {
 			return time.Time{}
 		}
 		return e.GetRepo().GetPushedAt().Time
-	case *github.IssueCommentEvent:
+	} else if e, ok := event.(*github.IssueCommentEvent); ok {
 		if e.GetAction() == githubActionCreated {
 			return e.GetComment().GetCreatedAt().Time
 		}
