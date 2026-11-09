@@ -528,7 +528,7 @@ func (p *patchAbortHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("user '%s' is not authorized to abort patch '%s'", usr.Username(), p.patchId),
 		})
 	}
-	if err := data.AbortPatch(ctx, p.patchId, usr.Id); err != nil {
+	if err := dbModel.CancelPatch(ctx, existingPatch, task.AbortInfo{User: usr.Id}); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting patch '%s'", p.patchId))
 	}
 

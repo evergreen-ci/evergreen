@@ -351,8 +351,11 @@ func (s *PatchAbortSuite) TestAbort() {
 
 	rm.patchId = s.objIds[2]
 	res = rm.Run(ctx)
+	s.Equal(http.StatusNotFound, res.Status())
 
-	s.NotEqual(http.StatusOK, res.Status())
+	deletedPatch, err := patch.FindOneId(ctx, s.objIds[2])
+	s.NoError(err)
+	s.Nil(deletedPatch)
 }
 
 func (s *PatchAbortSuite) TestAbortFail() {
@@ -367,7 +370,7 @@ func (s *PatchAbortSuite) TestAbortFail() {
 
 	rm.patchId = newId.Hex()
 	res := rm.Run(ctx)
-	s.NotEqual(http.StatusOK, res.Status())
+	s.Equal(http.StatusNotFound, res.Status())
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -513,6 +516,21 @@ func TestPatchOwnershipChecks(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, dbPatch)
 		assert.True(t, dbPatch.Activated)
+	})
+
+	t.Run("DeactivateWithPriorityByNonOwnerShouldBeForbiddenAndLeavePriorityUnchanged", func(t *testing.T) {
+		_, p := setup(t)
+		rh := makeChangePatchStatus(testutil.NewEnvironment(t.Context(), t)).(*patchChangeStatusHandler)
+		rh.patchId = p.Id.Hex()
+		rh.Activated = utility.FalsePtr()
+		rh.Priority = utility.ToInt64Ptr(5)
+		resp := rh.Run(userCtx(t, other))
+		assert.Equal(t, http.StatusForbidden, resp.Status())
+
+		tsk, err := task.FindOneId(t.Context(), "t0")
+		require.NoError(t, err)
+		require.NotNil(t, tsk)
+		assert.Zero(t, tsk.Priority)
 	})
 
 	t.Run("SetPriorityByNonOwnerShouldSucceed", func(t *testing.T) {

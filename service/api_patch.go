@@ -290,7 +290,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 	u := MustHaveUser(r)
 	if !model.UserCanModifyPatch(r.Context(), u, *p) {
-		as.LoggedError(w, r, http.StatusForbidden, errors.Errorf("user '%s' is not authorized to modify patch '%s'", u.Username(), p.Id.Hex()))
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.Errorf("user '%s' is not authorized to modify patch '%s'", u.Username(), p.Id.Hex()))
 		return
 	}
 
@@ -403,7 +403,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 	// deletes it.
 	needsOwnership := action == "update" || action == "finalize" || (action == "cancel" && p.Version == "")
 	if needsOwnership && !model.UserCanModifyPatch(ctx, dbUser, *p) {
-		as.LoggedError(w, r, http.StatusForbidden, errors.Errorf("user '%s' is not authorized to modify patch '%s'", dbUser.Username(), p.Id.Hex()))
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.Errorf("user '%s' is not authorized to modify patch '%s'", dbUser.Username(), p.Id.Hex()))
 		return
 	}
 	// dispatch to handlers based on specified action
@@ -529,7 +529,7 @@ func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 	u := MustHaveUser(r)
 	if !model.UserCanModifyPatch(r.Context(), u, *p) {
-		as.LoggedError(w, r, http.StatusForbidden, errors.Errorf("user '%s' is not authorized to modify patch '%s'", u.Username(), p.Id.Hex()))
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.Errorf("user '%s' is not authorized to modify patch '%s'", u.Username(), p.Id.Hex()))
 		return
 	}
 	moduleName := r.FormValue("module")

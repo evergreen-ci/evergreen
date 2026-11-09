@@ -168,10 +168,10 @@ func TestPatchOwnershipChecks(t *testing.T) {
 	finalize := routeCase{handler: as.existingPatchRequest, method: http.MethodPost, path: "/", body: `{"action": "finalize"}`}
 	cancel := routeCase{handler: as.existingPatchRequest, method: http.MethodPost, path: "/", body: `{"action": "cancel"}`}
 
-	t.Run("UpdateModuleByNonOwnerShouldBeForbidden", func(t *testing.T) {
+	t.Run("UpdateModuleByNonOwnerShouldBeUnauthorized", func(t *testing.T) {
 		p, _ := setup(t)
 		w := do(t, other, p, updateModule)
-		assert.Equal(t, http.StatusForbidden, w.Code)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
 
 		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
 		require.NoError(t, err)
@@ -180,10 +180,23 @@ func TestPatchOwnershipChecks(t *testing.T) {
 		assert.Equal(t, "original", dbPatch.Patches[0].Githash)
 	})
 
-	t.Run("DeleteModuleByNonOwnerShouldBeForbidden", func(t *testing.T) {
+	t.Run("UpdateModuleByOwnerShouldSucceed", func(t *testing.T) {
+		require.NoError(t, db.ClearGridCollections(patch.GridFSPrefix))
+		p, _ := setup(t)
+		w := do(t, owner, p, updateModule)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		require.NotNil(t, dbPatch)
+		require.Len(t, dbPatch.Patches, 1)
+		assert.Equal(t, "injected", dbPatch.Patches[0].Githash)
+	})
+
+	t.Run("DeleteModuleByNonOwnerShouldBeUnauthorized", func(t *testing.T) {
 		p, _ := setup(t)
 		w := do(t, other, p, deleteModule)
-		assert.Equal(t, http.StatusForbidden, w.Code)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
 
 		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
 		require.NoError(t, err)
@@ -202,10 +215,10 @@ func TestPatchOwnershipChecks(t *testing.T) {
 		assert.Empty(t, dbPatch.Patches)
 	})
 
-	t.Run("UpdateDescriptionByNonOwnerShouldBeForbidden", func(t *testing.T) {
+	t.Run("UpdateDescriptionByNonOwnerShouldBeUnauthorized", func(t *testing.T) {
 		p, _ := setup(t)
 		w := do(t, other, p, updateDescription)
-		assert.Equal(t, http.StatusForbidden, w.Code)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
 
 		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
 		require.NoError(t, err)
@@ -224,10 +237,10 @@ func TestPatchOwnershipChecks(t *testing.T) {
 		assert.Equal(t, "injected", dbPatch.Description)
 	})
 
-	t.Run("FinalizeByNonOwnerShouldBeForbidden", func(t *testing.T) {
+	t.Run("FinalizeByNonOwnerShouldBeUnauthorized", func(t *testing.T) {
 		p, _ := setup(t)
 		w := do(t, other, p, finalize)
-		assert.Equal(t, http.StatusForbidden, w.Code)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
 
 		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
 		require.NoError(t, err)
@@ -236,10 +249,10 @@ func TestPatchOwnershipChecks(t *testing.T) {
 		assert.Empty(t, dbPatch.Version)
 	})
 
-	t.Run("CancelUnfinalizedPatchByNonOwnerShouldBeForbidden", func(t *testing.T) {
+	t.Run("CancelUnfinalizedPatchByNonOwnerShouldBeUnauthorized", func(t *testing.T) {
 		p, _ := setup(t)
 		w := do(t, other, p, cancel)
-		assert.Equal(t, http.StatusForbidden, w.Code)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
 
 		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
 		require.NoError(t, err)
