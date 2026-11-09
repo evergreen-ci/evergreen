@@ -27,6 +27,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type projectGetHandler struct {
@@ -778,6 +779,9 @@ const defaultVersionLimit = 5
 // unbounded limit lets one request materialize gigabytes server-side and can OOM the process.
 const maxVersionLimit = 100
 
+// maxVersionsBodySize bounds the optional JSON body for listing project versions.
+const maxVersionsBodySize = 64 * 1024
+
 type getProjectVersionsHandler struct {
 	projectName string
 	opts        dbModel.GetVersionsOptions
@@ -791,12 +795,12 @@ func makeGetProjectVersionsHandler() gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Get versions for a project
-//	@Description	Returns a paginated list of recent versions for a project. Parameters should be passed into the JSON body (the route still accepts limit and start as query parameters to support legacy behavior).
+//	@Description	Returns a paginated list of recent versions for a project. Parameters should be passed into the JSON body (the route still accepts limit and start as query parameters to support legacy behavior). When include_builds is set, a request searches at most 1000 versions. If that is not enough to fill the page, the request fails, and the search can be narrowed with start or revision_end.
 //	@Tags			versions
 //	@Router			/projects/{project_id}/versions [get]
 //	@Security		Api-User || Api-Key
 //	@Param			project_id			path	string		true	"the project ID"
-//	@Param			skip				query	int			false	"Number of versions to skip."
+//	@Param			skip				query	int			false	"Number of versions to skip. Cannot exceed 1000 when include_builds is set."
 //	@Param			limit				query	int			false	"The number of versions to be returned per page of pagination. Defaults to 5, and cannot exceed 100."
 //	@Param			start				query	int			false	"The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified."
 //	@Param			revision_end		query	int			false	"Will return the versions that are greater than (and therefore more recent) or equal to revision number specified."
@@ -819,7 +823,16 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 	h.url = util.HttpsUrl(r.Host)
 
 	// body is optional
-	b, _ := io.ReadAll(r.Body)
+	// Read one byte past the max so an oversized body can be told apart from one that's exactly the max.
+	body := utility.NewRequestReaderWithSize(r, maxVersionsBodySize+1)
+	defer body.Close()
+	b, err := io.ReadAll(body)
+	if err != nil {
+		return errors.Wrap(err, "reading request body")
+	}
+	if len(b) > maxVersionsBodySize {
+		return errors.Errorf("request body cannot exceed %d bytes", maxVersionsBodySize)
+	}
 	if len(b) > 0 {
 		if err := json.Unmarshal(b, &h.opts); err != nil {
 			return errors.Wrap(err, "unmarshalling JSON request body into version options")
@@ -837,6 +850,9 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 
 	if h.opts.IncludeTasks && !h.opts.IncludeBuilds {
 		return errors.New("cannot include tasks without builds")
+	}
+	if h.opts.IncludeBuilds && h.opts.Skip > dbModel.MaxVersionsScannedWithBuilds {
+		return errors.Errorf("skip cannot exceed %d when including builds, use start to paginate instead", dbModel.MaxVersionsScannedWithBuilds)
 	}
 
 	// get some options from the query parameters for legacy usage
@@ -903,6 +919,18 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 
 func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 	versions, err := data.GetProjectVersionsWithOptions(ctx, h.projectName, h.opts)
+	if errors.Is(err, dbModel.ErrVersionScanLimitExceeded) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("%s, narrow the search with start or revision_end", err.Error()),
+		})
+	}
+	if mongo.IsTimeout(err) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusServiceUnavailable,
+			Message:    "timed out getting versions",
+		})
+	}
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s'", h.projectName))
 	}

@@ -323,6 +323,9 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	case model.ProjectPagePluginSection:
 		restModel.RestoreRedactedFileTicketWebhookSecret(&newProjectRef.TaskAnnotationSettings, before.ProjectRef.TaskAnnotationSettings)
 		restModel.RestoreRedactedFileTicketWebhookSecret(&mergedSection.TaskAnnotationSettings, mergedBeforeRef.TaskAnnotationSettings)
+		if err = model.ValidateBbProject(ctx, projectId, mergedSection.BuildBaronSettings, &mergedSection.TaskAnnotationSettings.FileTicketWebhook); err != nil {
+			return nil, errors.Wrap(err, "validating build baron config")
+		}
 		for _, link := range mergedSection.ExternalLinks {
 			if link.DisplayName != "" && link.URLTemplate != "" {
 				// check length of link display name

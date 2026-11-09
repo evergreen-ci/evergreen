@@ -255,8 +255,10 @@ func LogHostProvisionError(ctx context.Context, hostID string) {
 	LogHostEvent(ctx, hostID, EventHostProvisionError, HostEventData{})
 }
 
-func LogHostTerminatedExternally(ctx context.Context, hostID, oldStatus string) {
-	LogHostEvent(ctx, hostID, EventHostStatusChanged, HostEventData{OldStatus: oldStatus, NewStatus: EventHostTerminatedExternally, User: evergreen.HostExternalUserName})
+// LogHostTerminatedExternally logs that a host was found to be terminated or
+// stopped outside of Evergreen. The logs describe what was found.
+func LogHostTerminatedExternally(ctx context.Context, hostID, oldStatus, logs string) {
+	LogHostEvent(ctx, hostID, EventHostStatusChanged, HostEventData{OldStatus: oldStatus, NewStatus: EventHostTerminatedExternally, User: evergreen.HostExternalUserName, Logs: logs})
 }
 
 func LogHostStatusChanged(ctx context.Context, hostId, oldStatus, newStatus, user string, logs string) {

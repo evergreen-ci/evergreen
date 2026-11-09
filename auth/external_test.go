@@ -33,6 +33,20 @@ func TestExternalUserManager(t *testing.T) {
 		assert.Equal(t, usr, mgrUsr)
 	})
 
+	t.Run("GetOrCreateUserWithOktaIDShouldLinkOktaID", func(t *testing.T) {
+		const oktaID = "00ujy6u7xpRtaSiCJ0h7"
+		oktaUsr := &user.DBUser{Id: userID, OktaUserID: oktaID}
+		mgrUsr, err := mgr.GetOrCreateUser(t.Context(), oktaUsr)
+		require.NoError(t, err)
+		require.NotNil(t, mgrUsr)
+		assert.Equal(t, userID, mgrUsr.Username())
+
+		dbUser, err := user.FindOneById(t.Context(), userID)
+		require.NoError(t, err)
+		require.NotNil(t, dbUser)
+		assert.Equal(t, oktaID, dbUser.OktaUserID)
+	})
+
 	t.Run("GetUserByToken", func(t *testing.T) {
 		mgrUsr, err := mgr.GetUserByToken(t.Context(), "abc")
 		assert.Error(t, err)

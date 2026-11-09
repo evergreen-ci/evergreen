@@ -26,8 +26,8 @@ import (
 )
 
 // BaseVersion is the resolver for the baseVersion field.
-func (r *versionResolver) BaseVersion(ctx context.Context, obj *model.Version) (*model.Version, error) {
-	baseVersion, err := model.FindBaseVersionForVersion(ctx, obj.Id)
+func (r *versionResolver) BaseVersion(ctx context.Context, obj *model.Version, repotrackerOnly *bool) (*model.Version, error) {
+	baseVersion, err := model.FindBaseVersionForVersion(ctx, obj.Id, utility.FromBoolPtr(repotrackerOnly))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", obj.Id, err.Error()))
 	}
@@ -483,7 +483,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options
 		}
 	}
 	baseVersionID := ""
-	baseVersion, err := model.FindBaseVersionForVersion(ctx, versionID)
+	baseVersion, err := model.FindBaseVersionForVersion(ctx, versionID, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", versionID, err.Error()))
 	}
@@ -605,7 +605,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *model.Versio
 			Revision: upstreamBuild.Revision,
 			Version:  upstreamVersion,
 		}
-	} else if obj.TriggerType == model.ProjectTriggerLevelPush {
+	} else if obj.TriggerType == evergreen.ProjectTriggerLevelPush {
 		projectID = obj.TriggerID
 		upstreamProject = &UpstreamProject{
 			Revision: obj.TriggerSHA,

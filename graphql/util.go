@@ -280,7 +280,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 		buildVariantOpts.IncludeBaseTasks = utility.ToBoolPtr(true)
 	}
 	if utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks) {
-		baseVersion, err := model.FindBaseVersionForVersion(ctx, versionId)
+		baseVersion, err := model.FindBaseVersionForVersion(ctx, versionId, false)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding base version for version '%s'", versionId)
 		}
@@ -977,11 +977,12 @@ func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave Di
 
 	switch onSave {
 	case DistroOnSaveOperationDecommission:
-		if err = host.DecommissionHostsWithDistroId(ctx, distroID); err != nil {
+		const decommissionReason = "hosts in the distro were decommissioned from the distro page"
+		if err = host.DecommissionHostsWithDistroId(ctx, distroID, decommissionReason); err != nil {
 			return noHostsUpdated, errors.Wrap(err, fmt.Sprintf("decommissioning hosts for distro '%s'", distroID))
 		}
 		for _, h := range hosts {
-			event.LogHostStatusChanged(ctx, h.Id, h.Status, evergreen.HostDecommissioned, userID, "distro page")
+			event.LogHostStatusChanged(ctx, h.Id, h.Status, evergreen.HostDecommissioned, userID, decommissionReason)
 		}
 	case DistroOnSaveOperationReprovision:
 		failed := []string{}
@@ -1560,8 +1561,10 @@ func getWaterfallFilterOptionsFromContext(ctx context.Context) model.WaterfallOp
 				OmitInactiveBuilds:   utility.FromBoolPtr(options.OmitInactiveBuilds),
 				Statuses:             utility.FilterSlice(options.Statuses, func(s string) bool { return s != "" }),
 				Tasks:                utility.FilterSlice(options.Tasks, func(s string) bool { return s != "" }),
+				TaskTags:             utility.FilterSlice(options.TaskTags, func(s string) bool { return s != "" }),
 				TaskCaseSensitive:    utility.FromBoolTPtr(options.TaskCaseSensitive),
 				Variants:             utility.FilterSlice(options.Variants, func(s string) bool { return s != "" }),
+				VariantTags:          utility.FilterSlice(options.VariantTags, func(s string) bool { return s != "" }),
 				VariantCaseSensitive: utility.FromBoolTPtr(options.TaskCaseSensitive),
 			}
 		}

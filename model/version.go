@@ -618,6 +618,7 @@ func (v *Version) GetHighestTaskExecution(ctx context.Context) (int, error) {
 type VersionBuildStatus struct {
 	BuildVariant     string                `bson:"build_variant" json:"id"`
 	DisplayName      string                `bson:"display_name,omitempty" json:"display_name,omitempty"`
+	Tags             []string              `bson:"tags,omitempty" json:"-"`
 	BuildId          string                `bson:"build_id,omitempty" json:"build_id,omitempty"`
 	BatchTimeTasks   []BatchTimeTaskStatus `bson:"batchtime_tasks,omitempty" json:"batchtime_tasks,omitempty"`
 	ActivationStatus `bson:",inline"`
@@ -675,6 +676,7 @@ type SourceModule struct {
 var (
 	VersionBuildStatusIdKey             = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildId")
 	VersionBuildStatusDisplayNameKey    = bsonutil.MustHaveTag(VersionBuildStatus{}, "DisplayName")
+	VersionBuildStatusTagsKey           = bsonutil.MustHaveTag(VersionBuildStatus{}, "Tags")
 	VersionBuildStatusVariantKey        = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildVariant")
 	VersionBuildStatusActivatedKey      = bsonutil.MustHaveTag(VersionBuildStatus{}, "Activated")
 	VersionBuildStatusBatchTimeTasksKey = bsonutil.MustHaveTag(VersionBuildStatus{}, "BatchTimeTasks")
@@ -808,6 +810,14 @@ type GetVersionsOptions struct {
 	CreatedBefore  time.Time `json:"created_before"`
 }
 
+// MaxVersionsScannedWithBuilds bounds how many versions past the skip one GetVersionsWithOptions call joins
+// against builds and tasks. It also bounds the skip itself, which callers must validate.
+const MaxVersionsScannedWithBuilds = 1000
+
+// ErrVersionScanLimitExceeded is returned when a request including builds searches the maximum number of
+// versions without filling the page and older versions still remain.
+var ErrVersionScanLimitExceeded = errors.Errorf("searched %d versions without finding enough matches", MaxVersionsScannedWithBuilds)
+
 // GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
 // the input GetVersionsOptions.
 func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVersionsOptions) ([]Version, error) {
@@ -850,6 +860,9 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
+	if opts.IncludeBuilds {
+		pipeline = append(pipeline, bson.M{"$limit": MaxVersionsScannedWithBuilds + opts.Skip})
+	}
 
 	// initial projection of version items
 	project := bson.M{
@@ -938,6 +951,23 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 
 	if err := db.AggregateSecondary(ctx, VersionCollection, pipeline, &res); err != nil {
 		return nil, errors.Wrap(err, "aggregating versions and builds")
+	}
+	if !opts.IncludeBuilds || len(res) >= opts.Limit {
+		return res, nil
+	}
+
+	// A short page is only complete if the search reached the end of history.
+	pastLimit := []Version{}
+	q := db.Query(match).
+		Sort([]string{"-" + VersionRevisionOrderNumberKey}).
+		Skip(MaxVersionsScannedWithBuilds + opts.Skip).
+		Limit(1).
+		WithFields(VersionIdKey)
+	if err := db.FindAllQSecondary(ctx, VersionCollection, q, &pastLimit); err != nil {
+		return nil, errors.Wrap(err, "checking for versions past the scan limit")
+	}
+	if len(pastLimit) > 0 {
+		return nil, ErrVersionScanLimitExceeded
 	}
 	return res, nil
 }

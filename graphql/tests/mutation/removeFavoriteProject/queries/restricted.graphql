@@ -1,0 +1,5 @@
+mutation {
+  removeFavoriteProject(opts: { projectIdentifier: "restricted-secret-project" }) {
+    identifier
+  }
+}
