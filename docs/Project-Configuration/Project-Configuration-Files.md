@@ -518,7 +518,7 @@ the "Version Manifest" shown in the Spruce UI should show module configurations 
 The modules will only be cloned in the [git.get_project](Project-Commands#gitgetproject) command if the [build variant](Project-Configuration-Files#build-variants)
 is configured to use the module via the module field.
 
-Patches can't use every private module repo. See [private module repos in patches](#private-module-repos-in-patches).
+Some private module repo use is restricted. See [private module repos in patches](#private-module-repos-in-patches).
 
 ```yaml
 modules:
