@@ -457,6 +457,40 @@ func TestVersionByProjectIdAndRevisionPrefix(t *testing.T) {
 	assert.Nil(t, v)
 }
 
+func TestVersionByProjectIdAndRevisionPrefixMatchesTriggerSHA(t *testing.T) {
+	mainlineRevision := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	triggerSHA := "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	projectID := "project"
+
+	require.NoError(t, db.ClearCollections(VersionCollection))
+	require.NoError(t, db.InsertMany(t.Context(), VersionCollection,
+		Version{Id: "mainline", Identifier: projectID, Requester: evergreen.RepotrackerVersionRequester, Revision: mainlineRevision},
+		Version{Id: "trigger", Identifier: projectID, Requester: evergreen.TriggerRequester, Revision: mainlineRevision, TriggerSHA: triggerSHA},
+		Version{Id: "triggerNoSHA", Identifier: projectID, Requester: evergreen.TriggerRequester, Revision: "cccccccccccccccccccccccccccccccccccccccc"},
+	))
+
+	for name, tc := range map[string]struct {
+		prefix     string
+		expectedID string
+	}{
+		"MainlineMatchesOnRevision":               {prefix: "aaaaaaa", expectedID: "mainline"},
+		"TriggerMatchesOnTriggerSHA":              {prefix: "bbbbbbb", expectedID: "trigger"},
+		"TriggerWithoutTriggerSHAMatchesRevision": {prefix: "ccccccc", expectedID: "triggerNoSHA"},
+		"UnknownPrefixDoesNotMatch":               {prefix: "ddddddd"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			v, err := VersionFindOne(t.Context(), VersionByProjectIdAndRevisionPrefix(projectID, tc.prefix))
+			require.NoError(t, err)
+			if tc.expectedID == "" {
+				assert.Nil(t, v)
+				return
+			}
+			require.NotNil(t, v)
+			assert.Equal(t, tc.expectedID, v.Id)
+		})
+	}
+}
+
 func TestRemoveGitTagFromVersions(t *testing.T) {
 	for name, run := range map[string]func(t *testing.T){
 		"RemovesTagFromMultipleVersions": func(t *testing.T) {
