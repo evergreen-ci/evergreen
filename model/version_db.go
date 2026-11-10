@@ -49,6 +49,7 @@ var (
 	VersionRemoteURLKey                         = bsonutil.MustHaveTag(Version{}, "RemotePath")
 	VersionTriggerIDKey                         = bsonutil.MustHaveTag(Version{}, "TriggerID")
 	VersionTriggerTypeKey                       = bsonutil.MustHaveTag(Version{}, "TriggerType")
+	VersionTriggerSHAKey                        = bsonutil.MustHaveTag(Version{}, "TriggerSHA")
 	VersionSatisfiedTriggersKey                 = bsonutil.MustHaveTag(Version{}, "SatisfiedTriggers")
 	VersionPeriodicBuildIDKey                   = bsonutil.MustHaveTag(Version{}, "PeriodicBuildID")
 	VersionActivatedKey                         = bsonutil.MustHaveTag(Version{}, "Activated")
@@ -135,14 +136,21 @@ func BaseVersionByProjectIdAndRevision(projectId, revision string) db.Q {
 		})
 }
 
+// VersionByProjectIdAndRevisionPrefix finds a system-requested version for the given project whose
+// git hash starts with revisionPrefix. A version matches on its revision or, for trigger versions, on its
+// trigger SHA.
 func VersionByProjectIdAndRevisionPrefix(projectId, revisionPrefix string) db.Q {
 	lengthHash := 40 - len(revisionPrefix)
+	hashRegex := bson.M{"$regex": fmt.Sprintf("^%s[0-9a-f]{%d}$", revisionPrefix, lengthHash)}
 	return db.Query(
 		bson.M{
 			VersionIdentifierKey: projectId,
-			VersionRevisionKey:   bson.M{"$regex": fmt.Sprintf("^%s[0-9a-f]{%d}$", revisionPrefix, lengthHash)},
 			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
+			},
+			"$or": []bson.M{
+				{VersionRevisionKey: hashRegex},
+				{VersionTriggerSHAKey: hashRegex},
 			},
 		})
 }
