@@ -518,10 +518,7 @@ the "Version Manifest" shown in the Spruce UI should show module configurations 
 The modules will only be cloned in the [git.get_project](Project-Commands#gitgetproject) command if the [build variant](Project-Configuration-Files#build-variants)
 is configured to use the module via the module field.
 
-CLI and GitHub PR patches can only use a private module repo if a recent mainline version of a project for the same
-repo declares it as a module. To add one, commit it to a tracked branch's config and wait for Evergreen to create the
-mainline version. GitHub PR patches can also use repos the PR author can read. Merge queue and child patches can use
-any repo.
+Patches can't use every private module repo. See [private module repos in patches](#private-module-repos-in-patches).
 
 ```yaml
 modules:
@@ -589,6 +586,31 @@ modules:
     repo: mongo.wiki
     prefix: src/wiki
 ```
+
+#### Private module repos in patches
+
+Evergreen clones private module repos with its own GitHub App, which can read many private repos. To prevent patch authors
+from reading repos they don't have access to by declaring them as modules, CLI patches and GitHub PR patches can
+use a private module repo only if one of these is true:
+
+- It's the project's own repo.
+- A recent mainline version of the project declares it as a module.
+- A recent mainline version of another project for the same GitHub repo declares it as a module.
+- The patch is a GitHub PR patch and the PR author can read the repo on GitHub.
+
+Public repos, merge queue patches, and child patches aren't restricted.
+
+A patch that uses any other private module repo fails with an error like this:
+
+```text
+modules 'my-module' (my-org/my-private-repo) use private repos that patches can't use
+```
+
+To fix it, do one of these:
+
+- Add the module to the project's config on a tracked branch
+- Test the change in a GitHub PR instead of a CLI patch. The PR's patch can use the module if the PR author can read
+  its repo.
 
 ### Pre and Post
 

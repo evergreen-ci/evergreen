@@ -26,7 +26,10 @@ var committedConfigRequesters = []string{
 	evergreen.AdHocRequester,
 }
 
-const committedManifestLookback = 10
+const (
+	committedManifestLookback = 10
+	moduleRepoTrustDocsURL    = "https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Project-Configuration-Files#private-module-repos-in-patches"
+)
 
 var (
 	isGitHubRepoPublic          = thirdparty.IsGitHubRepoPublic
@@ -82,7 +85,7 @@ type untrustedModuleReposError struct {
 }
 
 func (e untrustedModuleReposError) Error() string {
-	return fmt.Sprintf("modules %s use private repos that patches can't use until a mainline version declares them", strings.Join(e.modules, ", "))
+	return fmt.Sprintf("modules %s use private repos that patches can't use. See %s", strings.Join(e.modules, ", "), moduleRepoTrustDocsURL)
 }
 
 // patchModuleRepoChecker checks whether a patch can use module repos.
