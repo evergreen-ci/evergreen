@@ -4,5 +4,5 @@ package model
 type APIRepo struct {
 	ID     string   `json:"id"`
 	Name   string   `json:"name"`
-	Admins []string `json:"admins"`
+	Admins []string `json:"admins" extensions:"!x-nullable"`
 }
