@@ -293,6 +293,20 @@ func (r *versionResolver) QuarantinedTestsSkippedCount(ctx context.Context, obj 
 	return count, nil
 }
 
+// RepotrackerBaseVersion is the resolver for the repotrackerBaseVersion field.
+func (r *versionResolver) RepotrackerBaseVersion(ctx context.Context, obj *model.Version) (*model.Version, error) {
+	switch obj.Requester {
+	case evergreen.TriggerRequester, evergreen.GitTagRequester, evergreen.AdHocRequester:
+		baseVersion, err := model.FindBaseVersionForVersion(ctx, obj.Id, true)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding repotracker base version for version '%s': %s", obj.Id, err.Error()))
+		}
+		return baseVersion, nil
+	default:
+		return nil, nil
+	}
+}
+
 // Status is the resolver for the status field.
 func (r *versionResolver) Status(ctx context.Context, obj *model.Version) (string, error) {
 	return getDisplayStatus(ctx, obj)
