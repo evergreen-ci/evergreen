@@ -458,14 +458,15 @@ func TestVersionByProjectIdAndRevisionPrefix(t *testing.T) {
 }
 
 func TestVersionByProjectIdAndRevisionPrefixMatchesTriggerSHA(t *testing.T) {
-	revision := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	mainlineRevision := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	triggerSHA := "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	projectID := "project"
 
 	require.NoError(t, db.ClearCollections(VersionCollection))
 	require.NoError(t, db.InsertMany(t.Context(), VersionCollection,
-		Version{Id: "mainline", Identifier: "proj", Requester: evergreen.RepotrackerVersionRequester, Revision: revision},
-		Version{Id: "trigger", Identifier: "proj", Requester: evergreen.TriggerRequester, Revision: revision, TriggerSHA: triggerSHA},
-		Version{Id: "triggerNoSHA", Identifier: "proj", Requester: evergreen.TriggerRequester, Revision: "cccccccccccccccccccccccccccccccccccccccc"},
+		Version{Id: "mainline", Identifier: projectID, Requester: evergreen.RepotrackerVersionRequester, Revision: mainlineRevision},
+		Version{Id: "trigger", Identifier: projectID, Requester: evergreen.TriggerRequester, Revision: mainlineRevision, TriggerSHA: triggerSHA},
+		Version{Id: "triggerNoSHA", Identifier: projectID, Requester: evergreen.TriggerRequester, Revision: "cccccccccccccccccccccccccccccccccccccccc"},
 	))
 
 	for name, tc := range map[string]struct {
@@ -478,7 +479,7 @@ func TestVersionByProjectIdAndRevisionPrefixMatchesTriggerSHA(t *testing.T) {
 		"UnknownPrefixDoesNotMatch":               {prefix: "ddddddd"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			v, err := VersionFindOne(t.Context(), VersionByProjectIdAndRevisionPrefix("proj", tc.prefix))
+			v, err := VersionFindOne(t.Context(), VersionByProjectIdAndRevisionPrefix(projectID, tc.prefix))
 			require.NoError(t, err)
 			if tc.expectedID == "" {
 				assert.Nil(t, v)
