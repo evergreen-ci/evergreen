@@ -12,6 +12,7 @@ import (
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -377,4 +378,45 @@ type webhookResolverFunc func(context.Context, string, string) ([]netip.Addr, er
 
 func (f webhookResolverFunc) LookupNetIP(ctx context.Context, network, host string) ([]netip.Addr, error) {
 	return f(ctx, network, host)
+}
+
+func TestEvergreenWebhookSenderSendWithError(t *testing.T) {
+	sender, err := NewEvergreenWebhookLogger()
+	require.NoError(t, err)
+	s, ok := sender.(*evergreenWebhookLogger)
+	require.True(t, ok)
+
+	makeMessage := func() message.Composer {
+		return NewWebhookMessage(EvergreenWebhook{
+			NotificationID: "evergreen",
+			URL:            "https://example.com",
+			Secret:         []byte("hi"),
+			Body:           []byte("something important"),
+		})
+	}
+
+	t.Run("ReturnsErrorOnFailedDelivery", func(t *testing.T) {
+		transport := mockWebhookTransport{responseStatus: http.StatusInternalServerError}
+		s.client = &http.Client{Transport: &transport}
+		err := s.SendWithError(t.Context(), makeMessage())
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "webhook response was 500")
+	})
+
+	t.Run("ReturnsNilOnSuccessfulDelivery", func(t *testing.T) {
+		transport := mockWebhookTransport{secret: []byte("hi")}
+		s.client = &http.Client{Transport: &transport}
+		assert.NoError(t, s.SendWithError(t.Context(), makeMessage()))
+	})
+
+	// Notification send jobs deliver through this helper, so it must
+	// propagate the webhook sender's error rather than silently treating the
+	// delivery as sent.
+	t.Run("GripHelperPropagatesError", func(t *testing.T) {
+		transport := mockWebhookTransport{responseStatus: http.StatusInternalServerError}
+		s.client = &http.Client{Transport: &transport}
+		err := send.SendWithError(t.Context(), s, makeMessage())
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "webhook response was 500")
+	})
 }

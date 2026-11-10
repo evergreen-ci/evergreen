@@ -50,6 +50,7 @@ type Notification struct {
 	ID         string           `bson:"_id"`
 	Subscriber event.Subscriber `bson:"subscriber"`
 	Payload    any              `bson:"payload"`
+	Project    string           `bson:"project,omitempty"`
 
 	SentAt   time.Time            `bson:"sent_at,omitempty"`
 	Error    string               `bson:"error,omitempty"`
@@ -243,6 +244,7 @@ func (n *Notification) MarkSent(ctx context.Context) error {
 	return nil
 }
 
+// MarkError marks the notification as sent with the given error.
 func (n *Notification) MarkError(ctx context.Context, sendErr error) error {
 	if sendErr == nil {
 		return nil
@@ -269,7 +271,7 @@ func (n *Notification) MarkError(ctx context.Context, sendErr error) error {
 		return errors.Wrap(err, "setting error for notification")
 	}
 
-	return nil
+	return InsertFailedWebhook(ctx, n, sendErr)
 }
 
 func (n *Notification) SetTaskMetadata(ID string, execution int, createdBy string) {

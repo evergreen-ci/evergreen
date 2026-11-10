@@ -452,6 +452,18 @@ db.subscriptions.createIndex({
     expireAfterSeconds: 1209600 // 2 weeks
 })
 
+//======failed_webhooks======//
+db.failed_webhooks.createIndex({
+    "failed_at": 1,
+}, {
+    expireAfterSeconds: 5 * 24 * 3600 // 5 days
+})
+db.failed_webhooks.ensureIndex({
+    "project": 1,
+    "url": 1,
+    "failed_at": -1
+})
+
 //======users======//
 db.users.ensureIndex({
     "settings.github_user.uid": 1
