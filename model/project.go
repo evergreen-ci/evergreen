@@ -162,6 +162,10 @@ type BuildVariantTaskUnit struct {
 	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	// TestSelection overrides the build variant's and the project's task-level
+	// test selection default for this task. It follows the same rules as
+	// BuildVariant.TestSelection.
+	TestSelection *bool `yaml:"test_selection,omitempty" bson:"test_selection,omitempty"`
 	// AllowedBranches lists regex patterns for branches on which this task is
 	// allowed to run.
 	AllowedBranches []string `yaml:"allowed_branches,omitempty" bson:"allowed_branches,omitempty"`

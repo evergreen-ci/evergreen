@@ -5225,3 +5225,39 @@ tasks:
 	require.NotNil(t, unset)
 	assert.Nil(t, unset.TestSelection)
 }
+
+func TestParseTaskTestSelection(t *testing.T) {
+	yml := `
+task_groups:
+- name: tg
+  tasks:
+  - t2
+buildvariants:
+- name: bv
+  run_on: d
+  tasks:
+  - name: t1
+    test_selection: true
+  - name: t2
+  - name: tg
+    test_selection: false
+  - name: t4
+tasks:
+- name: t1
+- name: t2
+- name: t4
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(context.Background(), []byte(yml), nil, "id", proj)
+	require.NoError(t, err)
+
+	byName := map[string]BuildVariantTaskUnit{}
+	for _, bvt := range proj.FindBuildVariant("bv").Tasks {
+		byName[bvt.Name] = bvt
+	}
+	require.NotNil(t, byName["t1"].TestSelection)
+	assert.True(t, *byName["t1"].TestSelection)
+	require.NotNil(t, byName["tg"].TestSelection)
+	assert.False(t, *byName["tg"].TestSelection)
+	assert.Nil(t, byName["t4"].TestSelection)
+}

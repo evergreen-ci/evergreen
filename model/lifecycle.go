@@ -1367,6 +1367,17 @@ func isTestSelectionEnabledForTask(t *task.Task, displayTaskIDsToNames map[strin
 		return false, nil
 	}
 
+	isTestSelectionIncludeSet := len(creationInfo.TestSelectionParams.IncludeBuildVariants) > 0
+	if !isTestSelectionIncludeSet && creationInfo.Project != nil && creationInfo.ProjectRef != nil {
+		// Without patch-level includes, the task's own test_selection setting
+		// takes precedence over its build variant's, which takes precedence
+		// over the project default.
+		if bvt := creationInfo.Project.FindTaskForVariant(t.DisplayName, t.BuildVariant); bvt != nil && bvt.TestSelection != nil {
+			return *bvt.TestSelection, nil
+		}
+		return testSelectionDefaultForBuildVariant(t.BuildVariant, creationInfo), nil
+	}
+
 	return true, nil
 }
 
@@ -1601,14 +1612,7 @@ func canBuildVariantEnableTestSelection(bvName string, creationInfo TaskCreation
 		return false
 	}
 
-	isTestSelectionDefaultEnabled := creationInfo.ProjectRef.IsTestSelectionDefaultEnabled()
-	// A build variant's test_selection setting overrides the project's
-	// task-level default.
-	if creationInfo.Project != nil {
-		if bv := creationInfo.Project.FindBuildVariant(bvName); bv != nil && bv.TestSelection != nil {
-			isTestSelectionDefaultEnabled = *bv.TestSelection
-		}
-	}
+	isTestSelectionDefaultEnabled := testSelectionDefaultForBuildVariant(bvName, creationInfo)
 	isTestSelectionIncludeSet := len(creationInfo.TestSelectionParams.IncludeBuildVariants) > 0 || len(creationInfo.TestSelectionParams.IncludeTasks) > 0
 
 	if isTestSelectionIncludeSet {
@@ -1622,13 +1626,44 @@ func canBuildVariantEnableTestSelection(bvName string, creationInfo TaskCreation
 		} else if len(creationInfo.TestSelectionParams.IncludeBuildVariants) == 0 && !isExcluded {
 			return true
 		}
-	} else if isTestSelectionDefaultEnabled {
+	} else if isTestSelectionDefaultEnabled || buildVariantHasTestSelectionTaskOptIn(bvName, creationInfo) {
 		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionParams.ExcludeBuildVariants)
 		if !isExcluded {
 			return true
 		}
 	}
 
+	return false
+}
+
+// testSelectionDefaultForBuildVariant returns the test selection default for
+// tasks in the build variant: the build variant's test_selection setting if it
+// has one, otherwise the project's task-level default.
+func testSelectionDefaultForBuildVariant(bvName string, creationInfo TaskCreationInfo) bool {
+	if creationInfo.Project != nil {
+		if bv := creationInfo.Project.FindBuildVariant(bvName); bv != nil && bv.TestSelection != nil {
+			return *bv.TestSelection
+		}
+	}
+	return creationInfo.ProjectRef.IsTestSelectionDefaultEnabled()
+}
+
+// buildVariantHasTestSelectionTaskOptIn returns whether any task in the build
+// variant sets test_selection to true, which makes the build variant eligible
+// for test selection even if its own default is disabled.
+func buildVariantHasTestSelectionTaskOptIn(bvName string, creationInfo TaskCreationInfo) bool {
+	if creationInfo.Project == nil {
+		return false
+	}
+	bv := creationInfo.Project.FindBuildVariant(bvName)
+	if bv == nil {
+		return false
+	}
+	for _, bvt := range bv.Tasks {
+		if utility.FromBoolPtr(bvt.TestSelection) {
+			return true
+		}
+	}
 	return false
 }
 

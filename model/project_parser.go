@@ -458,6 +458,7 @@ type parserBVTaskUnit struct {
 	Disable           *bool                     `yaml:"disable,omitempty" bson:"disable,omitempty"`
 	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	TestSelection     *bool                     `yaml:"test_selection,omitempty" bson:"test_selection,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 	AllowedBranches   parserStringSlice         `yaml:"allowed_branches,omitempty" bson:"allowed_branches,omitempty"`
 	IgnoredBranches   parserStringSlice         `yaml:"ignored_branches,omitempty" bson:"ignored_branches,omitempty"`
@@ -2291,6 +2292,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		Disable:           bvt.Disable,
 		AllowForGitTag:    bvt.AllowForGitTag,
 		GitTagOnly:        bvt.GitTagOnly,
+		TestSelection:     bvt.TestSelection,
 		AllowedRequesters: bvt.AllowedRequesters,
 		AllowedBranches:   bvt.AllowedBranches,
 		IgnoredBranches:   bvt.IgnoredBranches,
