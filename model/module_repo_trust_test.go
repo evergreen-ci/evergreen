@@ -82,7 +82,7 @@ func TestValidatePatchModuleRepos(t *testing.T) {
 	secret := Module{Name: "secret", Owner: "secretorg", Repo: "secret-repo", Branch: "main"}
 	prReadable := Module{Name: "pr", Owner: "secretorg", Repo: "pr-readable"}
 
-	t.Run("CommittedAndPublicReposAreAllowed", func(t *testing.T) {
+	t.Run("DeclaredAndPublicReposAreAllowed", func(t *testing.T) {
 		assert.NoError(t, ValidatePatchModuleRepos(t.Context(), cliPatch, projectRef, ModuleList{
 			{Name: "self", Repo: "git@github.com:myorg/myrepo.git"},
 			{Name: "base", Owner: "myorg", Repo: "base-module"},
@@ -112,7 +112,7 @@ func TestValidatePatchModuleRepos(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			err := ValidatePatchModuleRepos(t.Context(), tc.p, projectRef, ModuleList{tc.module})
-			assert.ErrorAs(t, err, &untrustedModuleReposError{})
+			require.ErrorAs(t, err, &untrustedModuleReposError{})
 			assert.Contains(t, err.Error(), tc.module.Name)
 		})
 	}
@@ -126,7 +126,7 @@ func TestValidatePatchModuleRepos(t *testing.T) {
 	t.Run("PRAuthorAccessIsAllowedForPRPatch", func(t *testing.T) {
 		assert.NoError(t, ValidatePatchModuleRepos(t.Context(), prPatch, projectRef, ModuleList{prReadable}))
 	})
-	t.Run("ReviewedConfigIsNotChecked", func(t *testing.T) {
+	t.Run("MergeQueueAndChildPatchesAreNotChecked", func(t *testing.T) {
 		mergeQueuePatch := &patch.Patch{Id: mgobson.NewObjectId(), GithubMergeData: thirdparty.GithubMergeGroup{HeadSHA: "sha"}}
 		childPatch := &patch.Patch{Id: mgobson.NewObjectId(), Triggers: patch.TriggerInfo{ParentPatch: "parent"}}
 		assert.NoError(t, ValidatePatchModuleRepos(t.Context(), mergeQueuePatch, projectRef, ModuleList{secret}))

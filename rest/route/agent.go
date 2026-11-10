@@ -1856,6 +1856,17 @@ func isRepoAllowedForTask(ctx context.Context, env evergreen.Environment, t *tas
 		return true, nil
 	}
 
+	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
+	if err != nil {
+		return false, errors.Wrap(err, "finding version for task")
+	}
+	if v == nil {
+		return false, errors.Errorf("version '%s' not found", t.Version)
+	}
+	if strings.EqualFold(v.Owner, owner) && strings.EqualFold(v.Repo, repo) {
+		return true, nil
+	}
+
 	mfest, err := manifest.FindFromVersion(ctx, t.Version, t.Project, "", t.Requester)
 	if err != nil {
 		return false, errors.Wrap(err, "finding manifest for task")
@@ -1867,14 +1878,6 @@ func isRepoAllowedForTask(ctx context.Context, env evergreen.Environment, t *tas
 			}
 		}
 		return false, nil
-	}
-
-	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
-	if err != nil {
-		return false, errors.Wrap(err, "finding version for task")
-	}
-	if v == nil {
-		return false, errors.Errorf("version '%s' not found", t.Version)
 	}
 
 	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)

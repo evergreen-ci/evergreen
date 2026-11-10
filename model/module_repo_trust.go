@@ -65,7 +65,7 @@ func ValidatePatchModuleRepos(ctx context.Context, p *patch.Patch, projectRef *P
 		}
 	}
 	if len(untrusted) > 0 {
-		return c.untrustedError(untrusted...)
+		return untrustedModuleReposError{modules: untrusted}
 	}
 	return nil
 }
@@ -78,13 +78,11 @@ func IsUntrustedModuleReposError(err error) bool {
 }
 
 type untrustedModuleReposError struct {
-	modules     []string
-	projectRepo string
-	isPRPatch   bool
+	modules []string
 }
 
 func (e untrustedModuleReposError) Error() string {
-	return fmt.Sprintf("modules '%s' use private repos that patches can't use until a mainline version declares them", strings.Join(e.modules, "', '"))
+	return fmt.Sprintf("modules %s use private repos that patches can't use until a mainline version declares them", strings.Join(e.modules, ", "))
 }
 
 // patchModuleRepoChecker checks whether a patch can use module repos.
@@ -107,14 +105,6 @@ func newPatchModuleRepoChecker(projectRef *ProjectRef, p *patch.Patch) *patchMod
 		projectRef: projectRef,
 		patch:      p,
 		results:    map[string]bool{},
-	}
-}
-
-func (c *patchModuleRepoChecker) untrustedError(modules ...string) error {
-	return untrustedModuleReposError{
-		modules:     modules,
-		projectRepo: c.projectRef.Owner + "/" + c.projectRef.Repo,
-		isPRPatch:   c.patch.IsGithubPRPatch(),
 	}
 }
 
@@ -157,13 +147,12 @@ func (c *patchModuleRepoChecker) check(ctx context.Context, name, owner, repo st
 		return err
 	}
 	if !allowed {
-		return c.untrustedError(fmt.Sprintf("'%s' (%s/%s)", name, owner, repo))
+		return untrustedModuleReposError{modules: []string{fmt.Sprintf("'%s' (%s/%s)", name, owner, repo)}}
 	}
 	return nil
 }
 
-// isTrustedOnGitHub checks whether the repo is public or readable by the PR
-// author.
+// isTrustedOnGitHub checks whether the repo is public or readable by the PR author.
 func (c *patchModuleRepoChecker) isTrustedOnGitHub(ctx context.Context, owner, repo string) (bool, error) {
 	public, err := isGitHubRepoPublic(ctx, owner, repo)
 	if err != nil {

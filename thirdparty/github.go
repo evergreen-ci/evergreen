@@ -1641,8 +1641,7 @@ func IsGitHubRepoPublic(ctx context.Context, owner, repo string) (bool, error) {
 		return false, errors.Wrapf(err, "getting repo '%s/%s'", owner, repo)
 	}
 
-	visibility := ghRepo.GetVisibility()
-	return !ghRepo.GetPrivate() && (visibility == "" || visibility == "public"), nil
+	return !ghRepo.GetPrivate(), nil
 }
 
 // ValidateGitHubPermission checks if the given permission is a valid GitHub permission.
