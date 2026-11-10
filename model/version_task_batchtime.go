@@ -75,6 +75,24 @@ func VersionTaskBatchTimesUpsert(ctx context.Context, bt *VersionTaskBatchTimes)
 	return err
 }
 
+// VersionTaskBatchTimesAppend appends the given build variants' task batchtimes
+// to a version's doc, creating the doc if it doesn't exist.
+func VersionTaskBatchTimesAppend(ctx context.Context, bt *VersionTaskBatchTimes) error {
+	update := bson.M{
+		"$push": bson.M{
+			VersionTaskBatchTimesBuildVariantsKey: bson.M{"$each": bt.BuildVariants},
+		},
+		"$setOnInsert": bson.M{
+			VersionTaskBatchTimesIdentifierKey: bt.Identifier,
+			VersionTaskBatchTimesRequesterKey:  bt.Requester,
+			VersionTaskBatchTimesOrderKey:      bt.Order,
+			VersionTaskBatchTimesIgnoredKey:    bt.Ignored,
+		},
+	}
+	_, err := db.Upsert(ctx, VersionTaskBatchTimeCollection, bson.M{VersionTaskBatchTimesIdKey: bt.Id}, update)
+	return err
+}
+
 // VersionTaskBatchTimesFindByLastTaskActivation returns the most recent version
 // whose task batchtimes include an activated task matching the build variant
 // and task name, or nil if none is found.
@@ -101,4 +119,31 @@ func VersionTaskBatchTimesFindByLastTaskActivation(ctx context.Context, projectI
 		return nil, err
 	}
 	return bt, nil
+}
+
+// TaskBatchTimesForVariant extracts the task batchtimes from build variant
+// statuses, keeping only build variants that have task batchtimes.
+func TaskBatchTimesForVariant(bvs []VersionBuildStatus) []BuildVariantTaskBatchTime {
+	var variants []BuildVariantTaskBatchTime
+	for _, bv := range bvs {
+		if len(bv.BatchTimeTasks) == 0 {
+			continue
+		}
+		variants = append(variants, BuildVariantTaskBatchTime{
+			BuildVariant:   bv.BuildVariant,
+			BatchTimeTasks: bv.BatchTimeTasks,
+		})
+	}
+	return variants
+}
+
+// WithoutBatchTimeTasks returns build variant statuses with task batchtimes
+// removed so they aren't stored in the version document.
+func WithoutBatchTimeTasks(bvs []VersionBuildStatus) []VersionBuildStatus {
+	stripped := make([]VersionBuildStatus, len(bvs))
+	for i, bv := range bvs {
+		bv.BatchTimeTasks = nil
+		stripped[i] = bv
+	}
+	return stripped
 }

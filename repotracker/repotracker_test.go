@@ -555,6 +555,8 @@ tasks:
 	v, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
 	require.NoError(t, err)
 	require.NotNil(t, v)
+	_, err = v.GetBuildVariants(ctx)
+	require.NoError(t, err)
 	assert.Len(t, v.BuildVariants, 3)
 	assert.False(t, v.BuildVariants[0].Activated)
 	assert.False(t, v.BuildVariants[1].Activated)
@@ -2421,4 +2423,47 @@ tasks:
 		})
 	}
 
+}
+
+func TestVersionAndTaskBatchtimes(t *testing.T) {
+	v := &model.Version{
+		Id:                  "version0",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 3,
+		BuildVariants: []model.VersionBuildStatus{
+			{
+				BuildVariant:   "ubuntu",
+				BuildId:        "build0",
+				BatchTimeTasks: []model.BatchTimeTaskStatus{{TaskName: "task0"}},
+			},
+			{BuildVariant: "windows", BuildId: "build1"},
+		},
+	}
+
+	stored, bt := versionAndTaskBatchtimes(v)
+	require.NotNil(t, bt)
+	assert.Equal(t, "version0", bt.Id)
+	assert.Equal(t, "proj", bt.Identifier)
+	assert.Equal(t, evergreen.RepotrackerVersionRequester, bt.Requester)
+	assert.Equal(t, 3, bt.Order)
+	require.Len(t, bt.BuildVariants, 1)
+	assert.Equal(t, "ubuntu", bt.BuildVariants[0].BuildVariant)
+	require.Len(t, bt.BuildVariants[0].BatchTimeTasks, 1)
+	assert.Equal(t, "task0", bt.BuildVariants[0].BatchTimeTasks[0].TaskName)
+
+	require.Len(t, stored.BuildVariants, 2)
+	assert.Equal(t, "ubuntu", stored.BuildVariants[0].BuildVariant)
+	assert.Equal(t, "build0", stored.BuildVariants[0].BuildId)
+	assert.Empty(t, stored.BuildVariants[0].BatchTimeTasks, "stored version should not have task batchtimes")
+	assert.Empty(t, stored.BuildVariants[1].BatchTimeTasks)
+
+	require.Len(t, v.BuildVariants[0].BatchTimeTasks, 1, "should not modify the original version")
+
+	noBatchTime := &model.Version{
+		BuildVariants: []model.VersionBuildStatus{{BuildVariant: "ubuntu"}},
+	}
+	stored, bt = versionAndTaskBatchtimes(noBatchTime)
+	assert.Nil(t, bt, "should not create a doc when there are no task batchtimes")
+	assert.Len(t, stored.BuildVariants, 1)
 }

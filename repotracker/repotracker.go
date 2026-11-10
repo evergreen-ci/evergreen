@@ -890,6 +890,26 @@ func verifyOrderNum(ctx context.Context, revOrderNum int, projectId string) erro
 	return nil
 }
 
+// versionAndTaskBatchtimes returns a copy of the version to store in the version
+// document, with the task batchtimes split into a separate doc for the dedicated
+// collection. The task batchtimes doc is nil if the version has none.
+func versionAndTaskBatchtimes(v *model.Version) (model.Version, *model.VersionTaskBatchTimes) {
+	bvs := model.TaskBatchTimesForVariant(v.BuildVariants)
+	if len(bvs) == 0 {
+		return *v, nil
+	}
+	stripped := *v
+	stripped.BuildVariants = model.WithoutBatchTimeTasks(v.BuildVariants)
+	return stripped, &model.VersionTaskBatchTimes{
+		Id:            v.Id,
+		Identifier:    v.Identifier,
+		Requester:     v.Requester,
+		Order:         v.RevisionOrderNumber,
+		Ignored:       v.Ignored,
+		BuildVariants: bvs,
+	}
+}
+
 // createVersionItems populates and stores all the tasks and builds for a version according to
 // the given project config.
 func createVersionItems(ctx context.Context, v *model.Version, metadata model.VersionMetadata, projectInfo *model.ProjectInfo, aliases model.ProjectAliases, mfst *manifest.Manifest) error {
@@ -1120,9 +1140,10 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		if utility.IsZeroTime(v.IngestTime) {
 			v.IngestTime = time.Now()
 		}
-		_, err = database.Collection(model.VersionCollection).InsertOne(sessCtx, v)
+		versionToInsert, taskBatchTimes := versionAndTaskBatchtimes(v)
+		_, err = database.Collection(model.VersionCollection).InsertOne(sessCtx, &versionToInsert)
 		if err != nil {
-			grip.Notice(ctx, message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "aborting transaction",
 				"cause":   "can't insert version",
 				"version": v.Id,
@@ -1132,10 +1153,24 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			}
 			return errors.Wrapf(err, "inserting version '%s'", v.Id)
 		}
+		if taskBatchTimes != nil {
+			_, err = database.Collection(model.VersionTaskBatchTimeCollection).InsertOne(sessCtx, taskBatchTimes)
+			if err != nil {
+				grip.Error(ctx, message.WrapError(err, message.Fields{
+					"message": "aborting transaction",
+					"cause":   "can't insert task batchtime",
+					"version": v.Id,
+				}))
+				if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+					return errors.Wrap(abortErr, "aborting transaction")
+				}
+				return errors.Wrapf(err, "inserting task batchtimes for version '%s'", v.Id)
+			}
+		}
 		if projectInfo.Config != nil {
 			_, err = database.Collection(model.ProjectConfigCollection).InsertOne(sessCtx, projectInfo.Config)
 			if err != nil {
-				grip.Notice(ctx, message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message": "aborting transaction",
 					"cause":   "can't insert project config",
 					"version": v.Id,

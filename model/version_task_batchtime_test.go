@@ -249,3 +249,83 @@ func TestGetBuildVariantsMergesSplitBatchTimeTasks(t *testing.T) {
 	require.Len(t, bvs[1].BatchTimeTasks, 1, "should attach the batchtime tasks stored in the separate collection")
 	assert.Equal(t, "task1", bvs[1].BatchTimeTasks[0].TaskName)
 }
+
+func TestVersionTaskBatchTimesAppend(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionTaskBatchTimeCollection))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(VersionTaskBatchTimeCollection))
+	})
+
+	require.NoError(t, VersionTaskBatchTimesAppend(t.Context(), &VersionTaskBatchTimes{
+		Id:         "version0",
+		Identifier: "proj",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		Order:      1,
+		BuildVariants: []BuildVariantTaskBatchTime{
+			{
+				BuildVariant:   "ubuntu",
+				BatchTimeTasks: []BatchTimeTaskStatus{{TaskName: "task0"}},
+			},
+		},
+	}))
+	require.NoError(t, VersionTaskBatchTimesAppend(t.Context(), &VersionTaskBatchTimes{
+		Id: "version0",
+		BuildVariants: []BuildVariantTaskBatchTime{
+			{
+				BuildVariant:   "windows",
+				BatchTimeTasks: []BatchTimeTaskStatus{{TaskName: "task1"}},
+			},
+		},
+	}))
+
+	found, err := VersionTaskBatchTimesFindOne(t.Context(), "version0")
+	require.NoError(t, err)
+	require.NotNil(t, found)
+	require.Len(t, found.BuildVariants, 2)
+	assert.Equal(t, "ubuntu", found.BuildVariants[0].BuildVariant)
+	assert.Equal(t, "windows", found.BuildVariants[1].BuildVariant)
+	assert.Equal(t, "proj", found.Identifier, "should set the denormalized fields when creating the doc")
+}
+
+func TestActivateAndSetBuildVariantsStoresBatchTimeTasksInCollection(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
+	})
+
+	require.NoError(t, db.Insert(t.Context(), VersionCollection, Version{
+		Id:         "version0",
+		Identifier: "proj",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant:   "ubuntu",
+				BatchTimeTasks: []BatchTimeTaskStatus{{TaskName: "task0"}},
+			},
+		},
+	}))
+
+	v, err := VersionFindOneId(t.Context(), "version0")
+	require.NoError(t, err)
+	require.NotNil(t, v)
+	require.NoError(t, v.ActivateAndSetBuildVariants(t.Context()))
+
+	stored, err := VersionFindOneIdWithBuildVariants(t.Context(), "version0")
+	require.NoError(t, err)
+	require.NotNil(t, stored)
+	require.Len(t, stored.BuildVariants, 1)
+	assert.Empty(t, stored.BuildVariants[0].BatchTimeTasks, "version document should not store batchtime tasks")
+
+	bt, err := VersionTaskBatchTimesFindOne(t.Context(), "version0")
+	require.NoError(t, err)
+	require.NotNil(t, bt)
+	require.Len(t, bt.BuildVariants, 1)
+	require.Len(t, bt.BuildVariants[0].BatchTimeTasks, 1)
+	assert.Equal(t, "task0", bt.BuildVariants[0].BatchTimeTasks[0].TaskName)
+
+	bvs, err := v.GetBuildVariants(t.Context())
+	require.NoError(t, err)
+	require.Len(t, bvs, 1)
+	require.Len(t, bvs[0].BatchTimeTasks, 1)
+	assert.Equal(t, "task0", bvs[0].BatchTimeTasks[0].TaskName)
+}

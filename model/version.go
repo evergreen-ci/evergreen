@@ -187,13 +187,26 @@ func (v *Version) ActivateAndSetBuildVariants(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "getting build variant info for version")
 	}
+	taskBatchTimes := TaskBatchTimesForVariant(bvs)
+	if len(taskBatchTimes) > 0 {
+		if err := VersionTaskBatchTimesUpsert(ctx, &VersionTaskBatchTimes{
+			Id:            v.Id,
+			Identifier:    v.Identifier,
+			Requester:     v.Requester,
+			Order:         v.RevisionOrderNumber,
+			Ignored:       v.Ignored,
+			BuildVariants: taskBatchTimes,
+		}); err != nil {
+			return errors.Wrap(err, "setting task batchtimes")
+		}
+	}
 	return VersionUpdateOne(
 		ctx,
 		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$set": bson.M{
 				VersionActivatedKey:     true,
-				VersionBuildVariantsKey: bvs,
+				VersionBuildVariantsKey: WithoutBatchTimeTasks(bvs),
 			},
 		},
 	)
