@@ -4467,3 +4467,83 @@ func TestSourceCacheEnabled(t *testing.T) {
 		})
 	}
 }
+
+func TestFindLastActivatedBatchTimeTask(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
+	})
+
+	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	oldActivateAt := base
+	newActivateAt := base.Add(time.Hour)
+
+	insertOldVersion := func() {
+		require.NoError(t, db.Insert(t.Context(), VersionCollection, Version{
+			Id:                  "old",
+			Identifier:          "proj",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 1,
+			BuildVariants: []VersionBuildStatus{
+				{
+					BuildVariant: "ubuntu",
+					BatchTimeTasks: []BatchTimeTaskStatus{
+						{
+							TaskName:         "task0",
+							ActivationStatus: ActivationStatus{Activated: true, ActivateAt: oldActivateAt},
+						},
+					},
+				},
+			},
+		}))
+	}
+	insertNewVersion := func() {
+		require.NoError(t, VersionTaskBatchTimesUpsert(t.Context(), &VersionTaskBatchTimes{
+			Id:         "new",
+			Identifier: "proj",
+			Requester:  evergreen.RepotrackerVersionRequester,
+			Order:      2,
+			BuildVariants: []BuildVariantTaskBatchTime{
+				{
+					BuildVariant: "ubuntu",
+					BatchTimeTasks: []BatchTimeTaskStatus{
+						{
+							TaskName:         "task0",
+							ActivationStatus: ActivationStatus{Activated: true, ActivateAt: newActivateAt},
+						},
+					},
+				},
+			},
+		}))
+	}
+
+	t.Run("MoreRecentVersionInCollectionWins", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
+		insertOldVersion()
+		insertNewVersion()
+
+		status, err := findLastActivatedTaskBatchTime(t.Context(), "proj", "ubuntu", "task0")
+		require.NoError(t, err)
+		require.NotNil(t, status)
+		assert.True(t, status.ActivateAt.Equal(newActivateAt))
+	})
+
+	t.Run("FallsBackToVersionDocument", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
+		insertOldVersion()
+
+		status, err := findLastActivatedTaskBatchTime(t.Context(), "proj", "ubuntu", "task0")
+		require.NoError(t, err)
+		require.NotNil(t, status)
+		assert.True(t, status.ActivateAt.Equal(oldActivateAt))
+	})
+
+	t.Run("NoMatch", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
+		insertOldVersion()
+
+		status, err := findLastActivatedTaskBatchTime(t.Context(), "proj", "ubuntu", "nonexistent")
+		require.NoError(t, err)
+		assert.Nil(t, status)
+	})
+}

@@ -75,9 +75,12 @@ type Version struct {
 	// BuildVariants contains information about build variant activation. This
 	// is not always loaded in version document queries because it can be large.
 	// See (Version).GetBuildVariants to fetch this field.
-	BuildVariants   []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
-	PeriodicBuildID string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
-	Aborted         bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
+	BuildVariants []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
+	// buildVariantsLoaded caches whether BuildVariants has already been loaded,
+	// including batchtime tasks.
+	buildVariantsLoaded bool   `bson:"-" json:"-"`
+	PeriodicBuildID     string `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
+	Aborted             bool   `bson:"aborted,omitempty" json:"aborted,omitempty"`
 
 	// This stores whether or not a version has tasks which were activated.
 	// We use a bool ptr in order to distinguish the unset value from the default value
@@ -344,29 +347,53 @@ func (v *Version) UpdatePreGenerationProjectStorageMethod(ctx context.Context, m
 	return nil
 }
 
-// GetBuildVariants returns the build variants for the version. If the version
-// already has build variants cached, it'll use that; otherwise, it will load
-// the build variants from the DB. If the version does not exist in the DB yet,
-// it'll return v's own in-memory BuildVariants, if any.
+// GetBuildVariants returns the build variants for the version, including their
+// batchtime tasks.
+// The version only loads build variants if it hasn't do so already. If the
+// version does not exist in the DB yet, it'll return the version's in-memory
+// BuildVariants, if any.
 func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, error) {
-	if v.BuildVariants != nil {
+	if v.buildVariantsLoaded {
 		return v.BuildVariants, nil
 	}
-	versionWithBuildVariants, err := VersionFindOneIdWithBuildVariants(ctx, v.Id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding version '%s'", v.Id)
-	}
-	bvs := []VersionBuildStatus{}
-	// If the version is nil, then the version doesn't exist in the DB, so it's
-	// safe to assume that BuildVariants is not populated. This intentionally
-	// does not error if the version doesn't exist in the DB so that this method
-	// can be called even if the version hasn't been inserted into the DB yet.
-	if versionWithBuildVariants != nil && versionWithBuildVariants.BuildVariants != nil {
-		bvs = versionWithBuildVariants.BuildVariants
-	}
-	v.BuildVariants = bvs
 
+	if v.BuildVariants == nil {
+		versionWithBuildVariants, err := VersionFindOneIdWithBuildVariants(ctx, v.Id)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding version '%s'", v.Id)
+		}
+		if versionWithBuildVariants != nil && versionWithBuildVariants.BuildVariants != nil {
+			v.BuildVariants = versionWithBuildVariants.BuildVariants
+		} else {
+			v.BuildVariants = []VersionBuildStatus{}
+		}
+	}
+
+	// In newer versions, the task batchtimes are stored in a separate
+	// collection, so populate those if they're not already loaded.
+	bt, err := VersionTaskBatchTimesFindOne(ctx, v.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding batchtime tasks for version '%s'", v.Id)
+	}
+	if bt != nil {
+		attachTaskBatchTimes(v.BuildVariants, bt.BuildVariants)
+	}
+
+	v.buildVariantsLoaded = true
 	return v.BuildVariants, nil
+}
+
+// attachTaskBatchTimes sets each build variant's batchtime tasks.
+func attachTaskBatchTimes(bvs []VersionBuildStatus, btt []BuildVariantTaskBatchTime) {
+	taskBatchTimesForBV := make(map[string][]BatchTimeTaskStatus, len(btt))
+	for _, v := range btt {
+		taskBatchTimesForBV[v.BuildVariant] = v.BatchTimeTasks
+	}
+	for i := range bvs {
+		if tasks, ok := taskBatchTimesForBV[bvs[i].BuildVariant]; ok {
+			bvs[i].BatchTimeTasks = tasks
+		}
+	}
 }
 
 // versionS3CostBSONFields returns BSON pairs for the S3-only cost fields; EC2/EBS fields are managed by UpdateAggregateTaskCosts.
