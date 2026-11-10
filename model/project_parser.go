@@ -353,6 +353,7 @@ type parserBV struct {
 	CronBatchTime      string            `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	Stepback           *bool             `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	DeactivatePrevious *bool             `yaml:"deactivate_previous,omitempty" bson:"deactivate_previous,omitempty"`
+	TestSelection      *bool             `yaml:"test_selection,omitempty" bson:"test_selection,omitempty"`
 
 	RunOn        parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
 	Tasks        parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
@@ -430,6 +431,7 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.CronBatchTime == "" &&
 		pbv.Stepback == nil &&
 		pbv.DeactivatePrevious == nil &&
+		pbv.TestSelection == nil &&
 		pbv.RunOn == nil &&
 		pbv.DependsOn == nil &&
 		pbv.Activate == nil &&
@@ -2047,6 +2049,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			AllowedBranches:    pbv.AllowedBranches,
 			IgnoredBranches:    pbv.IgnoredBranches,
 			ExecTimeoutSecs:    pbv.ExecTimeoutSecs,
+			TestSelection:      pbv.TestSelection,
 			Stepback:           pbv.Stepback,
 			DeactivatePrevious: pbv.DeactivatePrevious,
 			RunOn:              pbv.RunOn,

@@ -1602,6 +1602,13 @@ func canBuildVariantEnableTestSelection(bvName string, creationInfo TaskCreation
 	}
 
 	isTestSelectionDefaultEnabled := creationInfo.ProjectRef.IsTestSelectionDefaultEnabled()
+	// A build variant's test_selection setting overrides the project's
+	// task-level default.
+	if creationInfo.Project != nil {
+		if bv := creationInfo.Project.FindBuildVariant(bvName); bv != nil && bv.TestSelection != nil {
+			isTestSelectionDefaultEnabled = *bv.TestSelection
+		}
+	}
 	isTestSelectionIncludeSet := len(creationInfo.TestSelectionParams.IncludeBuildVariants) > 0 || len(creationInfo.TestSelectionParams.IncludeTasks) > 0
 
 	if isTestSelectionIncludeSet {

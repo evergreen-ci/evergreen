@@ -467,6 +467,15 @@ type BuildVariant struct {
 	Modules     []string          `yaml:"modules,omitempty" bson:"modules"`
 	Tags        []string          `yaml:"tags,omitempty" bson:"tags"`
 
+	// TestSelection overrides the project's task-level test selection default
+	// for tasks in this build variant. It has no effect unless project-level
+	// test selection is enabled, and patch-level test selection regexes take
+	// precedence over it.
+	//   nil   = use the project's task-level default
+	//   true  = enable test selection for tasks in this build variant
+	//   false = disable test selection for tasks in this build variant
+	TestSelection *bool `yaml:"test_selection,omitempty" bson:"test_selection,omitempty"`
+
 	// Use a *int for 2 possible states
 	// nil - not overriding the project setting
 	// non-nil - overriding the project setting with this BatchTime

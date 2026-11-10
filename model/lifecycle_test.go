@@ -4011,6 +4011,45 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 		}
 		assert.True(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
 	})
+	t.Run("BuildVariantYAMLSettingOverridesProjectDefault", func(t *testing.T) {
+		newCreationInfo := func(allowed, defaultEnabled *bool, bv1, bv2 *bool) TaskCreationInfo {
+			return TaskCreationInfo{
+				ProjectRef: &ProjectRef{
+					TestSelection: TestSelectionSettings{
+						Allowed:        allowed,
+						DefaultEnabled: defaultEnabled,
+					},
+				},
+				Project: &Project{
+					BuildVariants: BuildVariants{
+						{Name: "bv1", TestSelection: bv1},
+						{Name: "bv2", TestSelection: bv2},
+					},
+				},
+				Version: &Version{Requester: evergreen.PatchVersionRequester},
+			}
+		}
+		// Opts in only bv1 when the project default is disabled.
+		creationInfo := newCreationInfo(utility.TruePtr(), utility.FalsePtr(), utility.TruePtr(), nil)
+		assert.True(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
+		assert.False(t, canBuildVariantEnableTestSelection("bv2", creationInfo))
+
+		// Opts out bv2 when the project default is enabled.
+		creationInfo = newCreationInfo(utility.TruePtr(), utility.TruePtr(), nil, utility.FalsePtr())
+		assert.True(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
+		assert.False(t, canBuildVariantEnableTestSelection("bv2", creationInfo))
+
+		// Project-level test selection stays the master switch.
+		creationInfo = newCreationInfo(utility.FalsePtr(), utility.FalsePtr(), utility.TruePtr(), nil)
+		assert.False(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
+
+		// Patch-level excludes beat the YAML setting.
+		creationInfo = newCreationInfo(utility.TruePtr(), utility.FalsePtr(), utility.TruePtr(), nil)
+		creationInfo.TestSelectionParams.IncludeBuildVariants = []*regexp.Regexp{regexp.MustCompile("bv.*")}
+		creationInfo.TestSelectionParams.ExcludeBuildVariants = []*regexp.Regexp{regexp.MustCompile("bv1")}
+		assert.False(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
+		assert.True(t, canBuildVariantEnableTestSelection("bv2", creationInfo))
+	})
 	t.Run("ReturnsTrueIfTestSelectionDefaultEnabled", func(t *testing.T) {
 		creationInfo := TaskCreationInfo{
 			ProjectRef: &ProjectRef{

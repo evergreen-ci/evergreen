@@ -5186,3 +5186,42 @@ tasks:
 	assert.Equal(t, 1, pp.Modules[0].CloneDepth)
 	assert.Zero(t, pp.Modules[1].CloneDepth)
 }
+
+func TestParseBuildVariantTestSelection(t *testing.T) {
+	yml := `
+buildvariants:
+- name: opted_in
+  run_on: d
+  test_selection: true
+  tasks:
+  - name: t1
+- name: opted_out
+  run_on: d
+  test_selection: false
+  tasks:
+  - name: t1
+- name: unset
+  run_on: d
+  tasks:
+  - name: t1
+tasks:
+- name: t1
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(context.Background(), []byte(yml), nil, "id", proj)
+	require.NoError(t, err)
+
+	optedIn := proj.FindBuildVariant("opted_in")
+	require.NotNil(t, optedIn)
+	require.NotNil(t, optedIn.TestSelection)
+	assert.True(t, *optedIn.TestSelection)
+
+	optedOut := proj.FindBuildVariant("opted_out")
+	require.NotNil(t, optedOut)
+	require.NotNil(t, optedOut.TestSelection)
+	assert.False(t, *optedOut.TestSelection)
+
+	unset := proj.FindBuildVariant("unset")
+	require.NotNil(t, unset)
+	assert.Nil(t, unset.TestSelection)
+}

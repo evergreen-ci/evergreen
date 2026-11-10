@@ -1163,6 +1163,61 @@ func TestAddNewPatch(t *testing.T) {
 	}
 }
 
+func TestAddNewBuildsUsesBuildVariantTestSelectionSetting(t *testing.T) {
+	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection, user.Collection))
+
+	v := &Version{
+		Id:         "version",
+		Revision:   "1234",
+		Requester:  evergreen.GithubPRRequester,
+		CreateTime: time.Now(),
+		AuthorID:   "test.user",
+	}
+	require.NoError(t, v.Insert(t.Context()))
+	require.NoError(t, (&user.DBUser{Id: "test.user"}).Insert(t.Context()))
+	// The project default is disabled, like a project that only wants
+	// test selection on runners that have opted in.
+	ref := ProjectRef{
+		Id:         "project",
+		Identifier: "project_name",
+		TestSelection: TestSelectionSettings{
+			Allowed:        utility.TruePtr(),
+			DefaultEnabled: utility.FalsePtr(),
+		},
+	}
+	require.NoError(t, ref.Insert(t.Context()))
+
+	proj := &Project{
+		Identifier: "project",
+		BuildVariants: []BuildVariant{
+			{Name: "opted_in", TestSelection: utility.TruePtr(), RunOn: []string{"arch"}, Tasks: []BuildVariantTaskUnit{{Name: "task1", Variant: "opted_in"}}},
+			{Name: "not_opted_in", RunOn: []string{"arch"}, Tasks: []BuildVariantTaskUnit{{Name: "task1", Variant: "not_opted_in"}}},
+		},
+		Tasks: []ProjectTask{{Name: "task1"}},
+	}
+	creationInfo := TaskCreationInfo{
+		Project:    proj,
+		ProjectRef: &ref,
+		Version:    v,
+		Pairs: TaskVariantPairs{ExecTasks: TVPairSet{
+			{Variant: "opted_in", TaskName: "task1"},
+			{Variant: "not_opted_in", TaskName: "task1"},
+		}},
+		ActivationInfo: specificActivationInfo{},
+	}
+	_, _, err := addNewBuilds(t.Context(), creationInfo, nil)
+	require.NoError(t, err)
+
+	dbTasks, err := task.FindAll(t.Context(), db.Query(bson.M{}))
+	require.NoError(t, err)
+	require.Len(t, dbTasks, 2)
+	enabledByVariant := map[string]bool{}
+	for _, dbTask := range dbTasks {
+		enabledByVariant[dbTask.BuildVariant] = dbTask.TestSelectionEnabled
+	}
+	assert.Equal(t, map[string]bool{"opted_in": true, "not_opted_in": false}, enabledByVariant)
+}
+
 func TestAddNewBuildsResolvesDistroAlias(t *testing.T) {
 	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection, distro.Collection))
 
