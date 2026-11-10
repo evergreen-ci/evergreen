@@ -288,6 +288,12 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	u := MustHaveUser(r)
+	if !model.UserCanModifyPatch(r.Context(), u, *p) {
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.Errorf("user '%s' is not authorized to modify patch '%s'", u.Username(), p.Id.Hex()))
+		return
+	}
+
 	if p.IsMergeQueuePatch() {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't update modules for commit queue tests"))
 		return
@@ -390,6 +396,14 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 
 	if p.IsMergeQueuePatch() {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't modify a commit queue patch"))
+		return
+	}
+	// Canceling a finalized patch only aborts its tasks, which any user who can
+	// edit the project's tasks may do, but canceling an unfinalized patch
+	// deletes it.
+	needsOwnership := action == "update" || action == "finalize" || (action == "cancel" && p.Version == "")
+	if needsOwnership && !model.UserCanModifyPatch(ctx, dbUser, *p) {
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.Errorf("user '%s' is not authorized to modify patch '%s'", dbUser.Username(), p.Id.Hex()))
 		return
 	}
 	// dispatch to handlers based on specified action
@@ -515,6 +529,11 @@ func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
 	p, err := getPatchFromRequest(r)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
+		return
+	}
+	u := MustHaveUser(r)
+	if !model.UserCanModifyPatch(r.Context(), u, *p) {
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.Errorf("user '%s' is not authorized to modify patch '%s'", u.Username(), p.Id.Hex()))
 		return
 	}
 	moduleName := r.FormValue("module")

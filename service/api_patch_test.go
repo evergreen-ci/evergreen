@@ -4,12 +4,22 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -102,6 +112,167 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 			So(len(data.Modules), ShouldEqual, 2)
 			So(data.Project, ShouldEqual, testData.Build.Id)
 		})
+	})
+}
+
+func TestPatchOwnershipChecks(t *testing.T) {
+	const (
+		owner   = "owner"
+		other   = "other"
+		project = "proj"
+	)
+	as := &APIServer{}
+
+	type routeCase struct {
+		handler http.HandlerFunc
+		method  string
+		path    string
+		body    string
+	}
+
+	setup := func(t *testing.T) (unfinalized, finalized patch.Patch) {
+		require.NoError(t, db.ClearCollections(patch.Collection, model.VersionCollection, task.Collection, build.Collection))
+		unfinalized = patch.Patch{
+			Id:          mgobson.NewObjectId(),
+			Author:      owner,
+			Project:     project,
+			Description: "original",
+			Patches:     []patch.ModulePatch{{ModuleName: "mod", Githash: "original"}},
+		}
+		require.NoError(t, unfinalized.Insert(t.Context()))
+		finalized = patch.Patch{
+			Id:        mgobson.NewObjectId(),
+			Author:    owner,
+			Project:   project,
+			Version:   "v1",
+			Activated: true,
+		}
+		require.NoError(t, finalized.Insert(t.Context()))
+		v := model.Version{Id: "v1"}
+		require.NoError(t, v.Insert(t.Context()))
+		return unfinalized, finalized
+	}
+
+	do := func(t *testing.T, username string, p patch.Patch, rc routeCase) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(rc.method, rc.path, strings.NewReader(rc.body))
+		r = r.WithContext(gimlet.AttachUser(r.Context(), &user.DBUser{Id: username}))
+		r = gimlet.SetURLVars(r, map[string]string{"patchId": p.Id.Hex()})
+		w := httptest.NewRecorder()
+		rc.handler(w, r)
+		return w
+	}
+
+	updateModule := routeCase{handler: as.updatePatchModule, method: http.MethodPost, path: "/", body: `{"module": "mod", "githash": "injected", "patch_bytes": ""}`}
+	deleteModule := routeCase{handler: as.deletePatchModule, method: http.MethodDelete, path: "/?module=mod"}
+	updateDescription := routeCase{handler: as.existingPatchRequest, method: http.MethodPost, path: "/", body: `{"action": "update", "description": "injected"}`}
+	finalize := routeCase{handler: as.existingPatchRequest, method: http.MethodPost, path: "/", body: `{"action": "finalize"}`}
+	cancel := routeCase{handler: as.existingPatchRequest, method: http.MethodPost, path: "/", body: `{"action": "cancel"}`}
+
+	t.Run("UpdateModuleByNonOwnerShouldBeUnauthorized", func(t *testing.T) {
+		p, _ := setup(t)
+		w := do(t, other, p, updateModule)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		require.NotNil(t, dbPatch)
+		require.Len(t, dbPatch.Patches, 1)
+		assert.Equal(t, "original", dbPatch.Patches[0].Githash)
+	})
+
+	t.Run("UpdateModuleByOwnerShouldSucceed", func(t *testing.T) {
+		require.NoError(t, db.ClearGridCollections(patch.GridFSPrefix))
+		p, _ := setup(t)
+		w := do(t, owner, p, updateModule)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		require.NotNil(t, dbPatch)
+		require.Len(t, dbPatch.Patches, 1)
+		assert.Equal(t, "injected", dbPatch.Patches[0].Githash)
+	})
+
+	t.Run("DeleteModuleByNonOwnerShouldBeUnauthorized", func(t *testing.T) {
+		p, _ := setup(t)
+		w := do(t, other, p, deleteModule)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		require.NotNil(t, dbPatch)
+		assert.Len(t, dbPatch.Patches, 1)
+	})
+
+	t.Run("DeleteModuleByOwnerShouldSucceed", func(t *testing.T) {
+		p, _ := setup(t)
+		w := do(t, owner, p, deleteModule)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		require.NotNil(t, dbPatch)
+		assert.Empty(t, dbPatch.Patches)
+	})
+
+	t.Run("UpdateDescriptionByNonOwnerShouldBeUnauthorized", func(t *testing.T) {
+		p, _ := setup(t)
+		w := do(t, other, p, updateDescription)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		require.NotNil(t, dbPatch)
+		assert.Equal(t, "original", dbPatch.Description)
+	})
+
+	t.Run("UpdateDescriptionByOwnerShouldSucceed", func(t *testing.T) {
+		p, _ := setup(t)
+		w := do(t, owner, p, updateDescription)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		require.NotNil(t, dbPatch)
+		assert.Equal(t, "injected", dbPatch.Description)
+	})
+
+	t.Run("FinalizeByNonOwnerShouldBeUnauthorized", func(t *testing.T) {
+		p, _ := setup(t)
+		w := do(t, other, p, finalize)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		require.NotNil(t, dbPatch)
+		assert.False(t, dbPatch.Activated)
+		assert.Empty(t, dbPatch.Version)
+	})
+
+	t.Run("CancelUnfinalizedPatchByNonOwnerShouldBeUnauthorized", func(t *testing.T) {
+		p, _ := setup(t)
+		w := do(t, other, p, cancel)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		assert.NotNil(t, dbPatch)
+	})
+
+	t.Run("CancelUnfinalizedPatchByOwnerShouldDeletePatch", func(t *testing.T) {
+		p, _ := setup(t)
+		w := do(t, owner, p, cancel)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		assert.Nil(t, dbPatch)
+	})
+
+	t.Run("CancelFinalizedPatchByNonOwnerShouldSucceed", func(t *testing.T) {
+		_, p := setup(t)
+		w := do(t, other, p, cancel)
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 }
 

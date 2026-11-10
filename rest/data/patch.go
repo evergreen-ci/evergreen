@@ -12,7 +12,6 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
@@ -91,26 +90,6 @@ func FindPatchById(ctx context.Context, patchId string) (*restModel.APIPatch, er
 	}
 
 	return &apiPatch, nil
-}
-
-// AbortPatch uses the service level CancelPatch method to abort a single patch
-// with matching Id.
-func AbortPatch(ctx context.Context, patchId string, user string) error {
-	if err := ValidatePatchID(patchId); err != nil {
-		return errors.WithStack(err)
-	}
-
-	p, err := patch.FindOne(ctx, patch.ById(mgobson.ObjectIdHex(patchId)))
-	if err != nil {
-		return err
-	}
-	if p == nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("patch '%s' not found", patchId),
-		}
-	}
-	return model.CancelPatch(ctx, p, task.AbortInfo{User: user})
 }
 
 // SetPatchActivated attempts to activate the patch and create a new version (if activated is set to true)
