@@ -214,3 +214,38 @@ func TestGetBuildVariantsIncludesLegacyBatchTimeTasks(t *testing.T) {
 	require.Len(t, bvs[0].BatchTimeTasks, 1)
 	assert.Equal(t, "task0", bvs[0].BatchTimeTasks[0].TaskName)
 }
+
+func TestGetBuildVariantsMergesSplitBatchTimeTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
+	})
+
+	// A version whose batchtime tasks are split across the version doc (a
+	// pre-existing build variant) and the separate collection (a build variant
+	// added later, e.g. by generate.tasks).
+	require.NoError(t, db.Insert(t.Context(), VersionCollection, Version{
+		Id: "version0",
+		BuildVariants: []VersionBuildStatus{
+			{BuildVariant: "ubuntu", BatchTimeTasks: []BatchTimeTaskStatus{{TaskName: "task0"}}},
+			{BuildVariant: "windows"},
+		},
+	}))
+	require.NoError(t, VersionTaskBatchTimesUpsert(t.Context(), &VersionTaskBatchTimes{
+		Id: "version0",
+		BuildVariants: []BuildVariantTaskBatchTime{
+			{BuildVariant: "windows", BatchTimeTasks: []BatchTimeTaskStatus{{TaskName: "task1"}}},
+		},
+	}))
+
+	v, err := VersionFindOneId(t.Context(), "version0")
+	require.NoError(t, err)
+	require.NotNil(t, v)
+	bvs, err := v.GetBuildVariants(t.Context())
+	require.NoError(t, err)
+	require.Len(t, bvs, 2)
+	require.Len(t, bvs[0].BatchTimeTasks, 1, "should keep the batchtime tasks stored in the version doc")
+	assert.Equal(t, "task0", bvs[0].BatchTimeTasks[0].TaskName)
+	require.Len(t, bvs[1].BatchTimeTasks, 1, "should attach the batchtime tasks stored in the separate collection")
+	assert.Equal(t, "task1", bvs[1].BatchTimeTasks[0].TaskName)
+}
