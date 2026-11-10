@@ -353,6 +353,12 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		j.gitHubError = ProjectFailsValidation
 		return errors.Wrapf(validationCatcher.Resolve(), "invalid patched project config")
 	}
+	if err = model.ValidatePatchModuleRepos(ctx, patchDoc, pref, patchedProject.Modules); err != nil {
+		if model.IsUntrustedModuleReposError(err) {
+			j.gitHubError = untrustedModuleRepos
+		}
+		return errors.Wrap(err, "validating module repos")
+	}
 	// Don't create patches for github PRs if the only changes are in ignored files.
 	if patchDoc.IsGithubPRPatch() && patchedProject.IgnoresAllFiles(patchDoc.FilesChanged()) {
 		j.sendGitHubSuccessMessages(ctx, patchDoc, pref)

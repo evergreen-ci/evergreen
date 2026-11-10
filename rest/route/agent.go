@@ -1800,8 +1800,6 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking repo authorization"))
 	}
 	if !allowed {
-		// TODO: DEVPROD-36655 enforce this as a 403 once we've confirmed no
-		// projects rely on cross-repo tokens outside their declared modules.
 		grip.Warning(ctx, message.Fields{
 			"message":   "installation token requested for repo not in project or modules",
 			"task_id":   g.taskID,
@@ -1810,7 +1808,10 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 			"repo":      g.repo,
 			"version":   t.Version,
 			"requester": t.Requester,
-			"ticket":    "DEVPROD-36655",
+		})
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("task isn't allowed to use repo '%s/%s'", g.owner, g.repo),
 		})
 	}
 
@@ -1855,6 +1856,17 @@ func isRepoAllowedForTask(ctx context.Context, env evergreen.Environment, t *tas
 		return true, nil
 	}
 
+	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
+	if err != nil {
+		return false, errors.Wrap(err, "finding version for task")
+	}
+	if v == nil {
+		return false, errors.Errorf("version '%s' not found", t.Version)
+	}
+	if strings.EqualFold(v.Owner, owner) && strings.EqualFold(v.Repo, repo) {
+		return true, nil
+	}
+
 	mfest, err := manifest.FindFromVersion(ctx, t.Version, t.Project, "", t.Requester)
 	if err != nil {
 		return false, errors.Wrap(err, "finding manifest for task")
@@ -1866,14 +1878,6 @@ func isRepoAllowedForTask(ctx context.Context, env evergreen.Environment, t *tas
 			}
 		}
 		return false, nil
-	}
-
-	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
-	if err != nil {
-		return false, errors.Wrap(err, "finding version for task")
-	}
-	if v == nil {
-		return false, errors.Errorf("version '%s' not found", t.Version)
 	}
 
 	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
@@ -1906,8 +1910,7 @@ func matchesModule(moduleOwner, moduleRepo, owner, repo string) bool {
 	if model.IsWikiRepo(moduleRepo) {
 		// The agent strips ".wiki" from repo names before requesting
 		// tokens, so this also matches the parent repo name for wiki modules.
-		parentRepo := strings.TrimSuffix(strings.TrimSuffix(strings.TrimSpace(moduleRepo), ".git"), ".wiki")
-		if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(parentRepo, repo) {
+		if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(model.GitHubAppTokenRepo(moduleRepo), repo) {
 			return true
 		}
 	}

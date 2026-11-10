@@ -48,6 +48,7 @@ const (
 	InvalidConfig                     = "config file was invalid: sync with base branch & run `evergreen validate -p <project>`"
 	EmptyConfig                       = "config file was empty"
 	ProjectFailsValidation            = "project fails validation: sync with base branch & run `evergreen validate -p <project>`"
+	untrustedModuleRepos              = "patch uses private module repos it isn't allowed to use"
 	ContextCancelledError             = "Transient Evergreen error; please comment `evergreen retry`"
 	OtherErrors                       = "Evergreen error"
 	MergeBaseTooOld                   = "merge base is too old"

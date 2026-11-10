@@ -583,6 +583,12 @@ func IsWikiRepo(repo string) bool {
 	return strings.HasSuffix(r, ".wiki")
 }
 
+// GitHubAppTokenRepo returns the repo name to request a GitHub App token for,
+// without a ".git" suffix. A wiki uses its parent repo's token.
+func GitHubAppTokenRepo(repo string) string {
+	return strings.TrimSuffix(strings.TrimSuffix(strings.TrimSpace(repo), ".git"), ".wiki")
+}
+
 type ModuleList []Module
 
 func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {

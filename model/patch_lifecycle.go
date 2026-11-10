@@ -872,6 +872,13 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 		AuthorEmail:          authorEmail,
 	}
 
+	if err := ValidatePatchModuleRepos(ctx, p, projectRef, project.Modules); err != nil {
+		if IsUntrustedModuleReposError(err) {
+			return nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: err.Error()}
+		}
+		return nil, err
+	}
+
 	manifestCtx, manifestSpan := tracer.Start(ctx, "construct-manifest")
 	mfst, err := constructManifest(manifestCtx, patchVersion, projectRef, project.Modules)
 	manifestSpan.End()
@@ -1212,6 +1219,7 @@ func getLoadProjectOptsForPatch(ctx context.Context, p *patch.Patch) (*ProjectRe
 		PatchOpts: &PatchOpts{
 			patch: p,
 		},
+		moduleRepoChecker: newPatchModuleRepoChecker(projectRef, p),
 	}
 
 	autoUpdateRevisions, err := prefetchAutoUpdateModuleRevisions(ctx, p, projectRef, &opts)
@@ -1249,6 +1257,14 @@ func prefetchAutoUpdateModuleRevisions(ctx context.Context, p *patch.Patch, proj
 	autoUpdateRevisions := make(map[string]string)
 	for _, module := range projectModulesOnly.Modules {
 		if module.AutoUpdate {
+			owner, repo, err := module.GetOwnerAndRepo()
+			if err != nil {
+				continue
+			}
+			// Patch creation reports modules that use untrusted repos.
+			if err := opts.moduleRepoChecker.check(ctx, module.Name, owner, repo); err != nil {
+				continue
+			}
 			mfstModule, err := getManifestModule(ctx, projectRef, module, evergreen.PatchVersionRequester, p.IngestTime)
 			if err != nil {
 				grip.Warning(ctx, message.WrapError(err, message.Fields{

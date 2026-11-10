@@ -430,7 +430,11 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 
 		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			statusCode := http.StatusInternalServerError
+			if errResp, ok := errors.Cause(err).(gimlet.ErrorResponse); ok {
+				statusCode = errResp.StatusCode
+			}
+			as.LoggedError(w, r, statusCode, err)
 			return
 		}
 		grip.Info(ctx, message.Fields{
