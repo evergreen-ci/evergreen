@@ -3043,13 +3043,13 @@ func versionBuildVariantsFromTaskBatchTimes(bt []BuildVariantTaskBatchTime) []Ve
 }
 
 func batchTimeTaskStatusFor(buildStatuses []VersionBuildStatus, bvName, taskName string) *BatchTimeTaskStatus {
-	for i := range buildStatuses {
-		if buildStatuses[i].BuildVariant != bvName {
+	for _, bs := range buildStatuses {
+		if bs.BuildVariant != bvName {
 			continue
 		}
-		for j := range buildStatuses[i].BatchTimeTasks {
-			if buildStatuses[i].BatchTimeTasks[j].TaskName == taskName {
-				return &buildStatuses[i].BatchTimeTasks[j]
+		for _, ts := range bs.BatchTimeTasks {
+			if ts.TaskName == taskName {
+				return &ts
 			}
 		}
 	}
