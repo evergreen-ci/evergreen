@@ -15,9 +15,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type eventNotificationSuite struct {
@@ -59,8 +61,20 @@ type eventSendErrorSender struct {
 	err error
 }
 
+// SendWithError returns the configured error without sending.
 func (s *eventSendErrorSender) SendWithError(context.Context, message.Composer) error {
 	return s.err
+}
+
+type eventSendCaptureSender struct {
+	send.Sender
+	raw any
+}
+
+// SendWithError captures the message instead of sending it.
+func (s *eventSendCaptureSender) SendWithError(_ context.Context, m message.Composer) error {
+	s.raw = m.Raw()
+	return nil
 }
 
 func TestEventNotificationJob(t *testing.T) {
@@ -215,10 +229,11 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 	// A disabled sender is also a non-delivery, so the webhook failure is
 	// recorded for recovery. The URL comes from the subscriber because the
 	// composer never ran.
-	failedWebhooks, err := notification.FindFailedWebhooks(s.ctx, []string{"evergreen"}, "https://example.com", 10)
+	failedWebhooks, err := notification.FindFailedWebhooks(s.ctx, []string{"evergreen"})
 	s.NoError(err)
 	s.Require().Len(failedWebhooks, 1)
 	s.Equal(s.webhook.ID, failedWebhooks[0].NotificationID)
+	s.Equal("https://example.com", failedWebhooks[0].URL)
 }
 
 func (s *eventNotificationSuite) TestEvergreenWebhook() {
@@ -250,12 +265,80 @@ func (s *eventNotificationSuite) TestFailedWebhookSendIsRecorded() {
 	s.Error(job.Error())
 	s.NotZero(s.notificationHasError(s.ctx, s.webhook.ID, "webhook response was 404"))
 
-	failedWebhooks, err := notification.FindFailedWebhooks(s.ctx, []string{"evergreen"}, "https://example.com", 10)
+	failedWebhooks, err := notification.FindFailedWebhooks(s.ctx, []string{"evergreen"})
 	s.NoError(err)
 	s.Require().Len(failedWebhooks, 1)
 	s.Equal(s.webhook.ID, failedWebhooks[0].NotificationID)
 	s.Equal([]byte("o hai"), failedWebhooks[0].Body)
 	s.Equal("webhook response was 404 (Not Found)", failedWebhooks[0].Error)
+}
+
+func (s *eventNotificationSuite) TestRetryFailedWebhookMarksRecordRetried() {
+	s.Require().NoError(s.webhook.MarkError(s.ctx, errors.New("webhook response was 404 (Not Found)")))
+	failedWebhooks, err := notification.FindFailedWebhooks(s.ctx, []string{"evergreen"})
+	s.Require().NoError(err)
+	s.Require().Len(failedWebhooks, 1)
+
+	job := NewRetryEventSendJob(s.webhook.ID, "").(*eventSendJob)
+	job.env = s.env
+	job.Run(s.ctx)
+	s.NoError(job.Error())
+
+	// The record stays in the collection but is marked retried, so it is not selected again.
+	failedWebhooks, err = notification.FindFailedWebhooks(s.ctx, []string{"evergreen"})
+	s.NoError(err)
+	s.Empty(failedWebhooks)
+}
+
+func (s *eventNotificationSuite) TestRetryFailedWebhookWithoutNotificationMarksRecordRetried() {
+	s.Require().NoError(db.ClearCollections(notification.Collection, notification.FailedWebhookCollection))
+	s.Require().NoError(db.Insert(s.ctx, notification.FailedWebhookCollection, &notification.FailedWebhook{
+		NotificationID: "missing",
+		Project:        "evergreen",
+		Error:          "notification is gone",
+		FailedAt:       time.Now(),
+	}))
+
+	job := NewRetryEventSendJob("missing", "").(*eventSendJob)
+	job.env = s.env
+	job.Run(s.ctx)
+	s.Error(job.Error())
+
+	failedWebhooks, err := notification.FindFailedWebhooks(s.ctx, []string{"evergreen"})
+	s.Require().NoError(err)
+	s.Empty(failedWebhooks)
+}
+
+func (s *eventNotificationSuite) TestRetryFailedWebhookUsesCurrentSubscription() {
+	sub := event.Subscription{
+		ID:           "retry-sub",
+		ResourceType: event.ResourceTypeTask,
+		Trigger:      event.TriggerFailure,
+		Owner:        "evergreen",
+		OwnerType:    event.OwnerTypeProject,
+		Subscriber: event.Subscriber{
+			Type:   event.EvergreenWebhookSubscriberType,
+			Target: &event.WebhookSubscriber{URL: "https://example.com/new", Secret: []byte("new-secret")},
+		},
+	}
+	s.Require().NoError(db.Insert(s.ctx, event.SubscriptionsCollection, &sub))
+
+	n, err := notification.Find(s.ctx, s.webhook.ID)
+	s.Require().NoError(err)
+	s.Require().NotNil(n)
+	s.Require().NoError(db.UpdateId(s.ctx, notification.Collection, n.ID, bson.M{"$set": bson.M{bsonutil.MustHaveTag(notification.Notification{}, "SubscriptionID"): sub.ID}}))
+	s.Require().NoError(n.MarkError(s.ctx, errors.New("webhook response was 404 (Not Found)")))
+
+	capture := &eventSendCaptureSender{Sender: s.env.InternalSender}
+	job := NewRetryEventSendJob(s.webhook.ID, "").(*eventSendJob)
+	job.env = &eventSendEnvironment{Environment: s.env, sender: capture}
+	job.Run(s.ctx)
+	s.Require().NoError(job.Error())
+
+	webhook, ok := capture.raw.(*util.EvergreenWebhook)
+	s.Require().True(ok)
+	s.Equal("https://example.com/new", webhook.URL)
+	s.Equal([]byte("new-secret"), webhook.Secret)
 }
 
 func (s *eventNotificationSuite) TestSlack() {

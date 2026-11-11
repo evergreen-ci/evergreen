@@ -460,7 +460,6 @@ db.failed_webhooks.createIndex({
 })
 db.failed_webhooks.ensureIndex({
     "project": 1,
-    "url": 1,
     "failed_at": -1
 })
 

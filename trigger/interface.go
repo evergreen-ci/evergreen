@@ -42,10 +42,13 @@ func (b *base) Process(ctx context.Context, sub *event.Subscription) (*notificat
 	}
 
 	n, err := f(ctx, sub)
-	// Project-owned subscriptions tag the notification so its failed
-	// deliveries can be queried per project.
-	if n != nil && sub.OwnerType == event.OwnerTypeProject {
-		n.Project = sub.Owner
+	if n != nil {
+		n.SubscriptionID = sub.ID
+		// Project-owned subscriptions tag the notification so its failed
+		// deliveries can be queried per project.
+		if sub.OwnerType == event.OwnerTypeProject {
+			n.Project = sub.Owner
+		}
 	}
 	return n, err
 }

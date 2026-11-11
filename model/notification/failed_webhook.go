@@ -17,14 +17,20 @@ const (
 	// FailedWebhookCollection stores webhook notifications that failed to deliver.
 	FailedWebhookCollection = "failed_webhooks"
 
-	// The maximum number of failed webhooks returned when the caller does not provide a positive limit.
-	failedWebhookMaxLimit = 500
+	// The maximum number of failed webhooks returned and retried per call, so a
+	// single request cannot saturate queue workers.
+	failedWebhookMaxLimit = 100
 )
 
 var (
-	failedWebhookProjectKey  = bsonutil.MustHaveTag(FailedWebhook{}, "Project")
-	failedWebhookURLKey      = bsonutil.MustHaveTag(FailedWebhook{}, "URL")
-	failedWebhookFailedAtKey = bsonutil.MustHaveTag(FailedWebhook{}, "FailedAt")
+	failedWebhookIDKey        = bsonutil.MustHaveTag(FailedWebhook{}, "NotificationID")
+	failedWebhookProjectKey   = bsonutil.MustHaveTag(FailedWebhook{}, "Project")
+	failedWebhookURLKey       = bsonutil.MustHaveTag(FailedWebhook{}, "URL")
+	failedWebhookErrorKey     = bsonutil.MustHaveTag(FailedWebhook{}, "Error")
+	failedWebhookFailedAtKey  = bsonutil.MustHaveTag(FailedWebhook{}, "FailedAt")
+	failedWebhookRetriedAtKey = bsonutil.MustHaveTag(FailedWebhook{}, "RetriedAt")
+	failedWebhookBodyKey      = bsonutil.MustHaveTag(FailedWebhook{}, "Body")
+	failedWebhookHeadersKey   = bsonutil.MustHaveTag(FailedWebhook{}, "Headers")
 )
 
 type FailedWebhook struct {
@@ -33,6 +39,7 @@ type FailedWebhook struct {
 	URL            string      `bson:"url"`
 	Error          string      `bson:"error"`
 	FailedAt       time.Time   `bson:"failed_at"`
+	RetriedAt      time.Time   `bson:"retried_at,omitempty"`
 	Body           []byte      `bson:"body,omitempty"`
 	Headers        http.Header `bson:"headers,omitempty"`
 }
@@ -46,22 +53,23 @@ func InsertFailedWebhook(ctx context.Context, n *Notification, sendErr error) er
 	if !ok || webhook == nil {
 		return nil
 	}
-	// Handle degraded mode.
-	if webhook.URL == "" || webhook.Headers == nil {
-		if sub, ok := n.Subscriber.Target.(*event.WebhookSubscriber); ok {
-			if webhook.URL == "" {
-				webhook.URL = sub.URL
-			}
-			if webhook.Headers == nil {
-				webhook.Headers = http.Header{}
-			}
+	// Recover the delivery target from the subscriber when the composer never
+	// ran, such as when webhook notifications are disabled.
+	if sub, ok := n.Subscriber.Target.(*event.WebhookSubscriber); ok {
+		if webhook.URL == "" {
+			webhook.URL = sub.URL
+		}
+		// Only build the header set once so the notification's payload does not
+		// accumulate duplicate headers when it fails repeatedly.
+		if webhook.Headers == nil {
+			webhook.Headers = http.Header{}
 			for _, header := range sub.Headers {
 				webhook.Headers.Add(header.Key, header.Value)
 			}
 		}
 	}
 
-	// Delete auth details.
+	// The authorization header carries a credential, so the stored copy drops it.
 	headers := webhook.Headers.Clone()
 	headers.Del(event.WebhookAuthorizationHeader)
 
@@ -74,32 +82,36 @@ func InsertFailedWebhook(ctx context.Context, n *Notification, sendErr error) er
 		Body:           webhook.Body,
 		Headers:        headers,
 	}
-	if err := db.Insert(ctx, FailedWebhookCollection, &failure); err != nil {
-		if db.IsDuplicateKey(err) {
-			return nil
-		}
-		return errors.Wrap(err, "inserting failed webhook")
+	// A retried webhook that fails again collides with its existing record,
+	// so upsert to refresh the failure and clear the retried mark.
+	update := bson.M{
+		"$set": bson.M{
+			failedWebhookProjectKey:  failure.Project,
+			failedWebhookURLKey:      failure.URL,
+			failedWebhookErrorKey:    failure.Error,
+			failedWebhookFailedAtKey: failure.FailedAt,
+			failedWebhookBodyKey:     failure.Body,
+			failedWebhookHeadersKey:  failure.Headers,
+		},
+		"$unset": bson.M{failedWebhookRetriedAtKey: ""},
+	}
+	if _, err := db.Upsert(ctx, FailedWebhookCollection, bson.M{failedWebhookIDKey: failure.NotificationID}, update); err != nil {
+		return errors.Wrap(err, "upserting failed webhook")
 	}
 
 	return nil
 }
 
-// FindFailedWebhooks returns failed webhook deliveries for the given projects.
-// The limit is capped at failedWebhookMaxLimit.
-func FindFailedWebhooks(ctx context.Context, projects []string, url string, limit int) ([]FailedWebhook, error) {
+// FindFailedWebhooks returns webhook deliveries that failed and have not been
+// retried, up to failedWebhookMaxLimit.
+func FindFailedWebhooks(ctx context.Context, projects []string) ([]FailedWebhook, error) {
 	query := bson.M{
-		failedWebhookProjectKey: bson.M{"$in": projects},
-	}
-	if url != "" {
-		query[failedWebhookURLKey] = url
-	}
-
-	if limit <= 0 || limit > failedWebhookMaxLimit {
-		limit = failedWebhookMaxLimit
+		failedWebhookProjectKey:   bson.M{"$in": projects},
+		failedWebhookRetriedAtKey: bson.M{"$exists": false},
 	}
 
 	failedWebhooks := []FailedWebhook{}
-	q := db.Query(query).Sort([]string{"-" + failedWebhookFailedAtKey}).Limit(limit)
+	q := db.Query(query).Sort([]string{"-" + failedWebhookFailedAtKey}).Limit(failedWebhookMaxLimit)
 	if err := db.FindAllQ(ctx, FailedWebhookCollection, q, &failedWebhooks); err != nil {
 		return nil, errors.Wrap(err, "finding failed webhooks")
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -29,10 +30,11 @@ var (
 )
 
 type unmarshalNotification struct {
-	ID         string           `bson:"_id"`
-	Subscriber event.Subscriber `bson:"subscriber"`
-	Payload    mgobson.Raw      `bson:"payload"`
-	Project    string           `bson:"project,omitempty"`
+	ID             string           `bson:"_id"`
+	Subscriber     event.Subscriber `bson:"subscriber"`
+	Payload        mgobson.Raw      `bson:"payload"`
+	Project        string           `bson:"project,omitempty"`
+	SubscriptionID string           `bson:"subscription_id,omitempty"`
 
 	SentAt   time.Time            `bson:"sent_at,omitempty"`
 	Error    string               `bson:"error,omitempty"`
@@ -80,6 +82,7 @@ func (n *Notification) SetBSON(raw mgobson.Raw) error {
 	n.ID = temp.ID
 	n.Subscriber = temp.Subscriber
 	n.Project = temp.Project
+	n.SubscriptionID = temp.SubscriptionID
 	n.SentAt = temp.SentAt
 	n.Error = temp.Error
 	n.Metadata = temp.Metadata
@@ -135,4 +138,19 @@ func byID(id string) db.Q {
 	return db.Query(bson.M{
 		idKey: id,
 	})
+}
+
+// MarkFailedWebhookRetried atomically marks a failed webhook as retried and reports whether this caller claimed it.
+func MarkFailedWebhookRetried(ctx context.Context, notificationID string) (bool, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(FailedWebhookCollection).UpdateOne(ctx,
+		bson.M{
+			failedWebhookIDKey:        notificationID,
+			failedWebhookRetriedAtKey: bson.M{"$exists": false},
+		},
+		bson.M{"$set": bson.M{failedWebhookRetriedAtKey: time.Now().Truncate(time.Millisecond)}},
+	)
+	if err != nil {
+		return false, errors.Wrapf(err, "marking failed webhook for notification '%s' as retried", notificationID)
+	}
+	return res.MatchedCount > 0, nil
 }
