@@ -822,6 +822,13 @@ func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 	// Ensure that any new project is originally explicitly disabled and set to private.
 	p.Enabled = false
 
+	// Authorize the repo attachment before writing anything
+	if p.UseRepoSettings() {
+		if _, err := p.checkCanAddToRepoScope(ctx, creator); err != nil {
+			return err
+		}
+	}
+
 	// if a hidden project exists for this configuration, use that ID
 	if p.Owner != "" && p.Repo != "" && p.Branch != "" {
 		hidden, err := FindHiddenProjectRefByOwnerRepoAndBranch(ctx, p.Owner, p.Repo, p.Branch)
@@ -943,18 +950,9 @@ func DefaultGithubAppCredentialsToRepo(ctx context.Context, projectId string) er
 // adds repo view permission for branch admins, and adds branch edit access for repo admins.
 func (p *ProjectRef) AddToRepoScope(ctx context.Context, u *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
-	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
+	repoRef, err := p.checkCanAddToRepoScope(ctx, u)
 	if err != nil {
-		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
-	}
-	if u != nil {
-		if repoRef == nil {
-			if err := p.checkCanCreateNewRepoRef(ctx, u); err != nil {
-				return err
-			}
-		} else if err := p.checkRepoRefAdmin(ctx, u, repoRef); err != nil {
-			return err
-		}
+		return err
 	}
 	if repoRef == nil {
 		repoRef, err = p.createNewRepoRef(ctx, u)
@@ -1104,6 +1102,28 @@ func (p *ProjectRef) checkRepoRefAdmin(ctx context.Context, u *user.DBUser, repo
 		return errors.Wrapf(ErrRepoRefUnauthorized, "user '%s' cannot attach project '%s' to repo '%s' ('%s/%s')", u.Id, p.Id, repoRef.Id, p.Owner, p.Repo)
 	}
 	return nil
+}
+
+// checkCanAddToRepoScope verifies that the user is allowed to add the project to the repo ref for its
+// owner/repo, or to create that repo ref if none exists.
+func (p *ProjectRef) checkCanAddToRepoScope(ctx context.Context, u *user.DBUser) (*RepoRef, error) {
+	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
+	}
+	if u == nil {
+		return repoRef, nil
+	}
+	if repoRef == nil {
+		if err := p.checkCanCreateNewRepoRef(ctx, u); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+	if err := p.checkRepoRefAdmin(ctx, u, repoRef); err != nil {
+		return nil, err
+	}
+	return repoRef, nil
 }
 
 // checkCanCreateNewRepoRef verifies that the user is allowed to create a new repo

@@ -3243,6 +3243,82 @@ func TestAddPermissions(t *testing.T) {
 	assert.Contains(dbUser.Roles(), fmt.Sprintf("admin_project_%s", p.Id))
 }
 
+func TestAddWithRepoRefPermissions(t *testing.T) {
+	setup := func(t *testing.T, userRoles ...string) (ProjectRef, RepoRef, *user.DBUser) {
+		ctx := t.Context()
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, fakeparameter.Collection,
+			evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection))
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+
+		repoRef := RepoRef{ProjectRef{
+			Id:    "repoRef",
+			Owner: "mongodb",
+			Repo:  "mongo",
+		}}
+		require.NoError(t, repoRef.Replace(ctx))
+		require.NoError(t, (&ProjectVars{Id: repoRef.Id}).Insert(ctx))
+
+		pRef := ProjectRef{
+			Id:         "myProject",
+			Identifier: "myProject",
+			Owner:      repoRef.Owner,
+			Repo:       repoRef.Repo,
+			Branch:     "main",
+			RepoRefId:  repoRef.Id,
+		}
+		u := &user.DBUser{Id: "me", SystemRoles: userRoles}
+		require.NoError(t, u.Insert(ctx))
+		return pRef, repoRef, u
+	}
+
+	t.Run("NonRepoAdminShouldErrorWithoutCreatingProject", func(t *testing.T) {
+		ctx := t.Context()
+		pRef, _, u := setup(t)
+
+		err := pRef.Add(ctx, u)
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrRepoRefUnauthorized), "expected an authorization error, got '%s'", err)
+
+		pRefFromDB, err := FindBranchProjectRef(ctx, pRef.Id)
+		require.NoError(t, err)
+		assert.Nil(t, pRefFromDB)
+		vars, err := FindOneProjectVars(ctx, pRef.Id)
+		require.NoError(t, err)
+		assert.Nil(t, vars)
+		roles, err := evergreen.GetEnvironment().RoleManager().GetRoles(ctx, []string{GetProjectAdminRole(pRef.Id)})
+		require.NoError(t, err)
+		assert.Empty(t, roles)
+	})
+
+	t.Run("RepoAdminShouldSucceed", func(t *testing.T) {
+		ctx := t.Context()
+		pRef, repoRef, u := setup(t, GetRepoAdminRole("repoRef"))
+
+		rm := testutil.NewEnvironment(ctx, t).RoleManager()
+		require.NoError(t, rm.AddScope(ctx, gimlet.Scope{
+			ID:        GetRepoAdminScope(repoRef.Id),
+			Type:      evergreen.ProjectResourceType,
+			Resources: []string{repoRef.Id},
+		}))
+		require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{
+			ID:          GetRepoAdminRole(repoRef.Id),
+			Scope:       GetRepoAdminScope(repoRef.Id),
+			Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
+		}))
+
+		require.NoError(t, pRef.Add(ctx, u))
+
+		pRefFromDB, err := FindBranchProjectRef(ctx, pRef.Id)
+		require.NoError(t, err)
+		require.NotNil(t, pRefFromDB)
+		assert.Equal(t, repoRef.Id, pRefFromDB.RepoRefId)
+		scope, err := rm.GetScope(ctx, GetRepoAdminScope(repoRef.Id))
+		require.NoError(t, err)
+		require.NotNil(t, scope)
+		assert.Contains(t, scope.Resources, pRef.Id)
+	})
+}
+
 func TestUpdateAdminRoles(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
