@@ -187,7 +187,7 @@ func (v *Version) ActivateAndSetBuildVariants(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "getting build variant info for version")
 	}
-	taskBatchTimes := TaskBatchTimesForVariant(bvs)
+	taskBatchTimes := taskBatchTimesForVariant(bvs)
 	if len(taskBatchTimes) > 0 {
 		if err := VersionTaskBatchTimesUpsert(ctx, &VersionTaskBatchTimes{
 			Id:            v.Id,
@@ -206,7 +206,7 @@ func (v *Version) ActivateAndSetBuildVariants(ctx context.Context) error {
 		bson.M{
 			"$set": bson.M{
 				VersionActivatedKey:     true,
-				VersionBuildVariantsKey: WithoutBatchTimeTasks(bvs),
+				VersionBuildVariantsKey: withoutTaskBatchTimes(bvs),
 			},
 		},
 	)
@@ -406,6 +406,26 @@ func attachTaskBatchTimes(bvs []VersionBuildStatus, btt []BuildVariantTaskBatchT
 		if tasks, ok := taskBatchTimesForBV[bvs[i].BuildVariant]; ok {
 			bvs[i].BatchTimeTasks = tasks
 		}
+	}
+}
+
+// SplitTaskBatchTimes returns a copy of the version with the task batchtimes
+// split off into a separate doc. The task batchtimes doc is nil if the version
+// has no tasks with batchtime.
+func (v *Version) SplitTaskBatchTimes() (Version, *VersionTaskBatchTimes) {
+	bvs := taskBatchTimesForVariant(v.BuildVariants)
+	if len(bvs) == 0 {
+		return *v, nil
+	}
+	stripped := *v
+	stripped.BuildVariants = withoutTaskBatchTimes(v.BuildVariants)
+	return stripped, &VersionTaskBatchTimes{
+		Id:            v.Id,
+		Identifier:    v.Identifier,
+		Requester:     v.Requester,
+		Order:         v.RevisionOrderNumber,
+		Ignored:       v.Ignored,
+		BuildVariants: bvs,
 	}
 }
 

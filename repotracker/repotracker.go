@@ -890,26 +890,6 @@ func verifyOrderNum(ctx context.Context, revOrderNum int, projectId string) erro
 	return nil
 }
 
-// versionAndTaskBatchtimes returns a copy of the version to store in the version
-// document, with the task batchtimes split into a separate doc for the dedicated
-// collection. The task batchtimes doc is nil if the version has none.
-func versionAndTaskBatchtimes(v *model.Version) (model.Version, *model.VersionTaskBatchTimes) {
-	bvs := model.TaskBatchTimesForVariant(v.BuildVariants)
-	if len(bvs) == 0 {
-		return *v, nil
-	}
-	stripped := *v
-	stripped.BuildVariants = model.WithoutBatchTimeTasks(v.BuildVariants)
-	return stripped, &model.VersionTaskBatchTimes{
-		Id:            v.Id,
-		Identifier:    v.Identifier,
-		Requester:     v.Requester,
-		Order:         v.RevisionOrderNumber,
-		Ignored:       v.Ignored,
-		BuildVariants: bvs,
-	}
-}
-
 // createVersionItems populates and stores all the tasks and builds for a version according to
 // the given project config.
 func createVersionItems(ctx context.Context, v *model.Version, metadata model.VersionMetadata, projectInfo *model.ProjectInfo, aliases model.ProjectAliases, mfst *manifest.Manifest) error {
@@ -1140,7 +1120,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		if utility.IsZeroTime(v.IngestTime) {
 			v.IngestTime = time.Now()
 		}
-		versionToInsert, taskBatchTimes := versionAndTaskBatchtimes(v)
+		versionToInsert, taskBatchTimes := v.SplitTaskBatchTimes()
 		_, err = database.Collection(model.VersionCollection).InsertOne(sessCtx, &versionToInsert)
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{

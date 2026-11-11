@@ -1782,7 +1782,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		"version": creationInfo.Version.Id,
 	}))
 
-	taskBatchTimes := TaskBatchTimesForVariant(newBuildStatuses)
+	taskBatchTimes := taskBatchTimesForVariant(newBuildStatuses)
 	if len(taskBatchTimes) > 0 {
 		if err := VersionTaskBatchTimesAppend(ctx, &VersionTaskBatchTimes{
 			Id:            creationInfo.Version.Id,
@@ -1802,7 +1802,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		bson.M{
 			"$push": bson.M{
 				VersionBuildIdsKey:      bson.M{"$each": newBuildIds},
-				VersionBuildVariantsKey: bson.M{"$each": WithoutBatchTimeTasks(newBuildStatuses)},
+				VersionBuildVariantsKey: bson.M{"$each": withoutTaskBatchTimes(newBuildStatuses)},
 			},
 		},
 	))

@@ -287,6 +287,49 @@ func TestVersionTaskBatchTimesAppend(t *testing.T) {
 	assert.Equal(t, "proj", found.Identifier, "should set the denormalized fields when creating the doc")
 }
 
+func TestSplitTaskBatchTimes(t *testing.T) {
+	v := &Version{
+		Id:                  "version0",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 3,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant:   "ubuntu",
+				BuildId:        "build0",
+				BatchTimeTasks: []BatchTimeTaskStatus{{TaskName: "task0"}},
+			},
+			{BuildVariant: "windows", BuildId: "build1"},
+		},
+	}
+
+	stored, bt := v.SplitTaskBatchTimes()
+	require.NotNil(t, bt)
+	assert.Equal(t, "version0", bt.Id)
+	assert.Equal(t, "proj", bt.Identifier)
+	assert.Equal(t, evergreen.RepotrackerVersionRequester, bt.Requester)
+	assert.Equal(t, 3, bt.Order)
+	require.Len(t, bt.BuildVariants, 1)
+	assert.Equal(t, "ubuntu", bt.BuildVariants[0].BuildVariant)
+	require.Len(t, bt.BuildVariants[0].BatchTimeTasks, 1)
+	assert.Equal(t, "task0", bt.BuildVariants[0].BatchTimeTasks[0].TaskName)
+
+	require.Len(t, stored.BuildVariants, 2)
+	assert.Equal(t, "ubuntu", stored.BuildVariants[0].BuildVariant)
+	assert.Equal(t, "build0", stored.BuildVariants[0].BuildId)
+	assert.Empty(t, stored.BuildVariants[0].BatchTimeTasks, "stored version should not have task batchtimes")
+	assert.Empty(t, stored.BuildVariants[1].BatchTimeTasks)
+
+	require.Len(t, v.BuildVariants[0].BatchTimeTasks, 1, "should not modify the original version")
+
+	noBatchTime := &Version{
+		BuildVariants: []VersionBuildStatus{{BuildVariant: "ubuntu"}},
+	}
+	stored, bt = noBatchTime.SplitTaskBatchTimes()
+	assert.Nil(t, bt, "should not create a doc when there are no task batchtimes")
+	assert.Len(t, stored.BuildVariants, 1)
+}
+
 func TestActivateAndSetBuildVariantsStoresBatchTimeTasksInCollection(t *testing.T) {
 	require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
 	t.Cleanup(func() {
