@@ -1595,6 +1595,68 @@ func TestPromoteVarsToRepo(t *testing.T) {
 	}
 }
 
+func TestCopyProjectReplacingHiddenProjectPreservesCopyPermissions(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		repoAdmin bool
+	}{
+		{name: "ProjectAdminCopiesIntoAttachedHiddenProject"},
+		{name: "RepoAdminCopiesIntoHiddenProject", repoAdmin: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+			collections := []string{model.ProjectRefCollection, model.RepoRefCollection, model.ProjectVarsCollection,
+				model.ProjectAliasCollection, event.SubscriptionsCollection, event.EventCollection,
+				evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection, fakeparameter.Collection}
+			require.NoError(t, db.ClearCollections(collections...))
+			t.Cleanup(func() { require.NoError(t, db.ClearCollections(collections...)) })
+			require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+			env := evergreen.GetEnvironment()
+			rm := env.RoleManager()
+			for _, scopeID := range []string{evergreen.UnrestrictedProjectsScope, evergreen.RestrictedProjectsScope} {
+				require.NoError(t, rm.AddScope(ctx, gimlet.Scope{ID: scopeID, Type: evergreen.ProjectResourceType, Resources: []string{}}))
+			}
+			repo := &model.RepoRef{ProjectRef: model.ProjectRef{Id: "repo", Owner: "owner", Repo: "repo", Restricted: utility.TruePtr()}}
+			require.NoError(t, repo.Add(ctx, nil))
+			source := &model.ProjectRef{Id: "source", Identifier: "source", Owner: repo.Owner, Repo: repo.Repo, Branch: "branch", RepoRefId: repo.Id}
+			require.NoError(t, source.Add(ctx, nil))
+			hidden := &model.ProjectRef{Id: "hidden", Owner: repo.Owner, Repo: repo.Repo, Branch: source.Branch, RepoRefId: repo.Id, Hidden: utility.TruePtr()}
+			require.NoError(t, hidden.Add(ctx, nil))
+			creator := &user.DBUser{Id: "creator", SystemRoles: []string{model.GetProjectAdminRole(source.Id)}}
+			if tc.repoAdmin {
+				creator.SystemRoles = append(creator.SystemRoles, model.GetRepoAdminRole(repo.Id))
+			}
+			require.NoError(t, creator.Insert(ctx))
+			ctx = gimlet.AttachUser(ctx, creator)
+
+			beforeScopes := map[string]*gimlet.Scope{}
+			for _, scopeID := range []string{model.GetRepoAdminScope(repo.Id), model.GetUnrestrictedBranchProjectsScope(repo.Id),
+				evergreen.UnrestrictedProjectsScope, evergreen.RestrictedProjectsScope} {
+				scope, err := rm.GetScope(ctx, scopeID)
+				require.NoError(t, err)
+				require.NotNil(t, scope)
+				beforeScopes[scopeID] = scope
+			}
+
+			copied, err := CopyProject(ctx, env, restModel.CopyProjectOpts{ProjectIdToCopy: source.Id, NewProjectIdentifier: "replacement"})
+			require.NoError(t, err)
+			require.NotNil(t, copied)
+			assert.Equal(t, hidden.Id, utility.FromStringPtr(copied.Id))
+			after, err := model.FindBranchProjectRef(ctx, hidden.Id)
+			require.NoError(t, err)
+			require.NotNil(t, after)
+			assert.False(t, after.IsHidden())
+			assert.Equal(t, "replacement", after.Identifier)
+			assert.Equal(t, repo.Id, after.RepoRefId)
+			for scopeID, beforeScope := range beforeScopes {
+				afterScope, err := rm.GetScope(ctx, scopeID)
+				require.NoError(t, err)
+				assert.Equal(t, beforeScope, afterScope, "scope '%s' should be unchanged", scopeID)
+			}
+		})
+	}
+}
+
 func TestCopyProject(t *testing.T) {
 	ctx := t.Context()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "oldAdmin"})
