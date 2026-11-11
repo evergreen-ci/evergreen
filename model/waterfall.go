@@ -92,6 +92,13 @@ func addWaterfallTaskFilters(match bson.M, opts WaterfallOptions) {
 	}
 }
 
+func getWaterfallOrderFilter(minOrder, maxOrder int) (bson.M, error) {
+	if minOrder < 0 || maxOrder <= minOrder || maxOrder-minOrder > MaxWaterfallVersionLimit+1 {
+		return nil, errors.Errorf("invalid order range: expected 0 <= min order < max order and a width no greater than %d", MaxWaterfallVersionLimit+1)
+	}
+	return bson.M{"$gt": minOrder, "$lt": maxOrder}, nil
+}
+
 const (
 	minRevisionLength = 7
 )
@@ -150,32 +157,21 @@ func getBuildVariantFilterPipeline(variants, variantTags []string, caseSensitive
 // GetActiveVersionsByTaskFilters returns up to opts.Limit versions matching task
 // filters. It also applies requester and build variant filters. If no task
 // filters are specified, GetActiveWaterfallVersions is faster.
-func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts WaterfallOptions, searchOffset int) ([]Version, error) {
+func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts WaterfallOptions, pagingBackward bool) ([]Version, error) {
 	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetActiveVersionsByTaskFilters")})
+	orderFilter, err := getWaterfallOrderFilter(opts.MinOrder, opts.MaxOrder)
+	if err != nil {
+		return nil, errors.Wrap(err, "validating waterfall order range")
+	}
 
 	match := bson.M{
 		task.ProjectKey: projectId,
 		task.RequesterKey: bson.M{
 			"$in": opts.Requesters,
 		},
-		task.ActivatedKey: true,
+		task.ActivatedKey:           true,
+		task.RevisionOrderNumberKey: orderFilter,
 	}
-
-	if opts.MaxOrder != 0 && opts.MinOrder != 0 {
-		return nil, errors.New("cannot provide both max and min order options")
-	}
-
-	pagingBackward := opts.MinOrder != 0
-
-	revisionFilter := bson.M{}
-	if pagingBackward {
-		revisionFilter["$lte"] = searchOffset + MaxWaterfallVersionLimit
-		revisionFilter["$gt"] = searchOffset
-	} else {
-		revisionFilter["$gte"] = searchOffset - MaxWaterfallVersionLimit
-		revisionFilter["$lt"] = searchOffset
-	}
-	match[task.RevisionOrderNumberKey] = revisionFilter
 
 	addWaterfallTaskFilters(match, opts)
 
@@ -238,16 +234,16 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 
 // GetActiveWaterfallVersions returns at most `opts.limit` activated versions for a given project.
 // It performantly applies build variant and requester filters; for task-related filters, see GetActiveVersionsByTaskFilters.
-func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts WaterfallOptions) ([]Version, error) {
+func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts WaterfallOptions, pagingBackward bool) ([]Version, error) {
 	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetActiveWaterfallVersions")})
+	orderFilter, err := getWaterfallOrderFilter(opts.MinOrder, opts.MaxOrder)
+	if err != nil {
+		return nil, errors.Wrap(err, "validating waterfall order range")
+	}
 
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
 		return nil, errors.Errorf("invalid requester(s) '%s'; only commit-level requesters can be applied to the waterfall query", invalidRequesters)
-	}
-
-	if opts.MaxOrder != 0 && opts.MinOrder != 0 {
-		return nil, errors.New("cannot provide both max and min order options")
 	}
 
 	match := bson.M{
@@ -255,16 +251,8 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 		VersionRequesterKey: bson.M{
 			"$in": opts.Requesters,
 		},
-		VersionActivatedKey: true,
-	}
-
-	pagingForward := opts.MaxOrder != 0
-	pagingBackward := opts.MinOrder != 0
-
-	if pagingForward {
-		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.MaxOrder}
-	} else if pagingBackward {
-		match[VersionRevisionOrderNumberKey] = bson.M{"$gt": opts.MinOrder}
+		VersionActivatedKey:           true,
+		VersionRevisionOrderNumberKey: orderFilter,
 	}
 
 	pipeline := []bson.M{}
