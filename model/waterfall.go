@@ -110,12 +110,6 @@ func getBuildVariantFilterPipeline(variants, variantTags []string, caseSensitive
 		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey)] = bson.M{"$exists": true}
 	}
 	pipeline = append(pipeline, bson.M{"$match": match})
-	matchCopy := bson.M{}
-	for key := range match {
-		matchCopy[key] = match[key]
-	}
-
-	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 
 	variantsAsRegex := strings.Join(variants, "|")
 
