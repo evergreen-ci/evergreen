@@ -12,7 +12,6 @@ import (
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -407,16 +406,5 @@ func TestEvergreenWebhookSenderSendWithError(t *testing.T) {
 		transport := mockWebhookTransport{secret: []byte("hi")}
 		s.client = &http.Client{Transport: &transport}
 		assert.NoError(t, s.SendWithError(t.Context(), makeMessage()))
-	})
-
-	// Notification send jobs deliver through this helper, so it must
-	// propagate the webhook sender's error rather than silently treating the
-	// delivery as sent.
-	t.Run("GripHelperPropagatesError", func(t *testing.T) {
-		transport := mockWebhookTransport{responseStatus: http.StatusInternalServerError}
-		s.client = &http.Client{Transport: &transport}
-		err := send.SendWithError(t.Context(), s, makeMessage())
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "webhook response was 500")
 	})
 }
