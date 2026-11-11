@@ -85,11 +85,6 @@ type Version {
   projectMetadata: Project
   quarantinedTestsSkippedCount: Int!
   repo: String!
-  """
-  The most recent repotracker (gitter_request) version this version is based on. Only resolves for trigger,
-  git tag, and periodic build versions.
-  """
-  repotrackerBaseVersion: Version
   requester: String!
   revision: String!
   startTime: Time
