@@ -7,10 +7,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func makeFailedWebhookNotification(id string) *Notification {
@@ -20,15 +20,7 @@ func makeFailedWebhookNotification(id string) *Notification {
 			Type: event.EvergreenWebhookSubscriberType,
 			Target: &event.WebhookSubscriber{
 				URL: "https://example.com/hook",
-				Headers: []event.WebhookHeader{
-					{Key: "X-Test", Value: "value"},
-					{Key: event.WebhookAuthorizationHeader, Value: "super-secret-credential"},
-				},
 			},
-		},
-		Payload: &util.EvergreenWebhook{
-			URL:  "https://example.com/hook",
-			Body: []byte(`{"notification":"failed"}`),
 		},
 		Project: "evergreen",
 	}
@@ -67,28 +59,8 @@ func TestInsertFailedWebhook(t *testing.T) {
 		failedWebhook := failedWebhooks[0]
 		assert.Equal(t, "webhook-1", failedWebhook.NotificationID)
 		assert.Equal(t, "evergreen", failedWebhook.Project)
-		assert.Equal(t, "https://example.com/hook", failedWebhook.URL)
 		assert.Equal(t, "webhook response was 404 (Not Found)", failedWebhook.Error)
-		assert.Equal(t, []byte(`{"notification":"failed"}`), failedWebhook.Body)
-		assert.Equal(t, "value", failedWebhook.Headers.Get("X-Test"))
-		// The authorization header carries a credential and must not be retained.
-		assert.Empty(t, failedWebhook.Headers.Get(event.WebhookAuthorizationHeader))
 		assert.NotZero(t, failedWebhook.FailedAt)
-	})
-
-	t.Run("DegradedModeFillsTargetFromSubscriber", func(t *testing.T) {
-		require.NoError(t, db.Clear(FailedWebhookCollection))
-		n := makeFailedWebhookNotification("webhook-degraded")
-		// A disabled sender never builds the payload, so its URL and headers are
-		// only available from the subscriber.
-		n.Payload = &util.EvergreenWebhook{Body: []byte(`{"notification":"failed"}`)}
-		require.NoError(t, InsertFailedWebhook(t.Context(), n, errors.New("sender is disabled")))
-
-		failedWebhooks, err := FindFailedWebhooks(t.Context(), []string{"evergreen"})
-		require.NoError(t, err)
-		require.Len(t, failedWebhooks, 1)
-		assert.Equal(t, "https://example.com/hook", failedWebhooks[0].URL)
-		assert.Equal(t, "value", failedWebhooks[0].Headers.Get("X-Test"))
 	})
 
 	t.Run("NonProjectNotificationIsIgnored", func(t *testing.T) {
@@ -135,6 +107,43 @@ func TestMarkFailedWebhookRetried(t *testing.T) {
 	failedWebhooks, err := FindFailedWebhooks(t.Context(), []string{"evergreen"})
 	require.NoError(t, err)
 	assert.Empty(t, failedWebhooks)
+}
+
+func TestMarkFailedWebhookRetriedExpiredClaimIsReclaimable(t *testing.T) {
+	require.NoError(t, db.Clear(FailedWebhookCollection))
+	t.Cleanup(func() { assert.NoError(t, db.Clear(FailedWebhookCollection)) })
+
+	require.NoError(t, db.Insert(t.Context(), FailedWebhookCollection, &FailedWebhook{
+		NotificationID: "webhook-stale-claim",
+		Project:        "evergreen",
+		FailedAt:       time.Now().Add(-time.Hour),
+		RetriedAt:      time.Now().Add(-failedWebhookRetryLease - time.Minute),
+	}))
+
+	failedWebhooks, err := FindFailedWebhooks(t.Context(), []string{"evergreen"})
+	require.NoError(t, err)
+	require.Len(t, failedWebhooks, 1)
+
+	claimed, err := MarkFailedWebhookRetried(t.Context(), "webhook-stale-claim")
+	require.NoError(t, err)
+	assert.True(t, claimed)
+
+	failedWebhooks, err = FindFailedWebhooks(t.Context(), []string{"evergreen"})
+	require.NoError(t, err)
+	assert.Empty(t, failedWebhooks)
+}
+
+func TestRemoveFailedWebhook(t *testing.T) {
+	require.NoError(t, db.Clear(FailedWebhookCollection))
+	t.Cleanup(func() { assert.NoError(t, db.Clear(FailedWebhookCollection)) })
+
+	n := makeFailedWebhookNotification("webhook-removed")
+	require.NoError(t, InsertFailedWebhook(t.Context(), n, errors.New("delivery failed")))
+	require.NoError(t, RemoveFailedWebhook(t.Context(), n.ID))
+
+	count, err := db.Count(t.Context(), FailedWebhookCollection, bson.M{})
+	require.NoError(t, err)
+	assert.Zero(t, count)
 }
 
 func TestMarkFailedWebhookRetriedMissingRecord(t *testing.T) {

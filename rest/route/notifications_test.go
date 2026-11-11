@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -119,6 +121,7 @@ func TestRetryFailedWebhooksHandlerParse(t *testing.T) {
 		"MissingDryRunDefaultsToFalse": {body: `{}`},
 		"DryRunTrue":                   {body: `{"dry_run": true}`, expectedDry: true},
 		"MalformedBodyIsRejected":      {body: `{`, expectsError: true},
+		"OversizedBodyIsRejected":      {body: `{"dry_run": true` + strings.Repeat(" ", maxRetryFailedWebhooksBodySize) + `}`, expectsError: true},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			h := &retryFailedWebhooksHandler{}
@@ -136,18 +139,14 @@ func TestRetryFailedWebhooksHandlerParse(t *testing.T) {
 }
 
 func TestRetryFailedWebhooksHandlerRun(t *testing.T) {
-	require.NoError(t, db.ClearCollections(notification.FailedWebhookCollection, dbModel.ProjectRefCollection))
+	require.NoError(t, db.ClearCollections(notification.FailedWebhookCollection))
 	t.Cleanup(func() {
-		assert.NoError(t, db.ClearCollections(notification.FailedWebhookCollection, dbModel.ProjectRefCollection))
+		assert.NoError(t, db.ClearCollections(notification.FailedWebhookCollection))
 	})
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(t.Context()))
 
-	require.NoError(t, db.Insert(t.Context(), dbModel.ProjectRefCollection, &dbModel.ProjectRef{
-		Id:        "evergreen",
-		RepoRefId: "repo",
-	}))
 	require.NoError(t, db.Insert(t.Context(), notification.FailedWebhookCollection, &notification.FailedWebhook{
 		NotificationID: "webhook-1",
 		Project:        "evergreen",
@@ -159,7 +158,7 @@ func TestRetryFailedWebhooksHandlerRun(t *testing.T) {
 	}))
 
 	ctx := context.WithValue(t.Context(), RequestContext, &dbModel.Context{
-		ProjectRef: &dbModel.ProjectRef{Id: "evergreen"},
+		ProjectRef: &dbModel.ProjectRef{Id: "evergreen", RepoRefId: "repo"},
 	})
 
 	t.Run("DryRunReturnsFailedWebhooksWithoutRetrying", func(t *testing.T) {
@@ -182,6 +181,19 @@ func TestRetryFailedWebhooksHandlerRun(t *testing.T) {
 		require.True(t, ok)
 		require.Len(t, failedWebhooks, 2)
 		assert.Equal(t, 2, env.RemoteQueue().Stats(ctx).Total)
+	})
+
+	t.Run("RetryJobIsKeyedOnFailureTime", func(t *testing.T) {
+		failedAt := time.Now().Truncate(time.Millisecond)
+		require.NoError(t, db.Insert(t.Context(), notification.FailedWebhookCollection, &notification.FailedWebhook{
+			NotificationID: "webhook-refailed",
+			Project:        "evergreen",
+			FailedAt:       failedAt,
+		}))
+		h := &retryFailedWebhooksHandler{env: env}
+		require.Equal(t, http.StatusOK, h.Run(ctx).Status())
+		_, found := env.RemoteQueue().Get(ctx, units.NewRetryEventSendJob("webhook-refailed", strconv.FormatInt(failedAt.UnixMilli(), 10)).ID())
+		assert.True(t, found)
 	})
 }
 

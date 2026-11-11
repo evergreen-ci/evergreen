@@ -101,10 +101,8 @@ func (j *eventSendJob) Run(ctx context.Context) {
 	}
 	if n == nil {
 		if j.IsRetry {
-			// The notification is gone, so there is nothing left to retry. Mark
-			// the record retried so it is not selected again.
-			_, err := notification.MarkFailedWebhookRetried(ctx, j.NotificationID)
-			j.AddError(errors.Wrapf(err, "marking failed webhook for notification '%s' as retried", j.NotificationID))
+			// The notification is gone, so there is nothing left to retry.
+			j.AddError(notification.RemoveFailedWebhook(ctx, j.NotificationID))
 		}
 		j.AddError(errors.Errorf("notification '%s' not found", j.NotificationID))
 		return
@@ -122,27 +120,31 @@ func (j *eventSendJob) Run(ctx context.Context) {
 
 	if j.IsRetry {
 		// Rebuild the delivery target from the current subscription so the
-		// retry uses the current URL, secret, and headers. Skip the retry if the
-		// subscription was deleted or no longer sends webhooks.
+		// retry uses the current URL, secret, and headers. Drop the record when
+		// the target cannot be refreshed: the notification predates recording
+		// its subscription, or the subscription was deleted or no longer sends
+		// webhooks.
+		var sub *event.Subscription
 		if n.SubscriptionID != "" {
-			sub, err := event.FindSubscriptionByID(ctx, n.SubscriptionID)
+			sub, err = event.FindSubscriptionByID(ctx, n.SubscriptionID)
 			if err != nil {
 				j.AddError(errors.Wrapf(err, "finding subscription '%s' for notification '%s'", n.SubscriptionID, n.ID))
 				return
 			}
-			if sub == nil || sub.Subscriber.Type != n.Subscriber.Type {
-				_, err := notification.MarkFailedWebhookRetried(ctx, n.ID)
-				j.AddError(errors.Wrapf(err, "marking failed webhook for notification '%s' as retried", n.ID))
-				return
-			}
-			// The original send already exhausted its retry budget, so a retry makes one attempt.
-			if webhookSub, ok := sub.Subscriber.Target.(*event.WebhookSubscriber); ok {
-				webhookSub.Retries = 0
-			}
-			n.Subscriber = sub.Subscriber
 		}
+		if sub == nil || sub.Subscriber.Type != n.Subscriber.Type {
+			j.AddError(notification.RemoveFailedWebhook(ctx, n.ID))
+			return
+		}
+		// The original send already exhausted its retry budget, so a retry makes one attempt.
+		if webhookSub, ok := sub.Subscriber.Target.(*event.WebhookSubscriber); ok {
+			webhookSub.Retries = 0
+		}
+		n.Subscriber = sub.Subscriber
 
-		// Claim the record before sending so concurrent retries cannot send it twice; MarkError restores it on failure.
+		// Claim the record before sending so concurrent retries cannot send it
+		// twice. MarkError re-arms it on failure, and the claim lease re-arms it
+		// if the job dies mid-send.
 		claimed, err := notification.MarkFailedWebhookRetried(ctx, n.ID)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "marking failed webhook for notification '%s' as retried", n.ID))
@@ -156,6 +158,9 @@ func (j *eventSendJob) Run(ctx context.Context) {
 	err = j.send(ctx, n)
 	if err == nil {
 		j.AddError(errors.Wrapf(n.MarkSent(ctx), "marking notification '%s' as sent", n.ID))
+		if j.IsRetry {
+			j.AddError(notification.RemoveFailedWebhook(ctx, n.ID))
+		}
 		return
 	}
 

@@ -140,17 +140,25 @@ func byID(id string) db.Q {
 	})
 }
 
-// MarkFailedWebhookRetried atomically marks a failed webhook as retried and reports whether this caller claimed it.
+// MarkFailedWebhookRetried atomically claims a failed webhook for retry and
+// reports whether this caller claimed it.
 func MarkFailedWebhookRetried(ctx context.Context, notificationID string) (bool, error) {
+	now := time.Now().Truncate(time.Millisecond)
 	res, err := evergreen.GetEnvironment().DB().Collection(FailedWebhookCollection).UpdateOne(ctx,
 		bson.M{
 			failedWebhookIDKey:        notificationID,
-			failedWebhookRetriedAtKey: bson.M{"$exists": false},
+			failedWebhookRetriedAtKey: unclaimedFailedWebhook(now),
 		},
-		bson.M{"$set": bson.M{failedWebhookRetriedAtKey: time.Now().Truncate(time.Millisecond)}},
+		bson.M{"$set": bson.M{failedWebhookRetriedAtKey: now}},
 	)
 	if err != nil {
 		return false, errors.Wrapf(err, "marking failed webhook for notification '%s' as retried", notificationID)
 	}
 	return res.MatchedCount > 0, nil
+}
+
+// RemoveFailedWebhook deletes the failed webhook record for a notification
+// that was delivered or can no longer be retried.
+func RemoveFailedWebhook(ctx context.Context, notificationID string) error {
+	return errors.Wrapf(db.Remove(ctx, FailedWebhookCollection, bson.M{failedWebhookIDKey: notificationID}), "removing failed webhook for notification '%s'", notificationID)
 }

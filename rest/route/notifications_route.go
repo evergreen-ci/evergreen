@@ -34,6 +34,10 @@ func (gh *notificationsStatusHandler) Run(ctx context.Context) gimlet.Responder 
 	return gimlet.NewJSONResponse(stats)
 }
 
+// maxRetryFailedWebhooksBodySize caps the retry request body, which only holds
+// the dry-run option.
+const maxRetryFailedWebhooksBodySize = 1024
+
 func makeRetryFailedWebhooksRoute(env evergreen.Environment) gimlet.RouteHandler {
 	return &retryFailedWebhooksHandler{env: env}
 }
@@ -68,7 +72,7 @@ func (h *retryFailedWebhooksHandler) Parse(_ context.Context, r *http.Request) e
 	if r.Body == nil {
 		return nil
 	}
-	data, err := io.ReadAll(r.Body)
+	data, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, maxRetryFailedWebhooksBodySize))
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -90,12 +94,15 @@ func (h *retryFailedWebhooksHandler) Parse(_ context.Context, r *http.Request) e
 
 // Run returns the failed webhooks for the project, retrying them unless the request is a dry run.
 func (h *retryFailedWebhooksHandler) Run(ctx context.Context) gimlet.Responder {
-	projectID, _, err := projectFromContext(ctx)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+	pRef := MustHaveProjectContext(ctx).ProjectRef
+	if pRef == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "project not found",
+		})
 	}
 
-	failedWebhooks, err := data.RetryFailedWebhooks(ctx, h.env, projectID, h.opts.DryRun)
+	failedWebhooks, err := data.RetryFailedWebhooks(ctx, h.env, pRef, h.opts.DryRun)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

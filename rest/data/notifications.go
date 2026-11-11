@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -9,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
@@ -43,15 +43,12 @@ func GetNotificationsStats(ctx context.Context) (*restModel.APIEventStats, error
 
 // RetryFailedWebhooks returns the failed webhook deliveries for the project.
 // Unless dryRun is set, each one is also enqueued for retry.
-func RetryFailedWebhooks(ctx context.Context, env evergreen.Environment, project string, dryRun bool) ([]restModel.APIFailedWebhook, error) {
+func RetryFailedWebhooks(ctx context.Context, env evergreen.Environment, pRef *model.ProjectRef, dryRun bool) ([]restModel.APIFailedWebhook, error) {
+	project := pRef.Id
 	projects := []string{project}
-	pRef, err := model.FindBranchProjectRef(ctx, project)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding project '%s'", project)
-	}
 	// Repo-level subscriptions tag failures with the repo ref ID, so include it
 	// in the lookup.
-	if pRef != nil && pRef.RepoRefId != "" && pRef.RepoRefId != project {
+	if pRef.RepoRefId != "" && pRef.RepoRefId != project {
 		projects = append(projects, pRef.RepoRefId)
 	}
 
@@ -61,10 +58,11 @@ func RetryFailedWebhooks(ctx context.Context, env evergreen.Environment, project
 	}
 
 	if !dryRun && len(failedWebhooks) > 0 {
-		ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 		jobs := make([]amboy.Job, len(failedWebhooks))
 		for i, failedWebhook := range failedWebhooks {
-			jobs[i] = units.NewRetryEventSendJob(failedWebhook.NotificationID, ts)
+			// Key the job on the failure so repeated calls for the same failure
+			// dedupe, while a webhook that failed again gets a new job.
+			jobs[i] = units.NewRetryEventSendJob(failedWebhook.NotificationID, strconv.FormatInt(failedWebhook.FailedAt.UnixMilli(), 10))
 		}
 		if err := amboy.EnqueueManyUniqueJobs(ctx, env.RemoteQueue(), jobs); err != nil {
 			return nil, errors.Wrapf(err, "enqueueing webhook retries for project '%s'", project)
