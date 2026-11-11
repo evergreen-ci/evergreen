@@ -638,6 +638,12 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *model.Versio
 	upstreamProject.Project = upstreamProjectRef.Identifier
 	upstreamProject.TriggerID = obj.TriggerID
 	upstreamProject.TriggerType = obj.TriggerType
+
+	baseVersion, err := obj.FindBaseVersion(ctx, true)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding repotracker base version for version '%s': %s", obj.Id, err.Error()))
+	}
+	upstreamProject.BaseVersion = baseVersion
 	return upstreamProject, nil
 }
 

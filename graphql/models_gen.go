@@ -731,6 +731,7 @@ type UpdateVolumeInput struct {
 }
 
 type UpstreamProject struct {
+	BaseVersion *model1.Version `json:"baseVersion,omitempty"`
 	Owner       string          `json:"owner"`
 	Project     string          `json:"project"`
 	Repo        string          `json:"repo"`
