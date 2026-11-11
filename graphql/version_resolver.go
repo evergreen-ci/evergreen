@@ -27,7 +27,7 @@ import (
 
 // BaseVersion is the resolver for the baseVersion field.
 func (r *versionResolver) BaseVersion(ctx context.Context, obj *model.Version, repotrackerOnly *bool) (*model.Version, error) {
-	baseVersion, err := model.FindBaseVersionForVersion(ctx, obj.Id, utility.FromBoolPtr(repotrackerOnly))
+	baseVersion, err := obj.FindBaseVersion(ctx, utility.FromBoolPtr(repotrackerOnly))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", obj.Id, err.Error()))
 	}
@@ -43,7 +43,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *model.Version,
 		return nil, nil
 	}
 	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
-	groupedBuildVariants, err := generateBuildVariants(ctx, obj.Id, options, obj.Requester, logURL)
+	groupedBuildVariants, err := generateBuildVariants(ctx, obj, options, logURL)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("generating build variants for version '%s': %s", obj.Id, err.Error()))
 	}
@@ -297,7 +297,7 @@ func (r *versionResolver) QuarantinedTestsSkippedCount(ctx context.Context, obj 
 func (r *versionResolver) RepotrackerBaseVersion(ctx context.Context, obj *model.Version) (*model.Version, error) {
 	switch obj.Requester {
 	case evergreen.TriggerRequester, evergreen.GitTagRequester, evergreen.AdHocRequester:
-		baseVersion, err := model.FindBaseVersionForVersion(ctx, obj.Id, true)
+		baseVersion, err := obj.FindBaseVersion(ctx, true)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding repotracker base version for version '%s': %s", obj.Id, err.Error()))
 		}
@@ -497,7 +497,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options
 		}
 	}
 	baseVersionID := ""
-	baseVersion, err := model.FindBaseVersionForVersion(ctx, versionID, false)
+	baseVersion, err := obj.FindBaseVersion(ctx, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", versionID, err.Error()))
 	}
