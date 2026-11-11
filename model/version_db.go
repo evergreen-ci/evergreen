@@ -520,4 +520,3 @@ func FindProjectForVersion(ctx context.Context, versionID string) (string, error
 	}
 	return v.Identifier, nil
 }
-
