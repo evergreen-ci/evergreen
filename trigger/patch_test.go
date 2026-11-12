@@ -523,6 +523,7 @@ func TestRepoProjectSubscriptionFiresForBranchPatch(t *testing.T) {
 	require.Len(t, notifications, 1)
 	assert.Equal(t, sub.Subscriber.Type, notifications[0].Subscriber.Type)
 	assert.Equal(t, "repo-project", notifications[0].Project)
+	assert.Equal(t, sub.ID, notifications[0].SubscriptionID)
 }
 
 func TestRepoProjectSubscriptionDoesNotFireForBranchPatchWithoutRepo(t *testing.T) {

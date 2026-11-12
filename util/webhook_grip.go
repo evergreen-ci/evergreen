@@ -130,10 +130,8 @@ func NewEvergreenWebhookLogger() (send.Sender, error) {
 }
 
 func (w *evergreenWebhookLogger) Send(ctx context.Context, m message.Composer) {
-	if w.Level().ShouldLog(m) {
-		if err := w.send(ctx, m); err != nil {
-			w.ErrorHandler()(ctx, err, m)
-		}
+	if err := w.SendWithError(ctx, m); err != nil {
+		w.ErrorHandler()(ctx, err, m)
 	}
 }
 
@@ -168,13 +166,13 @@ func (w *evergreenWebhookLogger) send(ctx context.Context, m message.Composer) e
 	}
 
 	client := w.client
-	return utility.Retry(context.Background(), func() (bool, error) {
+	return utility.Retry(ctx, func() (bool, error) {
 		req, err := raw.request()
 		if err != nil {
 			return false, errors.Wrap(err, "making webhook request")
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 		req = req.WithContext(ctx)
 		resp, err := client.Do(req)

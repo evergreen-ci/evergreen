@@ -124,11 +124,27 @@ func (s *notificationSuite) TestMarkErrorRecordsFailedWebhook() {
 
 	s.NoError(n.MarkError(s.T().Context(), errors.New("webhook response was 404 (Not Found)")))
 
-	failedWebhooks, err := FindFailedWebhooks(s.T().Context(), []string{"evergreen"}, "", 10)
+	failedWebhooks, err := FindFailedWebhooks(s.T().Context(), []string{"evergreen"})
 	s.Require().NoError(err)
 	s.Require().Len(failedWebhooks, 1)
 	s.Equal("webhook", failedWebhooks[0].NotificationID)
 	s.Equal("webhook response was 404 (Not Found)", failedWebhooks[0].Error)
+}
+
+func (s *notificationSuite) TestMarkSentClearsError() {
+	s.Require().NoError(db.Clear(FailedWebhookCollection))
+	s.T().Cleanup(func() { s.NoError(db.Clear(FailedWebhookCollection)) })
+	n := makeFailedWebhookNotification("webhook")
+	s.Require().NoError(InsertMany(s.T().Context(), *n))
+	s.Require().NoError(n.MarkError(s.T().Context(), errors.New("webhook response was 404 (Not Found)")))
+
+	s.Require().NoError(n.MarkSent(s.T().Context()))
+
+	found, err := Find(s.T().Context(), n.ID)
+	s.Require().NoError(err)
+	s.Require().NotNil(found)
+	s.Empty(found.Error)
+	s.NotZero(found.SentAt)
 }
 
 func (s *notificationSuite) TestMarkErrorForNonWebhookRecordsNoFailedWebhook() {
@@ -145,7 +161,7 @@ func (s *notificationSuite) TestMarkErrorForNonWebhookRecordsNoFailedWebhook() {
 	s.Require().NoError(err)
 	s.Require().NotNil(found)
 	s.Equal("smtp refused", found.Error)
-	failedWebhooks, err := FindFailedWebhooks(s.T().Context(), []string{"evergreen"}, "", 10)
+	failedWebhooks, err := FindFailedWebhooks(s.T().Context(), []string{"evergreen"})
 	s.Require().NoError(err)
 	s.Empty(failedWebhooks)
 }

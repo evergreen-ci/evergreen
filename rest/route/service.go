@@ -211,6 +211,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}").Version(2).Put().Wrap(requireUser, createProject, rateLimit).RouteHandler(makePutProjectByID(env))
 	app.AddRoute("/projects/{project_id}/copy").Version(2).Post().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings, rateLimit).RouteHandler(makeCopyProject(env))
 	app.AddRoute("/projects/{project_id}/copy/variables").Version(2).Post().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings, rateLimit).RouteHandler(makeCopyVariables())
+	app.AddRoute("/projects/{project_id}/retry_failed_webhooks").Version(2).Post().Wrap(requireUser, addProject, requireProjectAdmin, rateLimit).RouteHandler(makeRetryFailedWebhooksRoute(env))
 	app.AddRoute("/projects/{project_id}/backstage_variables").Version(2).Post().Wrap(requireUser, requireBackstage, rateLimit).RouteHandler(makeBackstageVariablesPost())
 	app.AddRoute("/projects/{project_id}/events").Version(2).Get().Wrap(requireUser, addProject, requireProjectAdmin, viewProjectSettings, rateLimit).RouteHandler(makeFetchProjectEvents())
 	app.AddRoute("/projects/{project_id}/patches").Version(2).Get().Wrap(requireUser, viewTasks, rateLimit).RouteHandler(makePatchesByProjectRoute())

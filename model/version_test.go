@@ -1227,3 +1227,136 @@ func TestConstructManifestRecordsSelectionRulesAndChangedModules(t *testing.T) {
 		assert.Empty(t, m.ChangedModules)
 	})
 }
+
+func TestVersionFindBaseVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(VersionCollection))
+
+	patch0 := Version{
+		Id:                  "v0",
+		Identifier:          "project1",
+		Requester:           evergreen.PatchVersionRequester,
+		Revision:            "ghi",
+		RevisionOrderNumber: 1,
+	}
+	patch1 := Version{
+		Id:                  "v1",
+		Identifier:          "project1",
+		Requester:           evergreen.PatchVersionRequester,
+		Revision:            "abc",
+		RevisionOrderNumber: 2,
+	}
+	mainlineCommit1 := Version{
+		Id:                  "project1_v1",
+		Identifier:          "project1",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Revision:            "abc",
+		RevisionOrderNumber: 1,
+	}
+	mainlineCommit2 := Version{
+		Id:                  "project1_v2",
+		Identifier:          "project1",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Revision:            "def",
+		RevisionOrderNumber: 2,
+	}
+	triggerVersion := Version{
+		Id:                  "project1_v3_trigger",
+		Identifier:          "project1",
+		Requester:           evergreen.TriggerRequester,
+		Revision:            "abc",
+		RevisionOrderNumber: 3,
+	}
+	periodicBuild := Version{
+		Id:                  "project1_v4_periodic",
+		Identifier:          "project1",
+		Requester:           evergreen.AdHocRequester,
+		Revision:            "def",
+		RevisionOrderNumber: 4,
+	}
+	triggerVersionWithoutRepotrackerVersion := Version{
+		Id:                  "project1_v5_trigger",
+		Identifier:          "project1",
+		Requester:           evergreen.TriggerRequester,
+		Revision:            "jkl",
+		RevisionOrderNumber: 5,
+	}
+
+	for _, v := range []Version{patch0, patch1, mainlineCommit1, mainlineCommit2, triggerVersion, periodicBuild, triggerVersionWithoutRepotrackerVersion} {
+		require.NoError(t, v.Insert(t.Context()))
+	}
+
+	type testCase struct {
+		versionID  string
+		expectedID string
+	}
+	for groupName, group := range map[string]struct {
+		repotrackerOnly bool
+		testCases       map[string]testCase
+	}{
+		"RepotrackerOnlyFalse": {
+			repotrackerOnly: false,
+			testCases: map[string]testCase{
+				"PatchReturnsMainlineCommitAtBaseRevision": {
+					versionID:  "v1",
+					expectedID: "project1_v1",
+				},
+				"PatchWithoutMainlineCommitAtBaseRevisionReturnsNil": {
+					versionID: "v0",
+				},
+				"MainlineCommitReturnsPreviousMainlineCommit": {
+					versionID:  "project1_v2",
+					expectedID: "project1_v1",
+				},
+				"FirstMainlineCommitReturnsNil": {
+					versionID: "project1_v1",
+				},
+				"TriggerVersionReturnsPreviousVersionByOrder": {
+					versionID:  "project1_v3_trigger",
+					expectedID: "project1_v2",
+				},
+			},
+		},
+		"RepotrackerOnlyTrue": {
+			repotrackerOnly: true,
+			testCases: map[string]testCase{
+				"PatchReturnsRepotrackerCommitAtBaseRevision": {
+					versionID:  "v1",
+					expectedID: "project1_v1",
+				},
+				"RepotrackerCommitReturnsItself": {
+					versionID:  "project1_v2",
+					expectedID: "project1_v2",
+				},
+				"TriggerVersionReturnsRepotrackerCommitAtSameRevision": {
+					versionID:  "project1_v3_trigger",
+					expectedID: "project1_v1",
+				},
+				"PeriodicBuildReturnsRepotrackerCommitAtSameRevision": {
+					versionID:  "project1_v4_periodic",
+					expectedID: "project1_v2",
+				},
+				"TriggerVersionWithNoRepotrackerCommitAtSameRevisionReturnsNil": {
+					versionID: "project1_v5_trigger",
+				},
+			},
+		},
+	} {
+		t.Run(groupName, func(t *testing.T) {
+			for testName, tc := range group.testCases {
+				t.Run(testName, func(t *testing.T) {
+					v, err := VersionFindOneId(t.Context(), tc.versionID)
+					require.NoError(t, err)
+					require.NotNil(t, v)
+					version, err := v.FindBaseVersion(t.Context(), group.repotrackerOnly)
+					require.NoError(t, err)
+					if tc.expectedID == "" {
+						assert.Nil(t, version)
+						return
+					}
+					require.NotNil(t, version)
+					assert.Equal(t, tc.expectedID, version.Id)
+				})
+			}
+		})
+	}
+}
