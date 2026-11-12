@@ -29,6 +29,10 @@ const (
 	// the job was lost (e.g. never enqueued or crashed) and the intent would
 	// block recovery indefinitely.
 	pendingIntentMaxAge = 30 * time.Minute
+	// unprocessedIntentLookback bounds how far back to look for unprocessed
+	// merge intents. It matches GitHub's maximum merge queue status check
+	// timeout, after which the merge group is removed from the queue anyway.
+	unprocessedIntentLookback = 6 * time.Hour
 )
 
 func init() {
@@ -81,14 +85,15 @@ func (j *mergeQueuePatchRecoveryJob) Run(ctx context.Context) {
 	// a patch already has a pending intent. Treat the head SHAs of intents that
 	// are still in flight as covered so we never create a second patch for the
 	// same merge group.
-	unprocessedIntents, err := patch.FindUnprocessedGithubMergeIntents(ctx)
+	now := time.Now()
+	unprocessedIntents, err := patch.FindUnprocessedGithubMergeIntents(ctx, now.Add(-unprocessedIntentLookback))
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "finding unprocessed merge queue intents"))
 		return
 	}
 	pending := map[string]bool{}
 	for _, intent := range unprocessedIntents {
-		if isMergeIntentInFlight(ctx, j.env.RemoteQueue(), intent, time.Now()) {
+		if isMergeIntentInFlight(ctx, j.env.RemoteQueue(), intent, now) {
 			pending[intent.HeadSHA] = true
 		}
 	}

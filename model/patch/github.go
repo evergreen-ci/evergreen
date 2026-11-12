@@ -352,15 +352,16 @@ type UnprocessedMergeIntent struct {
 	CreatedAt time.Time `bson:"created_at"`
 }
 
-// FindUnprocessedGithubMergeIntents returns all GitHub merge queue intents that
-// have not yet been processed into a patch. The merge queue patch recovery job
-// uses these to avoid creating a duplicate patch for a merge group whose webhook
-// intent is still in flight.
-func FindUnprocessedGithubMergeIntents(ctx context.Context) ([]UnprocessedMergeIntent, error) {
+// FindUnprocessedGithubMergeIntents returns GitHub merge queue intents created
+// after createdAfter that have not yet been processed into a patch. The merge
+// queue patch recovery job uses these to avoid creating a duplicate patch for a
+// merge group whose webhook intent is still in flight.
+func FindUnprocessedGithubMergeIntents(ctx context.Context, createdAfter time.Time) ([]UnprocessedMergeIntent, error) {
 	var intents []UnprocessedMergeIntent
 	err := db.FindAllQ(ctx, IntentCollection, db.Query(bson.M{
 		processedKey:  false,
 		intentTypeKey: GithubMergeIntentType,
+		createdAtKey:  bson.M{"$gt": createdAfter},
 	}).WithFields(documentIDKey, headHashKey, createdAtKey), &intents)
 	if err != nil {
 		return nil, err
