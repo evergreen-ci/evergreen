@@ -29,7 +29,7 @@ func TestVersionTaskBatchTimesUpsertAndFindOne(t *testing.T) {
 			},
 		},
 	}
-	require.NoError(t, VersionTaskBatchTimesUpsert(t.Context(), bt))
+	require.NoError(t, bt.Upsert(t.Context()))
 
 	found, err := VersionTaskBatchTimesFindOne(t.Context(), bt.Id)
 	require.NoError(t, err)
@@ -55,20 +55,22 @@ func TestVersionTaskBatchTimesUpsertReplacesBuildVariants(t *testing.T) {
 		require.NoError(t, db.ClearCollections(VersionTaskBatchTimeCollection))
 	})
 
-	require.NoError(t, VersionTaskBatchTimesUpsert(t.Context(), &VersionTaskBatchTimes{
+	bt := &VersionTaskBatchTimes{
 		Id:    "version0",
 		Order: 1,
 		BuildVariants: []BuildVariantTaskBatchTime{
 			{BuildVariant: "ubuntu", BatchTimeTasks: []BatchTimeTaskStatus{{TaskName: "task0"}}},
 		},
-	}))
-	require.NoError(t, VersionTaskBatchTimesUpsert(t.Context(), &VersionTaskBatchTimes{
+	}
+	require.NoError(t, bt.Upsert(t.Context()))
+	bt = &VersionTaskBatchTimes{
 		Id:    "version0",
 		Order: 1,
 		BuildVariants: []BuildVariantTaskBatchTime{
 			{BuildVariant: "windows", BatchTimeTasks: []BatchTimeTaskStatus{{TaskName: "task1"}}},
 		},
-	}))
+	}
+	require.NoError(t, bt.Upsert(t.Context()))
 
 	found, err := VersionTaskBatchTimesFindOne(t.Context(), "version0")
 	require.NoError(t, err)
@@ -143,7 +145,7 @@ func TestVersionTaskBatchTimesFindByLastTaskActivation(t *testing.T) {
 		},
 	}
 	for _, bt := range bts {
-		require.NoError(t, VersionTaskBatchTimesUpsert(t.Context(), bt))
+		require.NoError(t, bt.Upsert(t.Context()))
 	}
 
 	found, err := VersionTaskBatchTimesFindByLastTaskActivation(t.Context(), "proj", "ubuntu", "task0")
@@ -171,14 +173,15 @@ func TestGetBuildVariantsIncludesBatchTimeTasks(t *testing.T) {
 			{BuildVariant: "windows"},
 		},
 	}))
-	require.NoError(t, VersionTaskBatchTimesUpsert(t.Context(), &VersionTaskBatchTimes{
+	bt := &VersionTaskBatchTimes{
 		Id:         "version0",
 		Identifier: "proj",
 		Requester:  evergreen.RepotrackerVersionRequester,
 		BuildVariants: []BuildVariantTaskBatchTime{
 			{BuildVariant: "ubuntu", BatchTimeTasks: []BatchTimeTaskStatus{{TaskName: "task0"}}},
 		},
-	}))
+	}
+	require.NoError(t, bt.Upsert(t.Context()))
 
 	v, err := VersionFindOneId(t.Context(), "version0")
 	require.NoError(t, err)
@@ -231,12 +234,13 @@ func TestGetBuildVariantsMergesSplitBatchTimeTasks(t *testing.T) {
 			{BuildVariant: "windows"},
 		},
 	}))
-	require.NoError(t, VersionTaskBatchTimesUpsert(t.Context(), &VersionTaskBatchTimes{
+	bt := &VersionTaskBatchTimes{
 		Id: "version0",
 		BuildVariants: []BuildVariantTaskBatchTime{
 			{BuildVariant: "windows", BatchTimeTasks: []BatchTimeTaskStatus{{TaskName: "task1"}}},
 		},
-	}))
+	}
+	require.NoError(t, bt.Upsert(t.Context()))
 
 	v, err := VersionFindOneId(t.Context(), "version0")
 	require.NoError(t, err)
@@ -256,7 +260,7 @@ func TestVersionTaskBatchTimesAppend(t *testing.T) {
 		require.NoError(t, db.ClearCollections(VersionTaskBatchTimeCollection))
 	})
 
-	require.NoError(t, VersionTaskBatchTimesAppend(t.Context(), &VersionTaskBatchTimes{
+	bt := &VersionTaskBatchTimes{
 		Id:         "version0",
 		Identifier: "proj",
 		Requester:  evergreen.RepotrackerVersionRequester,
@@ -267,8 +271,9 @@ func TestVersionTaskBatchTimesAppend(t *testing.T) {
 				BatchTimeTasks: []BatchTimeTaskStatus{{TaskName: "task0"}},
 			},
 		},
-	}))
-	require.NoError(t, VersionTaskBatchTimesAppend(t.Context(), &VersionTaskBatchTimes{
+	}
+	require.NoError(t, bt.Append(t.Context()))
+	bt = &VersionTaskBatchTimes{
 		Id: "version0",
 		BuildVariants: []BuildVariantTaskBatchTime{
 			{
@@ -276,7 +281,8 @@ func TestVersionTaskBatchTimesAppend(t *testing.T) {
 				BatchTimeTasks: []BatchTimeTaskStatus{{TaskName: "task1"}},
 			},
 		},
-	}))
+	}
+	require.NoError(t, bt.Append(t.Context()))
 
 	found, err := VersionTaskBatchTimesFindOne(t.Context(), "version0")
 	require.NoError(t, err)

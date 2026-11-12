@@ -60,8 +60,8 @@ func VersionTaskBatchTimesFindOne(ctx context.Context, versionID string) (*Versi
 	return bt, nil
 }
 
-// VersionTaskBatchTimesUpsert upserts the task batchtimes for a version.
-func VersionTaskBatchTimesUpsert(ctx context.Context, bt *VersionTaskBatchTimes) error {
+// Upsert upserts the task batchtimes for a version.
+func (bt *VersionTaskBatchTimes) Upsert(ctx context.Context) error {
 	update := bson.M{
 		"$set": bson.M{
 			VersionTaskBatchTimesIdentifierKey:    bt.Identifier,
@@ -75,9 +75,9 @@ func VersionTaskBatchTimesUpsert(ctx context.Context, bt *VersionTaskBatchTimes)
 	return err
 }
 
-// VersionTaskBatchTimesAppend appends the given build variants' task batchtimes
-// to a version's doc, creating the doc if it doesn't exist.
-func VersionTaskBatchTimesAppend(ctx context.Context, bt *VersionTaskBatchTimes) error {
+// Append appends the given build variants' task batchtimes to a version's doc,
+// creating the doc if it doesn't exist.
+func (bt *VersionTaskBatchTimes) Append(ctx context.Context) error {
 	update := bson.M{
 		"$push": bson.M{
 			VersionTaskBatchTimesBuildVariantsKey: bson.M{"$each": bt.BuildVariants},

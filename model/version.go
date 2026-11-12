@@ -189,14 +189,15 @@ func (v *Version) ActivateAndSetBuildVariants(ctx context.Context) error {
 	}
 	taskBatchTimes := taskBatchTimesForBuildVariants(bvs)
 	if len(taskBatchTimes) > 0 {
-		if err := VersionTaskBatchTimesUpsert(ctx, &VersionTaskBatchTimes{
+		bt := &VersionTaskBatchTimes{
 			Id:            v.Id,
 			Identifier:    v.Identifier,
 			Requester:     v.Requester,
 			Order:         v.RevisionOrderNumber,
 			Ignored:       v.Ignored,
 			BuildVariants: taskBatchTimes,
-		}); err != nil {
+		}
+		if err := bt.Upsert(ctx); err != nil {
 			return errors.Wrap(err, "setting task batchtimes")
 		}
 	}

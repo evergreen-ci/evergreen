@@ -1784,14 +1784,15 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 
 	taskBatchTimes := taskBatchTimesForBuildVariants(newBuildStatuses)
 	if len(taskBatchTimes) > 0 {
-		if err := VersionTaskBatchTimesAppend(ctx, &VersionTaskBatchTimes{
+		bt := &VersionTaskBatchTimes{
 			Id:            creationInfo.Version.Id,
 			Identifier:    creationInfo.Version.Identifier,
 			Requester:     creationInfo.Version.Requester,
 			Order:         creationInfo.Version.RevisionOrderNumber,
 			Ignored:       creationInfo.Version.Ignored,
 			BuildVariants: taskBatchTimes,
-		}); err != nil {
+		}
+		if err := bt.Append(ctx); err != nil {
 			return nil, nil, errors.Wrap(err, "adding batchtime tasks for new builds")
 		}
 	}

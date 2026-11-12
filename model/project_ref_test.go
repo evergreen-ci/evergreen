@@ -4498,7 +4498,7 @@ func TestFindLastActivatedBatchTimeTask(t *testing.T) {
 		}))
 	}
 	insertNewVersion := func() {
-		require.NoError(t, VersionTaskBatchTimesUpsert(t.Context(), &VersionTaskBatchTimes{
+		bt := &VersionTaskBatchTimes{
 			Id:         "new",
 			Identifier: "proj",
 			Requester:  evergreen.RepotrackerVersionRequester,
@@ -4514,7 +4514,8 @@ func TestFindLastActivatedBatchTimeTask(t *testing.T) {
 					},
 				},
 			},
-		}))
+		}
+		require.NoError(t, bt.Upsert(t.Context()))
 	}
 
 	t.Run("MoreRecentVersionInCollectionWins", func(t *testing.T) {
