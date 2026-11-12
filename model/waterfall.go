@@ -182,10 +182,10 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 	})
 
 	if pagingBackward {
-		// When querying with a $gt param, sort ascending so we can take `limit` versions nearest to the MinOrder param
+		// Sort ascending to select the nearest versions above MinOrder within the bounded window.
 		pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: 1}})
 		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
-		// Then apply an ascending sort so these versions are returned in the expected descending order
+		// Then sort descending to return the versions in waterfall order.
 		pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
 
 	} else {
@@ -262,10 +262,10 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 	}
 
 	if pagingBackward {
-		// When querying with a $gt param, sort ascending so we can take `limit` versions nearest to the MinOrder param
+		// Sort ascending to select the nearest versions above MinOrder within the bounded window.
 		pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: 1}})
 		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
-		// Then apply an acending sort so these versions are returned in the expected descending order
+		// Then sort descending to return the versions in waterfall order.
 		pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 
 	} else {
