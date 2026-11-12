@@ -157,6 +157,10 @@ func (s *stsManagerImpl) GetCallerIdentityARN(ctx context.Context) (string, erro
 
 // CreateExternalID returns the STS external ID used to assume roles on behalf
 // of the given task.
+// The external ID is used as a trust boundary for the AssumeRole call. It is an
+// unconfigurable computed value from the task's properties to avoid the
+// confused deputy problem since Evergreen assumes many roles on behalf of
+// tasks.
 func CreateExternalID(task *task.Task, projectRef *model.ProjectRef, isDebug bool) string {
 	externalID := createExternalIDHelper(task, projectRef)
 	if isDebug {
