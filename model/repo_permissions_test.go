@@ -58,6 +58,7 @@ func TestReplacingHiddenProjectUpdatesRepoAndRestrictionScopes(t *testing.T) {
 		repoRestricted    bool
 		projectRestricted *bool
 		creatorRoles      []string
+		wantUnauthorized  bool
 	}{
 		{name: "StandaloneProjectLosesRepoAccess"},
 		{name: "StandaloneRestrictedProjectLosesUnrestrictedAccess", projectRestricted: utility.TruePtr()},
@@ -66,7 +67,7 @@ func TestReplacingHiddenProjectUpdatesRepoAndRestrictionScopes(t *testing.T) {
 		{name: "AttachedProjectInheritsRepoRestriction", attached: true, repoRestricted: true},
 		{name: "AttachedProjectOverridesRepoRestriction", attached: true, repoRestricted: true, projectRestricted: utility.FalsePtr()},
 		{name: "AttachedProjectByRepoAdminKeepsRepoAccess", attached: true, creatorRoles: []string{GetRepoAdminRole("repo")}},
-		{name: "AttachedProjectByProjectAdminKeepsRepoAccess", attached: true, creatorRoles: []string{GetProjectAdminRole("hidden")}},
+		{name: "AttachedProjectByNonRepoAdminShouldError", attached: true, creatorRoles: []string{GetProjectAdminRole("hidden")}, wantUnauthorized: true},
 		{name: "StandaloneProjectByProjectAdminLosesRepoAccess", creatorRoles: []string{GetProjectAdminRole("hidden")}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -100,7 +101,19 @@ func TestReplacingHiddenProjectUpdatesRepoAndRestrictionScopes(t *testing.T) {
 				creator = &user.DBUser{Id: "creator", SystemRoles: tc.creatorRoles}
 				require.NoError(t, creator.Insert(ctx))
 			}
-			require.NoError(t, project.Add(ctx, creator))
+			err := project.Add(ctx, creator)
+			if tc.wantUnauthorized {
+				require.Error(t, err)
+				assert.True(t, errors.Is(err, ErrRepoRefUnauthorized), "expected an authorization error, got '%s'", err)
+				stored, err := FindBranchProjectRef(ctx, hidden.Id)
+				require.NoError(t, err)
+				require.NotNil(t, stored)
+				assert.True(t, stored.IsHidden())
+				assert.Empty(t, stored.Identifier)
+				assert.True(t, admin.HasPermission(ctx, permission))
+				return
+			}
+			require.NoError(t, err)
 			assert.Equal(t, hidden.Id, project.Id)
 			stored, err := FindBranchProjectRef(ctx, project.Id)
 			require.NoError(t, err)
@@ -148,7 +161,7 @@ func TestReplacingHiddenProjectFailuresPreserveProjectAndScopes(t *testing.T) {
 			require.NoError(t, repo.Add(ctx, nil))
 			hidden := &ProjectRef{Id: "hidden", Owner: repo.Owner, Repo: repo.Repo, Branch: "branch", RepoRefId: repo.Id, Hidden: utility.TruePtr()}
 			require.NoError(t, hidden.Add(ctx, nil))
-			creator := &user.DBUser{Id: "creator", SystemRoles: []string{GetProjectAdminRole(hidden.Id)}}
+			creator := &user.DBUser{Id: "creator", SystemRoles: []string{GetProjectAdminRole(hidden.Id), GetRepoAdminRole(repo.Id)}}
 			require.NoError(t, creator.Insert(ctx))
 
 			before, err := FindBranchProjectRef(ctx, hidden.Id)

@@ -1595,12 +1595,12 @@ func TestPromoteVarsToRepo(t *testing.T) {
 	}
 }
 
-func TestCopyProjectReplacingHiddenProjectPreservesCopyPermissions(t *testing.T) {
+func TestCopyProjectReplacingHiddenProjectPermissions(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		repoAdmin bool
 	}{
-		{name: "ProjectAdminCopiesIntoAttachedHiddenProject"},
+		{name: "ProjectAdminCopyIntoAttachedHiddenProjectShouldError"},
 		{name: "RepoAdminCopiesIntoHiddenProject", repoAdmin: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1639,15 +1639,23 @@ func TestCopyProjectReplacingHiddenProjectPreservesCopyPermissions(t *testing.T)
 			}
 
 			copied, err := CopyProject(ctx, env, restModel.CopyProjectOpts{ProjectIdToCopy: source.Id, NewProjectIdentifier: "replacement"})
-			require.NoError(t, err)
-			require.NotNil(t, copied)
-			assert.Equal(t, hidden.Id, utility.FromStringPtr(copied.Id))
-			after, err := model.FindBranchProjectRef(ctx, hidden.Id)
-			require.NoError(t, err)
+			after, findErr := model.FindBranchProjectRef(ctx, hidden.Id)
+			require.NoError(t, findErr)
 			require.NotNil(t, after)
-			assert.False(t, after.IsHidden())
-			assert.Equal(t, "replacement", after.Identifier)
-			assert.Equal(t, repo.Id, after.RepoRefId)
+			if tc.repoAdmin {
+				require.NoError(t, err)
+				require.NotNil(t, copied)
+				assert.Equal(t, hidden.Id, utility.FromStringPtr(copied.Id))
+				assert.False(t, after.IsHidden())
+				assert.Equal(t, "replacement", after.Identifier)
+				assert.Equal(t, repo.Id, after.RepoRefId)
+			} else {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), model.ErrRepoRefUnauthorized.Error())
+				assert.Nil(t, copied)
+				assert.True(t, after.IsHidden())
+				assert.Empty(t, after.Identifier)
+			}
 			for scopeID, beforeScope := range beforeScopes {
 				afterScope, err := rm.GetScope(ctx, scopeID)
 				require.NoError(t, err)
