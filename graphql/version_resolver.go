@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
@@ -625,11 +626,15 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *model.Versio
 	upstreamProject.TriggerID = obj.TriggerID
 	upstreamProject.TriggerType = obj.TriggerType
 
-	baseVersion, err := obj.FindBaseVersion(ctx, true)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding repotracker base version for version '%s': %s", obj.Id, err.Error()))
+	// Skip the extra DB lookup unless the query asks for the base version.
+	requestedFields := graphql.CollectAllFields(ctx)
+	if slices.Contains(requestedFields, "baseVersion") {
+		baseVersion, err := obj.FindBaseVersion(ctx, true)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding repotracker base version for version '%s': %s", obj.Id, err.Error()))
+		}
+		upstreamProject.BaseVersion = baseVersion
 	}
-	upstreamProject.BaseVersion = baseVersion
 	return upstreamProject, nil
 }
 
