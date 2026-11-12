@@ -344,16 +344,30 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 // a signed artifact, which are required to presign it later. It errors if the
 // fields are invalid.
 func (h *completeVirtualTasksHandler) setSignedArtifactFields(file *artifact.File, a apimodels.VirtualTaskArtifact) error {
-	if a.Bucket == "" || a.FileKey == "" {
-		return errors.Errorf("signed artifact '%s' must specify bucket and file_key", a.Name)
-	}
+	catcher := grip.NewBasicCatcher()
+
 	awsKeyVarNameSet := a.AWSKeyVarName != ""
 	awsSecretVarNameSet := a.AWSSecretVarName != ""
-	if awsKeyVarNameSet != awsSecretVarNameSet {
-		return errors.Errorf("artifact '%s' must specify aws_key_var_name and aws_secret_var_name together", a.Name)
+	catcher.NewWhen(a.Bucket == "" || a.FileKey == "", "must specify bucket")
+	catcher.NewWhen(a.FileKey == "", "must specify file_key")
+	catcher.NewWhen(awsKeyVarNameSet != awsSecretVarNameSet, "must specify aws_key_var_name and aws_secret_var_name together")
+	catcher.NewWhen(a.AWSRoleARN != "" && awsKeyVarNameSet, "cannot combine aws_role_arn with aws_key_var_name/aws_secret_var_name")
+
+	var presignDuration time.Duration
+	if a.PresignDuration != "" {
+		duration, err := time.ParseDuration(a.PresignDuration)
+		if err != nil {
+			catcher.Wrapf(err, "parsing presign_duration '%s' for artifact '%s'", a.PresignDuration, a.Name)
+		} else if err := artifact.ValidatePresignDuration(duration); err != nil {
+			catcher.Wrapf(err, "validating presign_duration for artifact '%s'", a.Name)
+		} else {
+			presignDuration = duration
+		}
 	}
-	if a.AWSRoleARN != "" && a.AWSKeyVarName != "" {
-		return errors.Errorf("artifact '%s' cannot combine aws_role_arn with aws_key_var_name/aws_secret_var_name", a.Name)
+	catcher.NewWhen(a.AWSRoleARN != "" && presignDuration != 0, "cannot combine aws_role_arn with presign_duration")
+
+	if catcher.HasErrors() {
+		return errors.Wrapf(catcher.Resolve(), "validating signed artifact '%s'", a.Name)
 	}
 
 	file.Bucket = a.Bucket
@@ -361,22 +375,8 @@ func (h *completeVirtualTasksHandler) setSignedArtifactFields(file *artifact.Fil
 	file.AWSKeyVarName = a.AWSKeyVarName
 	file.AWSSecretVarName = a.AWSSecretVarName
 	file.AWSRoleARN = a.AWSRoleARN
-
-	if a.PresignDuration != "" {
-		duration, err := time.ParseDuration(a.PresignDuration)
-		if err != nil {
-			return errors.Wrapf(err, "parsing presign_duration '%s' for artifact '%s'", a.PresignDuration, a.Name)
-		}
-		if err := artifact.ValidatePresignDuration(duration); err != nil {
-			return errors.Wrapf(err, "validating presign_duration for artifact '%s'", a.Name)
-		}
-		file.PresignDuration = duration
-	}
-
+	file.PresignDuration = presignDuration
 	if file.AWSRoleARN != "" {
-		if file.PresignDuration != 0 {
-			return errors.Errorf("artifact '%s' cannot combine aws_role_arn with presign_duration", a.Name)
-		}
 		file.ExternalID = h.roleExternalID
 	}
 
