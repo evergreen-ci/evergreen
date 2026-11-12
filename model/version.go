@@ -248,6 +248,25 @@ func (v *Version) IsChild() bool {
 	return v.ParentPatchID != ""
 }
 
+// FindBaseVersion finds the base version for the version.
+// Set repotrackerOnly to true if you only want to get repotracker (gitter_request) versions. Otherwise,
+// if the version is a patch, it will return the base version. If the version is a mainline commit,
+// it will return the previously run mainline commit.
+func (v *Version) FindBaseVersion(ctx context.Context, repotrackerOnly bool) (*Version, error) {
+	if repotrackerOnly || evergreen.IsPatchRequester(v.Requester) {
+		baseVersion, err := VersionFindOne(ctx, BaseVersionByProjectIdAndRevision(v.Identifier, v.Revision))
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
+		}
+		return baseVersion, nil
+	}
+	previousVersion, err := VersionFindOne(ctx, VersionByProjectIdAndOrder(v.Identifier, v.RevisionOrderNumber-1))
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
+	}
+	return previousVersion, nil
+}
+
 func (v *Version) AddSatisfiedTrigger(ctx context.Context, definitionID string) error {
 	if v.SatisfiedTriggers == nil {
 		v.SatisfiedTriggers = []string{}
