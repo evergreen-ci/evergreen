@@ -94,7 +94,7 @@ func addWaterfallTaskFilters(match bson.M, opts WaterfallOptions) {
 
 func getWaterfallOrderFilter(minOrder, maxOrder int) (bson.M, error) {
 	if minOrder < 0 || maxOrder <= minOrder || maxOrder-minOrder > MaxWaterfallVersionLimit+1 {
-		return nil, errors.Errorf("invalid order range: expected 0 <= min order < max order and a width no greater than %d", MaxWaterfallVersionLimit+1)
+		return nil, errors.Errorf("invalid order range: expected 0 <= min order < max order and a window no greater than %d", MaxWaterfallVersionLimit+1)
 	}
 	return bson.M{"$gt": minOrder, "$lt": maxOrder}, nil
 }
@@ -287,8 +287,15 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 }
 
 // GetAllWaterfallVersions returns all of a project's versions within an inclusive range of orders.
-func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int, maxOrder int) ([]Version, error) {
+// A zero maxVersions uses MaxWaterfallVersionLimit.
+func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int, maxOrder int, maxVersions int) ([]Version, error) {
 	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetAllWaterfallVersions")})
+	if maxVersions == 0 {
+		maxVersions = MaxWaterfallVersionLimit
+	}
+	if maxVersions < 1 || maxVersions > MaxWaterfallVersionLimit {
+		return nil, errors.Errorf("maxVersions must be between 1 and %d", MaxWaterfallVersionLimit)
+	}
 
 	if minOrder != 0 && maxOrder != 0 && minOrder > maxOrder {
 		return nil, errors.New("minOrder must be less than or equal to maxOrder")
@@ -314,7 +321,7 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
-	pipeline = append(pipeline, bson.M{"$limit": MaxWaterfallVersionLimit})
+	pipeline = append(pipeline, bson.M{"$limit": maxVersions})
 	// Remove BuildVariants because this field can be enormous and slow down the fetch operation.
 	pipeline = append(pipeline, bson.M{"$project": bson.M{VersionBuildVariantsKey: 0}})
 

@@ -310,29 +310,40 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert(t.Context()))
 
-	versions, err := GetAllWaterfallVersions(t.Context(), p.Id, 7, 9)
+	versions, err := GetAllWaterfallVersions(t.Context(), p.Id, 7, 9, 0)
 	assert.NoError(t, err)
 	require.Len(t, versions, 3)
 	assert.EqualValues(t, "v_2", versions[0].Id)
 	assert.EqualValues(t, "v_3", versions[1].Id)
 	assert.EqualValues(t, "v_4", versions[2].Id)
 
-	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 2, 3)
+	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 2, 3, 0)
 	assert.NoError(t, err)
 	assert.Empty(t, versions)
 
-	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 9, 8)
+	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 9, 8, 0)
 	assert.Error(t, err)
 	assert.Empty(t, versions)
 
-	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 10, 12)
+	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 10, 12, 0)
 	assert.NoError(t, err)
 	require.Len(t, versions, 1)
 	assert.EqualValues(t, "v_1", versions[0].Id)
 
-	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 0, 0)
+	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 0, 0, 0)
 	assert.NoError(t, err)
 	require.Len(t, versions, 5)
+
+	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 0, 0, 2)
+	require.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.Equal(t, "v_1", versions[0].Id)
+	assert.Equal(t, "v_2", versions[1].Id)
+
+	for _, maxVersions := range []int{-1, MaxWaterfallVersionLimit + 1} {
+		_, err = GetAllWaterfallVersions(t.Context(), p.Id, 0, 0, maxVersions)
+		assert.Error(t, err)
+	}
 }
 
 func TestGetVersionBuilds(t *testing.T) {

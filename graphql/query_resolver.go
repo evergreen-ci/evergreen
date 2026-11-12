@@ -936,12 +936,22 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", options.ProjectIdentifier, err.Error()))
 	}
+	maxVersions := model.MaxWaterfallVersionLimit
+	if options.MaxVersions != nil {
+		maxVersions = *options.MaxVersions
+	}
+	if maxVersions < 1 || maxVersions > model.MaxWaterfallVersionLimit {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("maxVersions must be between 1 and %d", model.MaxWaterfallVersionLimit))
+	}
 	limit := model.DefaultWaterfallVersionLimit
 	if limitOpt := utility.FromIntPtr(options.Limit); limitOpt != 0 {
 		if limitOpt > model.MaxWaterfallVersionLimit {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("limit exceeds max limit of %d", model.MaxWaterfallVersionLimit))
 		}
 		limit = limitOpt
+	}
+	if limit < 1 || limit > maxVersions {
+		return nil, InputValidationError.Send(ctx, "limit must be between 1 and maxVersions")
 	}
 
 	requesters := options.Requesters
@@ -961,7 +971,6 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		return nil, InputValidationError.Send(ctx, "order bounds must be non-negative")
 	}
 
-	isFirstPage := queryMaxOrderOpt == 0 && queryMinOrderOpt == 0
 	pagingBackward := false
 	mostRecentWaterfallVersion, err := model.VersionFindOneSecondary(ctx, model.VersionByMostRecentSystemRequester(projectId).WithFields(model.VersionRevisionOrderNumberKey))
 	if err != nil {
@@ -974,14 +983,18 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	newestOrderExclusive := mostRecentWaterfallVersion.RevisionOrderNumber + 1
 	setPaginationOrderWindow := func() {
 		if queryMinOrderOpt != 0 {
+			// Paging backward
 			pagingBackward = true
-			queryMaxOrderOpt = min(newestOrderExclusive, queryMinOrderOpt+model.MaxWaterfallVersionLimit+1)
-		} else if queryMaxOrderOpt == 0 {
-			isFirstPage = true
-			queryMaxOrderOpt = newestOrderExclusive
-			queryMinOrderOpt = max(0, queryMaxOrderOpt-model.MaxWaterfallVersionLimit-1)
+			queryMaxOrderOpt = min(newestOrderExclusive, queryMinOrderOpt+maxVersions+1)
+		} else if queryMaxOrderOpt != 0 {
+			// Paging forward
+			pagingBackward = false
+			queryMinOrderOpt = max(0, queryMaxOrderOpt-maxVersions-1)
 		} else {
-			queryMinOrderOpt = max(0, queryMaxOrderOpt-model.MaxWaterfallVersionLimit-1)
+			// Starting from the first page
+			pagingBackward = false
+			queryMaxOrderOpt = newestOrderExclusive
+			queryMinOrderOpt = max(0, queryMaxOrderOpt-maxVersions-1)
 		}
 	}
 
@@ -993,10 +1006,9 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 			setPaginationOrderWindow()
 		} else {
 			queryMaxOrderOpt = order
-			queryMinOrderOpt = max(0, order-model.MaxWaterfallVersionLimit-1)
+			queryMinOrderOpt = max(0, order-maxVersions-1)
 			pageMaxOrderOpt = order
 			pageMinOrderOpt = 0
-			isFirstPage = false
 		}
 	} else if options.Date != nil {
 		date := utility.FromTimePtr(options.Date)
@@ -1006,10 +1018,9 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 			setPaginationOrderWindow()
 		} else {
 			queryMaxOrderOpt = order
-			queryMinOrderOpt = max(0, order-model.MaxWaterfallVersionLimit-1)
+			queryMinOrderOpt = max(0, order-maxVersions-1)
 			pageMaxOrderOpt = order
 			pageMinOrderOpt = 0
-			isFirstPage = false
 		}
 	} else {
 		setPaginationOrderWindow()
@@ -1042,52 +1053,52 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		}
 	}
 
-	// Since GetAllWaterfallVersions uses an inclusive order range ($gte instead of $gt), add 1 to our minimum range
 	minVersionOrder := 0
-	if pageMinOrderOpt != 0 {
-		minVersionOrder = pageMinOrderOpt + 1
-	}
-	if len(activeVersions) > 0 && pageMinOrderOpt == 0 {
-		// Find an older version that is activated. If it doesn't exist, that means there are trailing inactive
-		// versions on the waterfall and that we should not place a lower bound.
-		// If it does exist, set the min order to one more than its order. This is guaranteed to either be
-		// the last version in activeVersions or the last inactive version within its collapsed group.
-		prevActiveVersion, err := model.GetOlderActiveWaterfallVersion(ctx, projectId, activeVersions[len(activeVersions)-1])
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching previous active waterfall version: %s", err.Error()))
-		}
-		if prevActiveVersion == nil {
-			minVersionOrder = 0
-		} else {
-			minVersionOrder = prevActiveVersion.RevisionOrderNumber + 1
-		}
-	}
-
-	// Same as above, but subtract for max order
 	maxVersionOrder := 0
-	if pageMaxOrderOpt != 0 {
-		maxVersionOrder = pageMaxOrderOpt - 1
-	}
-	if isFirstPage {
-		// If no order options were specified, we're on the first page and should not put a limit on the first version returned so that we don't omit inactive versions
-		maxVersionOrder = 0
-	} else if pageMaxOrderOpt == 0 && pagingBackward && len(activeVersions) > 0 {
-		// Find a newer version that is activated. If it doesn't exist, that means there are leading inactive
-		// versions on the waterfall and we should reset to the first page.
-		// If it does exist, set the max order to one less than its order. This is guaranteed to either be
-		// the first version in activeVersions or the first inactive version within its collapsed group.
-		nextActiveVersion, err := model.GetNewerActiveWaterfallVersion(ctx, projectId, activeVersions[0])
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching next active waterfall version: %s", err.Error()))
+	if pagingBackward {
+		// Since GetAllWaterfallVersions uses an inclusive order range ($gte instead of $gt), add 1 to the minimum.
+		if pageMinOrderOpt != 0 {
+			minVersionOrder = pageMinOrderOpt + 1
 		}
-		if nextActiveVersion == nil {
-			maxVersionOrder = 0
+		if len(activeVersions) == 0 {
+			// Keep an empty search result within the bounded window instead of jumping to the newest versions.
+			maxVersionOrder = queryMaxOrderOpt - 1
 		} else {
-			maxVersionOrder = nextActiveVersion.RevisionOrderNumber - 1
+			// Find a newer version that is activated. If it doesn't exist, that means there are leading inactive
+			// versions on the waterfall and we should reset to the first page.
+			// If it does exist, set the max order to one less than its order. This is guaranteed to either be
+			// the first version in activeVersions or the first inactive version within its collapsed group.
+			nextActiveVersion, err := model.GetNewerActiveWaterfallVersion(ctx, projectId, activeVersions[0])
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching next active waterfall version: %s", err.Error()))
+			}
+			if nextActiveVersion != nil {
+				maxVersionOrder = nextActiveVersion.RevisionOrderNumber - 1
+			} else {
+				maxVersionOrder = 0
+			}
+		}
+	} else {
+		// Leave the upper bound unset on the first page so trailing inactive versions are included.
+		if pageMaxOrderOpt != 0 {
+			maxVersionOrder = pageMaxOrderOpt - 1
+		}
+		if len(activeVersions) > 0 && pageMinOrderOpt == 0 {
+			// Find an older version that is activated. If it doesn't exist, that means there are trailing inactive
+			// versions on the waterfall and that we should not place a lower bound.
+			// If it does exist, set the min order to one more than its order. This is guaranteed to either be
+			// the last version in activeVersions or the last inactive version within its collapsed group.
+			prevActiveVersion, err := model.GetOlderActiveWaterfallVersion(ctx, projectId, activeVersions[len(activeVersions)-1])
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching previous active waterfall version: %s", err.Error()))
+			}
+			if prevActiveVersion != nil {
+				minVersionOrder = prevActiveVersion.RevisionOrderNumber + 1
+			}
 		}
 	}
 
-	allVersions, err := model.GetAllWaterfallVersions(ctx, projectId, minVersionOrder, maxVersionOrder)
+	allVersions, err := model.GetAllWaterfallVersions(ctx, projectId, minVersionOrder, maxVersionOrder, maxVersions)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall versions: %s", err.Error()))
 	}

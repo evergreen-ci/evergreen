@@ -1,0 +1,14 @@
+{
+  project(projectIdentifier: "gap-project") {
+    commits(options: { limit: 2 }) {
+      versions {
+        id
+        order
+      }
+      pagination {
+        hasNextPage
+        nextPageOrder
+      }
+    }
+  }
+}
