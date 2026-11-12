@@ -187,7 +187,7 @@ func (v *Version) ActivateAndSetBuildVariants(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "getting build variant info for version")
 	}
-	taskBatchTimes := taskBatchTimesForVariant(bvs)
+	taskBatchTimes := taskBatchTimesForBuildVariants(bvs)
 	if len(taskBatchTimes) > 0 {
 		if err := VersionTaskBatchTimesUpsert(ctx, &VersionTaskBatchTimes{
 			Id:            v.Id,
@@ -413,7 +413,7 @@ func attachTaskBatchTimes(bvs []VersionBuildStatus, btt []BuildVariantTaskBatchT
 // split off into a separate doc. The task batchtimes doc is nil if the version
 // has no tasks with batchtime.
 func (v *Version) SplitTaskBatchTimes() (Version, *VersionTaskBatchTimes) {
-	bvs := taskBatchTimesForVariant(v.BuildVariants)
+	bvs := taskBatchTimesForBuildVariants(v.BuildVariants)
 	if len(bvs) == 0 {
 		return *v, nil
 	}

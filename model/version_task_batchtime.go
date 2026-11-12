@@ -121,21 +121,21 @@ func VersionTaskBatchTimesFindByLastTaskActivation(ctx context.Context, projectI
 	return bt, nil
 }
 
-// taskBatchTimesForVariant extracts the task batchtimes from build variant
+// taskBatchTimesForBuildVariants extracts the task batchtimes from build variant
 // statuses. Only keeps build variants that have at least one task with
 // batchtime.
-func taskBatchTimesForVariant(bvs []VersionBuildStatus) []BuildVariantTaskBatchTime {
-	var variants []BuildVariantTaskBatchTime
+func taskBatchTimesForBuildVariants(bvs []VersionBuildStatus) []BuildVariantTaskBatchTime {
+	var bts []BuildVariantTaskBatchTime
 	for _, bv := range bvs {
 		if len(bv.BatchTimeTasks) == 0 {
 			continue
 		}
-		variants = append(variants, BuildVariantTaskBatchTime{
+		bts = append(bts, BuildVariantTaskBatchTime{
 			BuildVariant:   bv.BuildVariant,
 			BatchTimeTasks: bv.BatchTimeTasks,
 		})
 	}
-	return variants
+	return bts
 }
 
 // withoutTaskBatchTimes returns build variant statuses with task batchtimes
