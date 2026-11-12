@@ -153,6 +153,20 @@ func TestRepoGrantsDoNotReuseBroaderRolesOrMatchingProjectScopes(t *testing.T) {
 	assert.NotEqual(t, model.GetRepoAdminRole(repo.Id), role.ID)
 	assert.Equal(t, model.GetRepoOnlyScope(repo.Id), role.Scope)
 	assert.Equal(t, request.Permissions, role.Permissions)
+	adminGrant, err := makeRepoPermissionRole(ctx, rm, RequestedPermissions{
+		ResourceType: repoResourceType, Resources: []string{repo.Id}, RepoScope: model.RepoAndProjectsScope,
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+			evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
+			evergreen.PermissionLogs:            evergreen.LogsView.Value,
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, adminGrant)
+	assert.NotEqual(t, role.ID, adminGrant.ID)
+	assert.NotEqual(t, model.GetRepoAdminRole(repo.Id), adminGrant.ID)
+	assert.True(t, isRepoPermissionRole(*adminGrant))
 	u := &user.DBUser{Id: "settings", SystemRoles: []string{role.ID}}
 	require.NoError(t, u.Insert(ctx))
 	canView, err := model.UserHasRepoViewPermission(ctx, u, repo.Id)

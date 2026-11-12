@@ -2,9 +2,6 @@ package route
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/json"
-	"fmt"
 	"maps"
 	"net/http"
 	"strings"
@@ -77,13 +74,7 @@ func makeRepoPermissionRole(ctx context.Context, rm gimlet.RoleManager, request 
 	}
 	permissions := nonzeroPermissions(request.Permissions)
 	scopeID := model.RepoPermissionScopes(repo.Id)[request.RepoScope]
-	encoded, err := json.Marshal(permissions)
-	if err != nil {
-		return nil, errors.Wrap(err, "encoding repo permissions")
-	}
-	// Include the scope identity so roles remain distinct even when two scopes
-	// temporarily contain the same resources.
-	roleID := fmt.Sprintf("%s%x", manaRepoRolePrefix, sha256.Sum256(append([]byte(scopeID+":"), encoded...)))
+	roleID := manaRepoRolePrefix + scopeID
 	roles, err := rm.GetRoles(ctx, []string{roleID})
 	if err != nil {
 		return nil, errors.Wrap(err, "finding repo permission role")
