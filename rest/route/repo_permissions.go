@@ -79,7 +79,7 @@ func makeRepoPermissionRole(ctx context.Context, rm gimlet.RoleManager, request 
 	if err != nil {
 		return nil, errors.Wrap(err, "finding repo permission role")
 	}
-	if len(roles) > 0 {
+	if len(roles) == 1 {
 		if roles[0].Scope != scopeID || !maps.Equal(roles[0].Permissions, permissions) {
 			return nil, errors.New("existing repo permission role does not match requested access")
 		}
