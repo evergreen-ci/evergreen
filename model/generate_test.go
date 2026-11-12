@@ -1024,6 +1024,8 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	s.Equal(evergreen.ProjectStorageMethodDB, v.PreGenerationProjectStorageMethod)
 	s.NoError(err)
 	s.Require().NotNil(v)
+	_, err = v.GetBuildVariants(s.ctx)
+	s.Require().NoError(err)
 	s.Require().Len(v.BuildVariants, 2)
 
 	// batchtime task added to existing variant, despite no previous batchtime task

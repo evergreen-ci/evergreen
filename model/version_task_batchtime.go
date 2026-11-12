@@ -60,8 +60,8 @@ func VersionTaskBatchTimesFindOne(ctx context.Context, versionID string) (*Versi
 	return bt, nil
 }
 
-// VersionTaskBatchTimesUpsert upserts the task batchtimes for a version.
-func VersionTaskBatchTimesUpsert(ctx context.Context, bt *VersionTaskBatchTimes) error {
+// Upsert upserts the task batchtimes for a version.
+func (bt *VersionTaskBatchTimes) Upsert(ctx context.Context) error {
 	update := bson.M{
 		"$set": bson.M{
 			VersionTaskBatchTimesIdentifierKey:    bt.Identifier,
@@ -69,6 +69,24 @@ func VersionTaskBatchTimesUpsert(ctx context.Context, bt *VersionTaskBatchTimes)
 			VersionTaskBatchTimesOrderKey:         bt.Order,
 			VersionTaskBatchTimesIgnoredKey:       bt.Ignored,
 			VersionTaskBatchTimesBuildVariantsKey: bt.BuildVariants,
+		},
+	}
+	_, err := db.Upsert(ctx, VersionTaskBatchTimeCollection, bson.M{VersionTaskBatchTimesIdKey: bt.Id}, update)
+	return err
+}
+
+// Append appends the given build variants' task batchtimes to a version's doc,
+// creating the doc if it doesn't exist.
+func (bt *VersionTaskBatchTimes) Append(ctx context.Context) error {
+	update := bson.M{
+		"$push": bson.M{
+			VersionTaskBatchTimesBuildVariantsKey: bson.M{"$each": bt.BuildVariants},
+		},
+		"$setOnInsert": bson.M{
+			VersionTaskBatchTimesIdentifierKey: bt.Identifier,
+			VersionTaskBatchTimesRequesterKey:  bt.Requester,
+			VersionTaskBatchTimesOrderKey:      bt.Order,
+			VersionTaskBatchTimesIgnoredKey:    bt.Ignored,
 		},
 	}
 	_, err := db.Upsert(ctx, VersionTaskBatchTimeCollection, bson.M{VersionTaskBatchTimesIdKey: bt.Id}, update)
@@ -101,4 +119,32 @@ func VersionTaskBatchTimesFindByLastTaskActivation(ctx context.Context, projectI
 		return nil, err
 	}
 	return bt, nil
+}
+
+// taskBatchTimesForBuildVariants extracts the task batchtimes from build variant
+// statuses. Only keeps build variants that have at least one task with
+// batchtime.
+func taskBatchTimesForBuildVariants(bvs []VersionBuildStatus) []BuildVariantTaskBatchTime {
+	var bts []BuildVariantTaskBatchTime
+	for _, bv := range bvs {
+		if len(bv.BatchTimeTasks) == 0 {
+			continue
+		}
+		bts = append(bts, BuildVariantTaskBatchTime{
+			BuildVariant:   bv.BuildVariant,
+			BatchTimeTasks: bv.BatchTimeTasks,
+		})
+	}
+	return bts
+}
+
+// withoutTaskBatchTimes returns build variant statuses with task batchtimes
+// removed so they aren't stored in the version document.
+func withoutTaskBatchTimes(bvs []VersionBuildStatus) []VersionBuildStatus {
+	stripped := make([]VersionBuildStatus, len(bvs))
+	for i, bv := range bvs {
+		bv.BatchTimeTasks = nil
+		stripped[i] = bv
+	}
+	return stripped
 }
