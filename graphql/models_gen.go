@@ -789,6 +789,8 @@ type WaterfallOptions struct {
 	// Return all builds and tasks for each matching version instead of applying the waterfall filters to them.
 	IncludeAllBuildsAndTasks *bool `json:"includeAllBuildsAndTasks,omitempty"`
 	Limit                    *int  `json:"limit,omitempty"`
+	// Max active versions to return to the client, between 1 and 300. Mostly used to allow smaller tests.
+	MaxVersions *int `json:"maxVersions,omitempty"`
 	// Return versions with an order greater than minOrder. Used for paginating backward.
 	MinOrder *int `json:"minOrder,omitempty"`
 	// Return versions with an order lower than maxOrder. Used for paginating forward.
