@@ -1037,7 +1037,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		TaskCaseSensitive:    utility.FromBoolTPtr(options.TaskCaseSensitive), // Default to true for performance reasons.
 		Variants:             utility.FilterSlice(options.Variants, func(s string) bool { return s != "" }),
 		VariantTags:          utility.FilterSlice(options.VariantTags, func(s string) bool { return s != "" }),
-		VariantCaseSensitive: utility.FromBoolTPtr(options.TaskCaseSensitive), // Default to true for performance reasons.
+		VariantCaseSensitive: utility.FromBoolTPtr(options.VariantCaseSensitive), // Default to true for performance reasons.
 	}
 
 	var activeVersions []model.Version
@@ -1060,10 +1060,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		if pageMinOrderOpt != 0 {
 			minVersionOrder = pageMinOrderOpt + 1
 		}
-		if len(activeVersions) == 0 {
-			// Keep an empty search result within the bounded window instead of jumping to the newest versions.
-			maxVersionOrder = queryMaxOrderOpt - 1
-		} else {
+		if len(activeVersions) > 0 {
 			// Find a newer version that is activated. If it doesn't exist, that means there are leading inactive
 			// versions on the waterfall and we should reset to the first page.
 			// If it does exist, set the max order to one less than its order. This is guaranteed to either be
@@ -1077,13 +1074,16 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 			} else {
 				maxVersionOrder = 0
 			}
+		} else {
+			// Keep an empty search result within the bounded window instead of jumping to the newest versions.
+			maxVersionOrder = queryMaxOrderOpt - 1
 		}
 	} else {
 		// Leave the upper bound unset on the first page so trailing inactive versions are included.
 		if pageMaxOrderOpt != 0 {
 			maxVersionOrder = pageMaxOrderOpt - 1
 		}
-		if len(activeVersions) > 0 && pageMinOrderOpt == 0 {
+		if len(activeVersions) > 0 {
 			// Find an older version that is activated. If it doesn't exist, that means there are trailing inactive
 			// versions on the waterfall and that we should not place a lower bound.
 			// If it does exist, set the min order to one more than its order. This is guaranteed to either be
