@@ -38,6 +38,9 @@ type virtualTaskCompletionFile struct {
 type VirtualTaskTestResultsInput struct {
 	Files     []VirtualTaskTestResultFileGroup `json:"files"`
 	CreatedAt time.Time                        `json:"created_at,omitzero"`
+	// LogDir is the dir containing the test log files referenced by
+	// native test results' log_info.
+	LogDir string `json:"log_dir,omitempty"`
 }
 
 // GetCreatedAt returns the time the test results were created.
@@ -248,8 +251,7 @@ func uploadTestResultsForCompletions(ctx context.Context, comm client.Communicat
 // uploadEntryTestResults uploads the test results for a virtual task and
 // returns its push-completion data, including test result stats.
 func uploadEntryTestResults(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, entry virtualTaskCompletionFile, prep apimodels.VirtualTaskPreparationResult) (*apimodels.VirtualTaskCompletion, error) {
-	testResultsCreatedAt := entry.TestResults.GetCreatedAt()
-	stats, err := ProcessVirtualTaskTestResultFiles(ctx, conf, logger, *prep.TestResultsInfo, prep.TaskCreateTime, testResultsCreatedAt, entry.TestResults.Files)
+	stats, err := ProcessVirtualTaskTestResultFiles(ctx, conf, logger, *prep.TestResultsInfo, prep.TaskCreateTime, *entry.TestResults)
 	if err != nil {
 		return nil, err
 	}

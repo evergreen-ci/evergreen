@@ -2080,7 +2080,8 @@ example:
         { "type": "xunit", "files": ["results/*.xml"] },
         { "type": "native", "files": ["results.json"] }
       ],
-      "created_at": "2026-08-12T12:00:00Z"
+      "created_at": "2026-08-12T12:00:00Z",
+      "log_dir": "virtual_task_logs/<task_id>"
     },
     "artifacts": [
       {
@@ -2115,6 +2116,14 @@ Fields:
     - `xunit`: xUnit XML (see [attach.xunit_results](#attachxunit_results)).
   - `created_at`: optional timestamp the test results were generated. Defaults
     to the current time.
+  - `log_dir`: optional directory (absolute or relative to the task's working
+    directory) containing the test log files referenced by `native` test
+    results' `log_info` (`log_name` and `logs_to_merge`). Those paths are
+    relative to this directory, and each referenced file is uploaded as a test
+    log for the virtual task. Multiple virtual tasks can share a `log_dir`,
+    since each only uploads the files its own results reference. Don't use a
+    directory under `build/TestLogs`, since everything there is also uploaded
+    for the runner task. If not set, referenced log files are not uploaded.
 - `artifacts`: optional list of artifact files to attach. Each artifact
   requires a `name` and an absolute HTTP or HTTPS `url`; `visibility` is optional
   and must be a valid artifact visibility if set (see [s3.put](#s3put) for
