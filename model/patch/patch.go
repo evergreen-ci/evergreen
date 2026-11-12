@@ -1024,10 +1024,10 @@ func GetCollectiveStatusFromPatchStatuses(ctx context.Context, statuses []string
 	return evergreen.VersionCreated
 }
 
-// GetGithubStateAndDescription returns the GitHub status state and description
+// GetGitHubStateAndDescription returns the GitHub status state and description
 // to report for a patch with the given status, which may be a collective
 // status. A zero finish time is treated as the current time.
-func GetGithubStateAndDescription(status string, startTime, finishTime time.Time) (message.GithubState, string) {
+func GetGitHubStateAndDescription(status string, startTime, finishTime time.Time) (message.GithubState, string) {
 	var state message.GithubState
 	if status == evergreen.VersionSucceeded {
 		state = message.GithubStateSuccess
@@ -1040,4 +1040,39 @@ func GetGithubStateAndDescription(status string, startTime, finishTime time.Time
 		finishTime = time.Now()
 	}
 	return state, fmt.Sprintf("patch finished in %s", finishTime.Sub(startTime).String())
+}
+
+// CollectiveGitHubStatus is the collective status of a parent patch and its
+// child patches, along with the GitHub state and description to report for it.
+type CollectiveGitHubStatus struct {
+	Status      string
+	State       message.GithubState
+	Description string
+}
+
+// GetCollectiveGitHubStatus returns the collective status of the parent patch
+// and the given child patches, which must include every child patch in the
+// parent's triggers.
+func GetCollectiveGitHubStatus(ctx context.Context, parent *Patch, childPatches []Patch) (*CollectiveGitHubStatus, error) {
+	statuses := []string{parent.Status}
+	loadedChildIDs := make(map[string]bool, len(childPatches))
+	for _, childPatch := range childPatches {
+		statuses = append(statuses, childPatch.Status)
+		loadedChildIDs[childPatch.Id.Hex()] = true
+	}
+	// A missing child could otherwise turn the collective status green.
+	for _, childPatchID := range parent.Triggers.ChildPatches {
+		if !loadedChildIDs[childPatchID] {
+			return nil, errors.Errorf("child patch '%s' not found", childPatchID)
+		}
+	}
+
+	collectiveStatus := GetCollectiveStatusFromPatchStatuses(ctx, statuses)
+	startTime, finishTime := GetCollectiveTimesFromPatches(parent, childPatches)
+	state, description := GetGitHubStateAndDescription(collectiveStatus, startTime, finishTime)
+	return &CollectiveGitHubStatus{
+		Status:      collectiveStatus,
+		State:       state,
+		Description: description,
+	}, nil
 }

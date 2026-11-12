@@ -237,12 +237,18 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 	// For child patches, we only want to look at its own status because the collective status will be affected
 	// by other child patches' and the parent's status
 	collectiveStatus := t.data.Status
+	githubState, githubDescription := patch.GetGitHubStateAndDescription(collectiveStatus, t.patch.StartTime, t.patch.FinishTime)
 	if t.patch.IsParent() {
-		var err error
-		collectiveStatus, err = t.patch.CollectiveStatus(ctx)
+		childPatches, err := patch.Find(ctx, patch.ByStringIds(ctx, t.patch.Triggers.ChildPatches))
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting collective patch status for patch '%s'", t.patch.Id)
+			return nil, errors.Wrapf(err, "getting child patches for patch '%s'", t.patch.Id)
 		}
+		collective, err := patch.GetCollectiveGitHubStatus(ctx, t.patch, childPatches)
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting collective status for patch '%s'", t.patch.Id)
+		}
+		collectiveStatus = collective.Status
+		githubState, githubDescription = collective.State, collective.Description
 	}
 
 	grip.NoticeWhen(ctx, collectiveStatus != t.data.Status, message.Fields{
@@ -255,15 +261,17 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 	})
 
 	data := commonTemplateData{
-		ID:              t.patch.Id.Hex(),
-		EventID:         t.event.ID,
-		SubscriptionID:  sub.ID,
-		DisplayName:     t.patch.Id.Hex(),
-		Description:     t.patch.Description,
-		Object:          event.ObjectPatch,
-		Project:         projectName,
-		PastTenseStatus: collectiveStatus,
-		apiModel:        &api,
+		ID:                t.patch.Id.Hex(),
+		EventID:           t.event.ID,
+		SubscriptionID:    sub.ID,
+		DisplayName:       t.patch.Id.Hex(),
+		Description:       t.patch.Description,
+		Object:            event.ObjectPatch,
+		Project:           projectName,
+		PastTenseStatus:   collectiveStatus,
+		apiModel:          &api,
+		githubState:       githubState,
+		githubDescription: githubDescription,
 	}
 
 	if t.patch.IsChild() {
@@ -293,12 +301,6 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 	}
 
 	slackColor := evergreenFailColor
-	startTime, finishTime, err := t.patch.GetCollectiveTimes(ctx)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting collective times for patch '%s'", t.patch.Id)
-	}
-
-	data.githubState, data.githubDescription = patch.GetGithubStateAndDescription(collectiveStatus, startTime, finishTime)
 	if collectiveStatus == evergreen.VersionSucceeded {
 		data.PastTenseStatus = "succeeded"
 		slackColor = evergreenSuccessColor
