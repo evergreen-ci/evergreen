@@ -201,7 +201,10 @@ func (h *completeVirtualTasksHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	if h.needsRoleExternalID() {
-		externalID, err := virtualTaskRoleExternalID(ctx, runner)
+		// When artifacts with signed visibility need to assuming a role to
+		// presign, reuse the runner's external ID. The runner and virtual tasks
+		// can share the same external ID since it's not task-specific.
+		externalID, err := h.getRunnerExternalID(ctx, runner)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "computing external ID for role-backed artifacts"))
 		}
@@ -396,10 +399,9 @@ func (h *completeVirtualTasksHandler) needsRoleExternalID() bool {
 	return false
 }
 
-// virtualTaskRoleExternalID returns the STS external ID the runner uses when
-// assuming roles, so role-backed artifacts are presigned with the same external
-// ID the runner used to upload them.
-func virtualTaskRoleExternalID(ctx context.Context, runner *task.Task) (string, error) {
+// getRunnerExternalID returns the STS external ID the runner uses when
+// assuming roles.
+func (h *completeVirtualTasksHandler) getRunnerExternalID(ctx context.Context, runner *task.Task) (string, error) {
 	pRef, err := model.GetProjectRefForTask(ctx, runner.Id)
 	if err != nil {
 		return "", errors.Wrapf(err, "getting project ref for runner task '%s'", runner.Id)
