@@ -2306,6 +2306,7 @@ type ComplexityRoot struct {
 	}
 
 	UpstreamProject struct {
+		BaseVersion func(childComplexity int) int
 		Owner       func(childComplexity int) int
 		Project     func(childComplexity int) int
 		Repo        func(childComplexity int) int
@@ -12554,6 +12555,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UpdateBetaFeaturesPayload.BetaFeatures(childComplexity), true
 
+	case "UpstreamProject.baseVersion":
+		if e.complexity.UpstreamProject.BaseVersion == nil {
+			break
+		}
+
+		return e.complexity.UpstreamProject.BaseVersion(childComplexity), true
 	case "UpstreamProject.owner":
 		if e.complexity.UpstreamProject.Owner == nil {
 			break
@@ -74547,6 +74554,127 @@ func (ec *executionContext) fieldContext_UpdateBetaFeaturesPayload_betaFeatures(
 	return fc, nil
 }
 
+func (ec *executionContext) _UpstreamProject_baseVersion(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UpstreamProject_baseVersion,
+		func(ctx context.Context) (any, error) {
+			return obj.BaseVersion, nil
+		},
+		nil,
+		ec.marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersion,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UpstreamProject_baseVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UpstreamProject",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Version_id(ctx, field)
+			case "activated":
+				return ec.fieldContext_Version_activated(ctx, field)
+			case "author":
+				return ec.fieldContext_Version_author(ctx, field)
+			case "authorEmail":
+				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "baseVersion":
+				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "branch":
+				return ec.fieldContext_Version_branch(ctx, field)
+			case "buildVariants":
+				return ec.fieldContext_Version_buildVariants(ctx, field)
+			case "buildVariantStats":
+				return ec.fieldContext_Version_buildVariantStats(ctx, field)
+			case "childVersions":
+				return ec.fieldContext_Version_childVersions(ctx, field)
+			case "cost":
+				return ec.fieldContext_Version_cost(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Version_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Version_ingestTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
+			case "isPatch":
+				return ec.fieldContext_Version_isPatch(ctx, field)
+			case "manifest":
+				return ec.fieldContext_Version_manifest(ctx, field)
+			case "message":
+				return ec.fieldContext_Version_message(ctx, field)
+			case "order":
+				return ec.fieldContext_Version_order(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Version_parameters(ctx, field)
+			case "patch":
+				return ec.fieldContext_Version_patch(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
+			case "previousVersion":
+				return ec.fieldContext_Version_previousVersion(ctx, field)
+			case "project":
+				return ec.fieldContext_Version_project(ctx, field)
+			case "projectMetadata":
+				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "quarantinedTestsSkippedCount":
+				return ec.fieldContext_Version_quarantinedTestsSkippedCount(ctx, field)
+			case "repo":
+				return ec.fieldContext_Version_repo(ctx, field)
+			case "requester":
+				return ec.fieldContext_Version_requester(ctx, field)
+			case "revision":
+				return ec.fieldContext_Version_revision(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Version_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Version_status(ctx, field)
+			case "taskCount":
+				return ec.fieldContext_Version_taskCount(ctx, field)
+			case "taskQuarantinedTestsSample":
+				return ec.fieldContext_Version_taskQuarantinedTestsSample(ctx, field)
+			case "tasks":
+				return ec.fieldContext_Version_tasks(ctx, field)
+			case "taskStatuses":
+				return ec.fieldContext_Version_taskStatuses(ctx, field)
+			case "taskStatusStats":
+				return ec.fieldContext_Version_taskStatusStats(ctx, field)
+			case "triggerModule":
+				return ec.fieldContext_Version_triggerModule(ctx, field)
+			case "upstreamProject":
+				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
+			case "versionTiming":
+				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
+			case "waterfallBuilds":
+				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UpstreamProject_owner(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -78155,6 +78283,8 @@ func (ec *executionContext) fieldContext_Version_upstreamProject(_ context.Conte
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "baseVersion":
+				return ec.fieldContext_UpstreamProject_baseVersion(ctx, field)
 			case "owner":
 				return ec.fieldContext_UpstreamProject_owner(ctx, field)
 			case "project":
@@ -112065,6 +112195,8 @@ func (ec *executionContext) _UpstreamProject(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("UpstreamProject")
+		case "baseVersion":
+			out.Values[i] = ec._UpstreamProject_baseVersion(ctx, field, obj)
 		case "owner":
 			out.Values[i] = ec._UpstreamProject_owner(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

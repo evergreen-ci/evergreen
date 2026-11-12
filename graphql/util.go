@@ -269,7 +269,8 @@ func getTask(ctx context.Context, taskID string, execution *int, apiURL string) 
 }
 
 // Takes a version id and some filter criteria and returns the matching associated tasks grouped together by their build variant.
-func generateBuildVariants(ctx context.Context, versionId string, buildVariantOpts BuildVariantOptions, requester string, logURL string) ([]*GroupedBuildVariant, error) {
+func generateBuildVariants(ctx context.Context, v *model.Version, buildVariantOpts BuildVariantOptions, logURL string) ([]*GroupedBuildVariant, error) {
+	versionId := v.Id
 	var variantDisplayName = map[string]string{}
 	var tasksByVariant = map[string][]*restModel.APITask{}
 	defaultSort := []task.TasksSortOrder{
@@ -280,7 +281,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 		buildVariantOpts.IncludeBaseTasks = utility.ToBoolPtr(true)
 	}
 	if utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks) {
-		baseVersion, err := model.FindBaseVersionForVersion(ctx, versionId, false)
+		baseVersion, err := v.FindBaseVersion(ctx, false)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding base version for version '%s'", versionId)
 		}
@@ -299,7 +300,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 		Sorts:         defaultSort,
 		BaseVersionID: baseVersionID,
 		// If the version is mainline, include never-activated tasks regardless of the user's preference.
-		IncludeNeverActivatedTasks: includeNeverActivatedTasks || !evergreen.IsPatchRequester(requester),
+		IncludeNeverActivatedTasks: includeNeverActivatedTasks || !evergreen.IsPatchRequester(v.Requester),
 	}
 
 	tasks, _, err := task.GetTasksByVersion(ctx, versionId, opts)

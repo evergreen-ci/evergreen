@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
@@ -27,7 +28,7 @@ import (
 
 // BaseVersion is the resolver for the baseVersion field.
 func (r *versionResolver) BaseVersion(ctx context.Context, obj *model.Version, repotrackerOnly *bool) (*model.Version, error) {
-	baseVersion, err := model.FindBaseVersionForVersion(ctx, obj.Id, utility.FromBoolPtr(repotrackerOnly))
+	baseVersion, err := obj.FindBaseVersion(ctx, utility.FromBoolPtr(repotrackerOnly))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", obj.Id, err.Error()))
 	}
@@ -43,7 +44,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *model.Version,
 		return nil, nil
 	}
 	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
-	groupedBuildVariants, err := generateBuildVariants(ctx, obj.Id, options, obj.Requester, logURL)
+	groupedBuildVariants, err := generateBuildVariants(ctx, obj, options, logURL)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("generating build variants for version '%s': %s", obj.Id, err.Error()))
 	}
@@ -483,7 +484,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options
 		}
 	}
 	baseVersionID := ""
-	baseVersion, err := model.FindBaseVersionForVersion(ctx, versionID, false)
+	baseVersion, err := obj.FindBaseVersion(ctx, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", versionID, err.Error()))
 	}
@@ -624,6 +625,16 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *model.Versio
 	upstreamProject.Project = upstreamProjectRef.Identifier
 	upstreamProject.TriggerID = obj.TriggerID
 	upstreamProject.TriggerType = obj.TriggerType
+
+	// Skip the extra DB lookup unless the query asks for the base version.
+	requestedFields := graphql.CollectAllFields(ctx)
+	if slices.Contains(requestedFields, "baseVersion") {
+		baseVersion, err := obj.FindBaseVersion(ctx, true)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding repotracker base version for version '%s': %s", obj.Id, err.Error()))
+		}
+		upstreamProject.BaseVersion = baseVersion
+	}
 	return upstreamProject, nil
 }
 

@@ -153,6 +153,7 @@ type Manifest {
 }
 
 type UpstreamProject {
+  baseVersion: Version # The repotracker (mainline commit) base version of the triggered version.
   owner: String!
   project: String!
   repo: String!
