@@ -137,7 +137,8 @@ func TestCompleteVirtualTasks(t *testing.T) {
 
 			results := requireResults(t, h.Run(ctx), 1)
 			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeFailed, results[0].Outcome)
-			assert.Contains(t, results[0].Reason, "must specify bucket and file_key")
+			assert.Contains(t, results[0].Reason, "must specify bucket")
+			assert.Contains(t, results[0].Reason, "must specify file_key")
 
 			vt, err := task.FindOneId(ctx, virtualTaskID)
 			require.NoError(t, err)
