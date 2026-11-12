@@ -1782,7 +1782,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		"version": creationInfo.Version.Id,
 	}))
 
-	taskBatchTimes := taskBatchTimesForVariant(newBuildStatuses)
+	taskBatchTimes := taskBatchTimesForBuildVariants(newBuildStatuses)
 	if len(taskBatchTimes) > 0 {
 		if err := VersionTaskBatchTimesAppend(ctx, &VersionTaskBatchTimes{
 			Id:            creationInfo.Version.Id,
