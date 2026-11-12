@@ -1099,6 +1099,34 @@ func TestIsRepoAllowedForTask(t *testing.T) {
 			assert.Equal(t, tc.allowed, allowed)
 		})
 	}
+
+	for name, tc := range map[string]struct {
+		owner string
+		repos []string
+	}{
+		"ReposForProjectOwner": {
+			owner: "myorg",
+			repos: []string{"mod-repo", "myrepo"},
+		},
+		"ReposOwnerIsCaseInsensitive": {
+			owner: "MyOrg",
+			repos: []string{"mod-repo", "myrepo"},
+		},
+		"ReposForModuleOwner": {
+			owner: "otherorg",
+			repos: []string{"other-repo"},
+		},
+		"NoReposForUnrelatedOwner": {
+			owner: "attacker",
+			repos: []string{},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			repos, err := allowedReposForTask(t.Context(), env, &tsk, &pRef, tc.owner)
+			require.NoError(t, err)
+			assert.Equal(t, tc.repos, repos)
+		})
+	}
 }
 
 func TestCreateInstallationTokenRepoAccess(t *testing.T) {
@@ -1123,6 +1151,29 @@ func TestCreateInstallationTokenRepoAccess(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, allowed)
 	})
+}
+
+func TestCreateGitHubDynamicAccessTokenRepoAccess(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	require.NoError(t, db.ClearCollections(
+		task.Collection, model.ProjectRefCollection,
+		model.VersionCollection, model.ParserProjectCollection,
+		manifest.Collection,
+	))
+
+	require.NoError(t, (&model.ProjectRef{Id: "p1", Owner: "myorg", Repo: "myrepo"}).Insert(t.Context()))
+	require.NoError(t, (&model.Version{Id: "v1", Identifier: "p1", Requester: evergreen.RepotrackerVersionRequester}).Insert(t.Context()))
+	require.NoError(t, (&model.ParserProject{Id: "v1"}).Insert(t.Context()))
+	tsk := task.Task{Id: "t1", Project: "p1", Version: "v1", Requester: evergreen.RepotrackerVersionRequester}
+	require.NoError(t, tsk.Insert(t.Context()))
+
+	r, ok := makeCreateGitHubDynamicAccessToken(env).(*createGitHubDynamicAccessToken)
+	require.True(t, ok)
+	r.taskID = tsk.Id
+	r.owner = "attacker"
+
+	assert.Equal(t, http.StatusForbidden, r.Run(t.Context()).Status())
 }
 
 func TestUpsertCheckRunParse(t *testing.T) {
