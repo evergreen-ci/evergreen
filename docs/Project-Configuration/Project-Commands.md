@@ -2086,7 +2086,11 @@ example:
       {
         "name": "test.log",
         "url": "https://bucket.s3.amazonaws.com/path",
-        "visibility": "signed"
+        "visibility": "signed",
+        "bucket": "bucket",
+        "file_key": "path",
+        "aws_key_var_name": "aws_key",
+        "aws_secret_var_name": "aws_secret"
       }
     ],
     "external_metadata": {
@@ -2119,5 +2123,12 @@ Fields:
   requires a `name` and an absolute HTTP or HTTPS `url`; `visibility` is optional
   and must be a valid artifact visibility if set (see [s3.put](#s3put) for
   visibility options and behavior).
+  - A `visibility: signed` S3 artifact must also give its location in S3
+    (`bucket` and `file_key`) and how to presign it: specify either the names of
+    the project variables holding the AWS credentials for presigning
+    (`aws_key_var_name` and `aws_secret_var_name`), or an `aws_role_arn` to
+    assume for presigning. If using project variables for presigning,
+    `presign_duration` optionally sets how long a presigned URL stays valid (in
+    Go duration syntax, e.g. `1h`).
 - `external_metadata`: optional metadata identifying the external execution
   that produced the results.

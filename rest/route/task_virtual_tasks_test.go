@@ -74,6 +74,137 @@ func TestCompleteVirtualTasks(t *testing.T) {
 			require.NoError(t, err)
 			assert.Zero(t, count)
 		},
+		"SignedArtifactWithStaticCredentialsStoresPresignFields": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
+			completion := successfulCompletion()
+			completion.Artifacts = []apimodels.VirtualTaskArtifact{
+				{
+					Name:             "report.log",
+					URL:              "https://bucket.s3.amazonaws.com/report.log",
+					Visibility:       artifact.Signed,
+					Bucket:           "bucket",
+					FileKey:          "report.log",
+					AWSKeyVarName:    "aws_key",
+					AWSSecretVarName: "aws_secret",
+					PresignDuration:  "1h",
+				},
+			}
+			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{completion}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			require.Equal(t, apimodels.VirtualTaskCompletionOutcomeSuccess, results[0].Outcome)
+
+			entry, err := artifact.FindOne(ctx, artifact.ByTaskIdAndExecution(virtualTaskID, 0))
+			require.NoError(t, err)
+			require.NotNil(t, entry)
+			require.Len(t, entry.Files, 1)
+			assert.Equal(t, "bucket", entry.Files[0].Bucket)
+			assert.Equal(t, "report.log", entry.Files[0].FileKey)
+			assert.Equal(t, "aws_key", entry.Files[0].AWSKeyVarName)
+			assert.Equal(t, "aws_secret", entry.Files[0].AWSSecretVarName)
+			assert.Equal(t, time.Hour, entry.Files[0].PresignDuration)
+			assert.Empty(t, entry.Files[0].ExternalID)
+		},
+		"SignedArtifactWithRoleARNStoresRunnerExternalID": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
+			completion := successfulCompletion()
+			completion.Artifacts = []apimodels.VirtualTaskArtifact{
+				{
+					Name:       "report.log",
+					URL:        "https://bucket.s3.amazonaws.com/report.log",
+					Visibility: artifact.Signed,
+					Bucket:     "bucket",
+					FileKey:    "report.log",
+					AWSRoleARN: "arn:aws:iam::123456789012:role/test-role",
+				},
+			}
+			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{completion}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			require.Equal(t, apimodels.VirtualTaskCompletionOutcomeSuccess, results[0].Outcome)
+
+			entry, err := artifact.FindOne(ctx, artifact.ByTaskIdAndExecution(virtualTaskID, 0))
+			require.NoError(t, err)
+			require.NotNil(t, entry)
+			require.Len(t, entry.Files, 1)
+			assert.Equal(t, "arn:aws:iam::123456789012:role/test-role", entry.Files[0].AWSRoleARN)
+			assert.Equal(t, projectID+"-"+evergreen.PatchVersionRequester, entry.Files[0].ExternalID)
+		},
+		"SignedArtifactMissingS3LocationFailsBeforeClaiming": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
+			completion := successfulCompletion()
+			completion.Artifacts = []apimodels.VirtualTaskArtifact{
+				{Name: "report.log", URL: "https://bucket.s3.amazonaws.com/report.log", Visibility: artifact.Signed},
+			}
+			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{completion}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeFailed, results[0].Outcome)
+			assert.Contains(t, results[0].Reason, "must specify bucket and file_key")
+
+			vt, err := task.FindOneId(ctx, virtualTaskID)
+			require.NoError(t, err)
+			require.NotNil(t, vt)
+			assert.Equal(t, evergreen.TaskUndispatched, vt.Status)
+			assert.Empty(t, vt.CompletedBy)
+			entry, err := artifact.FindOne(ctx, artifact.ByTaskIdAndExecution(virtualTaskID, 0))
+			require.NoError(t, err)
+			assert.Nil(t, entry)
+		},
+		"SignedArtifactWithUnpairedKeyVarNameFails": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
+			completion := successfulCompletion()
+			completion.Artifacts = []apimodels.VirtualTaskArtifact{
+				{
+					Name:          "report.log",
+					URL:           "https://bucket.s3.amazonaws.com/report.log",
+					Visibility:    artifact.Signed,
+					Bucket:        "bucket",
+					FileKey:       "report.log",
+					AWSKeyVarName: "aws_key",
+				},
+			}
+			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{completion}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeFailed, results[0].Outcome)
+			assert.Contains(t, results[0].Reason, "must specify aws_key_var_name and aws_secret_var_name together")
+		},
+		"SignedArtifactWithRoleAndKeyVarNamesFails": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
+			completion := successfulCompletion()
+			completion.Artifacts = []apimodels.VirtualTaskArtifact{
+				{
+					Name:             "report.log",
+					URL:              "https://bucket.s3.amazonaws.com/report.log",
+					Visibility:       artifact.Signed,
+					Bucket:           "bucket",
+					FileKey:          "report.log",
+					AWSRoleARN:       "arn:aws:iam::123456789012:role/test-role",
+					AWSKeyVarName:    "aws_key",
+					AWSSecretVarName: "aws_secret",
+				},
+			}
+			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{completion}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeFailed, results[0].Outcome)
+			assert.Contains(t, results[0].Reason, "cannot combine aws_role_arn with aws_key_var_name/aws_secret_var_name")
+		},
+		"SignedArtifactWithRoleAndPresignDurationFails": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
+			completion := successfulCompletion()
+			completion.Artifacts = []apimodels.VirtualTaskArtifact{
+				{
+					Name:            "report.log",
+					URL:             "https://bucket.s3.amazonaws.com/report.log",
+					Visibility:      artifact.Signed,
+					Bucket:          "bucket",
+					FileKey:         "report.log",
+					AWSRoleARN:      "arn:aws:iam::123456789012:role/test-role",
+					PresignDuration: "1h",
+				},
+			}
+			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{completion}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeFailed, results[0].Outcome)
+			assert.Contains(t, results[0].Reason, "cannot combine aws_role_arn with presign_duration")
+		},
 		"PushCompletesVirtualTaskWithResultsAndArtifacts": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
 			createdAt := time.Now().UTC().Round(time.Millisecond)
 			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{

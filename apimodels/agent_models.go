@@ -83,10 +83,23 @@ type VirtualTaskTestResults struct {
 }
 
 // VirtualTaskArtifact describes an artifact file pushed for a virtual task.
+// A signed artifact must specify its S3 location (bucket and file_key) and how
+// to presign it (aws_key_var_name/aws_secret_var_name, or aws_role_arn).
 type VirtualTaskArtifact struct {
 	Name       string `json:"name"`
 	URL        string `json:"url"`
 	Visibility string `json:"visibility,omitempty"`
+	Bucket     string `json:"bucket,omitempty"`
+	FileKey    string `json:"file_key,omitempty"`
+	// AWSKeyVarName and AWSSecretVarName name the project variables holding the
+	// credentials used to presign a signed artifact.
+	AWSKeyVarName    string `json:"aws_key_var_name,omitempty"`
+	AWSSecretVarName string `json:"aws_secret_var_name,omitempty"`
+	// AWSRoleARN is a role assumed to presign a signed artifact.
+	AWSRoleARN string `json:"aws_role_arn,omitempty"`
+	// PresignDuration is how long a presigned URL stays valid, in Go duration
+	// syntax. It is only supported with static credentials.
+	PresignDuration string `json:"presign_duration,omitempty"`
 }
 
 // CompleteVirtualTasksResponse contains the per-task outcomes of a push completion.
