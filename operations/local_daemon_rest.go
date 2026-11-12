@@ -310,7 +310,7 @@ func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Reques
 	}))
 }
 
-// Writes the PID, port, and token files.
+// writeDaemonInfo writes PID and port files
 func (d *localDaemonREST) writeDaemonInfo() error {
 	dir, err := getDaemonDir()
 	if err != nil {
@@ -331,7 +331,6 @@ func (d *localDaemonREST) writeDaemonInfo() error {
 		return errors.Wrap(err, "writing port file")
 	}
 
-	// The token gates every daemon route, so it is only readable by the daemon's owner.
 	tokenFile := filepath.Join(dir, daemonTokenFile)
 	if err := os.WriteFile(tokenFile, []byte(d.token), 0600); err != nil {
 		return errors.Wrap(err, "writing daemon token file")
