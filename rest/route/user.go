@@ -243,7 +243,7 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 type deletePermissionsRequest struct {
 	//   resource_type - the type of resources for which to delete permissions. Must
-	//   be one of "project", "distro", "superuser", or "all". "all" will revoke all
+	//   be one of "project", "repo", "distro", "superuser", or "all". "all" will revoke all
 	//   permissions for the user.
 	ResourceType string `json:"resource_type"`
 	//   resource_id - the resource ID for which to delete permissions.
