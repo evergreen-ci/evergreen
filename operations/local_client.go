@@ -102,6 +102,10 @@ func getDaemonURL() (string, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.Errorf("daemon health check returned status %d (the daemon token may be stale; restart the daemon)", resp.StatusCode)
+	}
+
 	return url, nil
 }
 
@@ -399,13 +403,15 @@ func forkDaemon(c *cli.Context, port int) error {
 // waitForDaemon polls the daemon's /health endpoint until it responds
 // successfully or the timeout is reached.
 func waitForDaemon(port int) error {
-	healthURL := fmt.Sprintf("http://localhost:%d%s/health", port, daemonTokenPrefix())
 	client := &http.Client{Timeout: time.Second}
 
 	const maxAttempts = 30
 	const pollInterval = 200 * time.Millisecond
 
 	for range maxAttempts {
+		// The forked daemon only writes its token file once it starts, which happens
+		// after this process begins polling, so re-read the token on every attempt.
+		healthURL := fmt.Sprintf("http://localhost:%d%s/health", port, daemonTokenPrefix())
 		resp, err := client.Get(healthURL)
 		if err == nil {
 			resp.Body.Close()
@@ -433,9 +439,10 @@ func stopDebugDaemonCmd(c *cli.Context) error {
 	pidFile := filepath.Join(dir, daemonPIDFile)
 	portFile := filepath.Join(dir, daemonPortFile)
 	logFile := filepath.Join(dir, daemonLogFile)
+	tokenFile := filepath.Join(dir, daemonTokenFile)
 
 	defer func() {
-		for _, f := range []string{pidFile, portFile, logFile} {
+		for _, f := range []string{pidFile, portFile, logFile, tokenFile} {
 			if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
 				grip.Warning(ctx, errors.Wrapf(err, "removing '%s'", f))
 			}

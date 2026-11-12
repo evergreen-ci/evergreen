@@ -310,7 +310,7 @@ func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Reques
 	}))
 }
 
-// writeDaemonInfo writes PID and port files
+// Writes the PID, port, and token files.
 func (d *localDaemonREST) writeDaemonInfo() error {
 	dir, err := getDaemonDir()
 	if err != nil {
