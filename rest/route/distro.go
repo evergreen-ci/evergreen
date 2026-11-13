@@ -214,7 +214,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting admin settings"))
+		return gimlet.NewJSONInternalErrorResponse(fmt.Errorf("Error getting Evergreen admin settings from distroIDPutHandler.Run"))
 	}
 	// Existing resource
 	if original != nil {
@@ -446,7 +446,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting admin settings"))
+		return gimlet.NewJSONInternalErrorResponse(fmt.Errorf("Error getting Evergreen admin settings from distroIDPatchHandler.Run"))
 	}
 	d, respErr := validateDistro(ctx, apiDistro, h.distroID, settings, false)
 	if respErr != nil {

@@ -158,7 +158,7 @@ func (j *distroAutoTuneJob) populate(ctx context.Context) error {
 	if j.settings == nil {
 		settings, err := evergreen.GetConfig(ctx)
 		if err != nil {
-			return errors.Wrap(err, "getting admin settings")
+			return fmt.Errorf("Error getting Evergreen admin settings from distroAutoTuneJob.populate")
 		}
 		j.settings = settings
 	}

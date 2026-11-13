@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"slices"
 
@@ -480,7 +481,7 @@ func validateGeneratedProjectMaxTasks(ctx context.Context, v *Version, taskID st
 	}
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return errors.Wrap(err, "getting admin settings")
+		return fmt.Errorf("Error getting Evergreen admin settings from validateGeneratedProjectMaxTasks")
 	}
 	totalTasks := numExistingTasks + tasksToBeCreated
 	if settings.TaskLimits.MaxTasksPerVersion > 0 && totalTasks > settings.TaskLimits.MaxTasksPerVersion {
