@@ -347,7 +347,7 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	return tmpDir, nil
 }
 
-var fullCommitSHARegexp = regexp.MustCompile("^[0-9a-f]{40}$")
+var fullCommitSHARegexp = regexp.MustCompile("(?i)^[0-9a-f]{40}$")
 
 // IsFullCommitSHA returns whether the ref is a full 40-character commit SHA.
 func IsFullCommitSHA(ref string) bool {
@@ -360,15 +360,16 @@ func GitHubCommitURL(owner, repo, sha string) string {
 	return fmt.Sprintf("https://api.github.com/repos/%s/%s/commits/%s", owner, repo, sha)
 }
 
-// GitLsRemote resolves a branch or tag name to the commit SHA it currently
-// points to using git rather than the GitHub API. Like git, tags take
-// precedence over branches with the same name. It returns an error if no
-// branch or tag matches.
-func GitLsRemote(ctx context.Context, owner, repo, ref string) (string, error) {
+// GitLsRemote returns the commit SHA that the first of the given refs that
+// exists in the repo points to, using git rather than the GitHub API. Refs
+// must be full ref names (e.g. "refs/heads/main", "refs/tags/v1") or "HEAD".
+// Annotated tags resolve to the commit they point to. It returns an error if
+// none of the refs exist.
+func GitLsRemote(ctx context.Context, owner, repo string, refs ...string) (string, error) {
 	ctx, span := tracer.Start(ctx, "GitLsRemote", trace.WithAttributes(
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
-		attribute.String(githubRefAttribute, ref),
+		attribute.String(githubRefAttribute, strings.Join(refs, ",")),
 	))
 	defer span.End()
 
@@ -380,11 +381,17 @@ func GitLsRemote(ctx context.Context, owner, repo, ref string) (string, error) {
 		return "", errors.Wrap(err, "creating GitHub app installation token")
 	}
 
-	branchRef := "refs/heads/" + ref
-	tagRef := "refs/tags/" + ref
+	patterns := make([]string, 0, 2*len(refs))
+	for _, ref := range refs {
+		patterns = append(patterns, ref)
+		if strings.HasPrefix(ref, "refs/tags/") {
+			patterns = append(patterns, peeledRef(ref))
+		}
+	}
 
-	// Pass "--" so git never interprets the user-provided ref as an option.
-	cmd := exec.CommandContext(ctx, "git", "ls-remote", "--", FormGitURLForApp(owner, repo, token), branchRef, tagRef, peeledTagRef(tagRef))
+	// Pass "--" so git never interprets a user-provided ref as an option.
+	args := append([]string{"ls-remote", "--", FormGitURLForApp(owner, repo, token)}, patterns...)
+	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.WaitDelay = gitOperationWaitDelay
 	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
@@ -395,33 +402,33 @@ func GitLsRemote(ctx context.Context, owner, repo, ref string) (string, error) {
 			"message":          "git ls-remote failed",
 			"owner":            owner,
 			"repo":             repo,
-			"ref":              ref,
+			"refs":             refs,
 			"stdout":           stdout.String(),
 			"stderr":           stderr.String(),
 			"is_context_error": ctx.Err() != nil,
 		}))
 		catcher := grip.NewBasicCatcher()
 		catcher.Add(ctx.Err())
-		catcher.Wrapf(err, "running git ls-remote for ref '%s' in repo '%s/%s'", ref, owner, repo)
+		catcher.Wrapf(err, "running git ls-remote in repo '%s/%s'", owner, repo)
 		return "", catcher.Resolve()
 	}
 
-	sha, ok := parseLsRemote(stdout.String(), ref)
+	sha, ok := parseLsRemote(stdout.String(), refs)
 	if !ok {
-		return "", errors.Errorf("ref '%s' not found in repo '%s/%s'", ref, owner, repo)
+		return "", errors.Errorf("refs %v not found in repo '%s/%s'", refs, owner, repo)
 	}
 	return sha, nil
 }
 
-// peeledTagRef returns the ref that git ls-remote uses for the commit that an
+// peeledRef returns the name git ls-remote uses for the commit that an
 // annotated tag points to.
-func peeledTagRef(tagRef string) string {
-	return tagRef + "^{}"
+func peeledRef(ref string) string {
+	return ref + "^{}"
 }
 
-// parseLsRemote returns the commit SHA for the tag or branch named ref from git
+// parseLsRemote returns the commit SHA for the first of the refs found in git
 // ls-remote output.
-func parseLsRemote(output, ref string) (string, bool) {
+func parseLsRemote(output string, refs []string) (string, bool) {
 	shas := map[string]string{}
 	for line := range strings.SplitSeq(output, "\n") {
 		sha, name, ok := strings.Cut(strings.TrimSpace(line), "\t")
@@ -429,9 +436,11 @@ func parseLsRemote(output, ref string) (string, bool) {
 			shas[name] = sha
 		}
 	}
-	tagRef := "refs/tags/" + ref
-	for _, name := range []string{peeledTagRef(tagRef), tagRef, "refs/heads/" + ref} {
-		if sha, ok := shas[name]; ok {
+	for _, ref := range refs {
+		if sha, ok := shas[peeledRef(ref)]; ok {
+			return sha, true
+		}
+		if sha, ok := shas[ref]; ok {
 			return sha, true
 		}
 	}

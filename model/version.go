@@ -1214,7 +1214,7 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 			// Resolving the branch head with git avoids depending on the
 			// GitHub API being available. If that doesn't work, fall back to
 			// the GitHub API below.
-			sha, err := thirdparty.GitLsRemote(ghCtx, owner, repo, module.Branch)
+			sha, err := thirdparty.GitLsRemote(ghCtx, owner, repo, "refs/heads/"+module.Branch)
 			if err == nil {
 				revision = sha
 				url = thirdparty.GitHubCommitURL(owner, repo, sha)
