@@ -41,8 +41,7 @@ func (s *testResultService) AppendTestResultMetadata(ctx context.Context, failed
 	if !record.CreatedAt.IsZero() {
 		// The created timestamp determines the partition key of the offline
 		// test results, so it must reflect when the results were attached
-		// even if the record was created earlier by the quarantined-tests
-		// snapshot.
+		// even if the record was created earlier by test selection.
 		set[testresult.TestResultsCreatedAtKey] = record.CreatedAt
 	}
 	update := bson.M{"$set": set}

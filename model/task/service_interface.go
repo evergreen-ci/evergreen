@@ -16,36 +16,33 @@ type TestResultsService interface {
 	GetTaskTestResultsStats(context.Context, []Task) (testresult.TaskTestResultsStats, error)
 }
 
-// maxTestSelectionTestsPerRecord caps how many checked tests and how many
-// quarantined tests are stored on a single test results record to keep the
-// document under 16MB.
-const maxTestSelectionTestsPerRecord = 40000
+// maxQuarantinedTestsPerRecord caps how many quarantined tests are stored on a
+// single test results record to keep the document under 16MB.
+const maxQuarantinedTestsPerRecord = 40000
 
-// appendTestSelectionResultsUpdate returns the update document that appends
-// the given tests to a test results record's checked tests and
-// quarantined-tests snapshot, and increments the snapshot count.
+// appendTestSelectionResultsUpdate returns the update document that adds the
+// given tests to a test results record's checked tests, appends the given
+// tests to its quarantined-tests snapshot, and increments the snapshot count.
+// Checked tests are deduplicated by the database.
 func appendTestSelectionResultsUpdate(info testresult.TestResultsInfo, checkedTests []string, quarantinedTests []testresult.QuarantinedTest) bson.M {
-	push := bson.M{}
-	if len(checkedTests) > 0 {
-		push[testresult.TestSelectionCheckedTestsKey] = bson.M{
-			"$each":  checkedTests,
-			"$slice": maxTestSelectionTestsPerRecord,
-		}
-	}
-	if len(quarantinedTests) > 0 {
-		push[testresult.QuarantinedTestsKey] = bson.M{
-			"$each":  quarantinedTests,
-			"$slice": maxTestSelectionTestsPerRecord,
-		}
-	}
 	update := bson.M{
 		"$setOnInsert": bson.M{
 			testresult.TestResultsInfoKey: info,
 		},
 		"$inc": bson.M{testresult.QuarantinedTestsCountKey: len(quarantinedTests)},
 	}
-	if len(push) > 0 {
-		update["$push"] = push
+	if len(checkedTests) > 0 {
+		update["$addToSet"] = bson.M{
+			testresult.TestSelectionCheckedTestsKey: bson.M{"$each": checkedTests},
+		}
+	}
+	if len(quarantinedTests) > 0 {
+		update["$push"] = bson.M{
+			testresult.QuarantinedTestsKey: bson.M{
+				"$each":  quarantinedTests,
+				"$slice": maxQuarantinedTestsPerRecord,
+			},
+		}
 	}
 	return update
 }

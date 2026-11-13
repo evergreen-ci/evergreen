@@ -71,35 +71,11 @@ func AppendTestSelectionResults(ctx context.Context, t *Task, env evergreen.Envi
 		return 0, errors.Wrap(err, "getting test result service")
 	}
 
-	allTaskResults, err := svc.Get(ctx, []Task{*t}, GetTaskTestResultsOptions{Fields: []string{testresult.TestSelectionCheckedTestsKey, testresult.QuarantinedTestsKey}})
+	newQuarantinedTests, err := filterRecordedQuarantinedTests(ctx, svc, t, quarantinedTests)
 	if err != nil {
-		return 0, errors.Wrap(err, "getting existing test selection results")
+		return 0, err
 	}
-	recordedChecked := map[string]bool{}
-	recordedQuarantined := map[string]bool{}
-	for _, taskResults := range allTaskResults {
-		for _, name := range taskResults.TestSelectionCheckedTests {
-			recordedChecked[name] = true
-		}
-		for _, quarantinedTest := range taskResults.QuarantinedTests {
-			recordedQuarantined[quarantinedTest.TestName] = true
-		}
-	}
-	newChecked := make([]string, 0, len(checkedTests))
-	for _, name := range checkedTests {
-		if !recordedChecked[name] {
-			newChecked = append(newChecked, name)
-			recordedChecked[name] = true
-		}
-	}
-	newQuarantined := make([]testresult.QuarantinedTest, 0, len(quarantinedTests))
-	for _, quarantinedTest := range quarantinedTests {
-		if !recordedQuarantined[quarantinedTest.TestName] {
-			newQuarantined = append(newQuarantined, quarantinedTest)
-			recordedQuarantined[quarantinedTest.TestName] = true
-		}
-	}
-	if len(newChecked) == 0 && len(newQuarantined) == 0 {
+	if len(checkedTests) == 0 && len(newQuarantinedTests) == 0 {
 		return 0, nil
 	}
 
@@ -111,10 +87,36 @@ func AppendTestSelectionResults(ctx context.Context, t *Task, env evergreen.Envi
 		ID:   info.ID(),
 		Info: info,
 	}
-	if err = svc.AppendTestSelectionResults(ctx, record, newChecked, newQuarantined); err != nil {
+	if err = svc.AppendTestSelectionResults(ctx, record, checkedTests, newQuarantinedTests); err != nil {
 		return 0, err
 	}
-	return len(newQuarantined), nil
+	return len(newQuarantinedTests), nil
+}
+
+// filterRecordedQuarantinedTests returns the quarantined tests that are not
+// already in the task run's quarantined-tests snapshot.
+func filterRecordedQuarantinedTests(ctx context.Context, svc TestResultsService, t *Task, quarantinedTests []testresult.QuarantinedTest) ([]testresult.QuarantinedTest, error) {
+	if len(quarantinedTests) == 0 {
+		return nil, nil
+	}
+	allTaskResults, err := svc.Get(ctx, []Task{*t}, GetTaskTestResultsOptions{Fields: []string{testresult.QuarantinedTestsKey}})
+	if err != nil {
+		return nil, errors.Wrap(err, "getting existing quarantined tests")
+	}
+	recorded := map[string]bool{}
+	for _, taskResults := range allTaskResults {
+		for _, quarantinedTest := range taskResults.QuarantinedTests {
+			recorded[quarantinedTest.TestName] = true
+		}
+	}
+	newTests := make([]testresult.QuarantinedTest, 0, len(quarantinedTests))
+	for _, quarantinedTest := range quarantinedTests {
+		if !recorded[quarantinedTest.TestName] {
+			newTests = append(newTests, quarantinedTest)
+			recorded[quarantinedTest.TestName] = true
+		}
+	}
+	return newTests, nil
 }
 
 // AppendVirtualTestResultMetadata records test result metadata pushed on

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -565,7 +566,10 @@ func TestDecorateQuarantineStatus(t *testing.T) {
 	// statusServer returns a TSS server that resolves quarantine state from a
 	// per-task-name map and records the tests it was asked about.
 	statusServer := func(t *testing.T, statesByTaskName map[string]map[string]string) *[]string {
-		var requested []string
+		var (
+			mu        sync.Mutex
+			requested []string
+		)
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			var request struct {
@@ -573,7 +577,9 @@ func TestDecorateQuarantineStatus(t *testing.T) {
 				TestNames []string `json:"test_names"`
 			}
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&request))
+			mu.Lock()
 			requested = append(requested, request.TestNames...)
+			mu.Unlock()
 			body := map[string]map[string]any{}
 			for testName, state := range statesByTaskName[request.TaskName] {
 				body[testName] = map[string]any{"state": state}
@@ -626,6 +632,36 @@ func TestDecorateQuarantineStatus(t *testing.T) {
 		assert.False(t, results[2].CanQuarantine)
 		assert.False(t, results[2].IsManuallyQuarantined)
 		assert.ElementsMatch(t, []string{"TestFoo", "TestBar"}, *requested, "TSS should only be asked about checked tests")
+	})
+
+	t.Run("ChecksDisplayTestNames", func(t *testing.T) {
+		setup(t, execTask)
+		recordCheckedTests(t, execTaskInfo, "jstests/core/foo.js")
+		statusServer(t, map[string]map[string]string{
+			"exec_task": {"jstests/core/foo.js": "manually_quarantined"},
+		})
+
+		results := []testresult.TestResult{{TaskID: "exec_task", TestName: "foo_id", DisplayTestName: "jstests/core/foo.js"}}
+		tsk := execTask
+		require.NoError(t, DecorateQuarantineStatus(ctx, env, &tsk, results))
+		assert.True(t, results[0].CanQuarantine)
+		assert.True(t, results[0].IsManuallyQuarantined)
+	})
+
+	t.Run("OnlyUsesCheckedTestsFromTheSameExecution", func(t *testing.T) {
+		restarted := execTask
+		restarted.Execution = 1
+		setup(t, restarted)
+		recordCheckedTests(t, execTaskInfo, "TestFoo")
+		requested := statusServer(t, map[string]map[string]string{
+			"exec_task": {"TestFoo": "manually_quarantined"},
+		})
+
+		results := []testresult.TestResult{{TaskID: "exec_task", Execution: 1, TestName: "TestFoo"}}
+		require.NoError(t, DecorateQuarantineStatus(ctx, env, &restarted, results))
+		assert.False(t, results[0].CanQuarantine, "test selection only checked the test in execution 0")
+		assert.False(t, results[0].IsManuallyQuarantined)
+		assert.Empty(t, *requested)
 	})
 
 	t.Run("TaskRunWithoutCheckedTestsSkipsTSS", func(t *testing.T) {
@@ -836,6 +872,21 @@ func TestRecordTestSelection(t *testing.T) {
 		assert.Equal(t, []testresult.QuarantinedTest{{TestName: "test1"}, {TestName: "test2"}}, record.QuarantinedTests, "quarantined tests that were still selected should not be recorded")
 		assert.Equal(t, []string{"test0", "test3", "test1", "test2"}, record.TestSelectionCheckedTests, "the known tests that were selected or skipped should be recorded as checked")
 		assert.Equal(t, 2, findTask(t).NumQuarantinedTestsSkipped)
+	})
+
+	t.Run("KnownTestsPathRecordsSelectedTestsWhenVariantStateFails", func(t *testing.T) {
+		setupTask(t)
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "boom", http.StatusInternalServerError)
+		}))
+		t.Cleanup(srv.Close)
+		setTSSURLForTest(t, srv.URL)
+
+		assert.Error(t, RecordTestSelection(ctx, env, baseReq, []string{"test0", "test3"}))
+
+		record := findRecord(t)
+		assert.Equal(t, []string{"test0", "test3"}, record.TestSelectionCheckedTests)
+		assert.Empty(t, record.QuarantinedTests)
 	})
 
 	t.Run("FullyQuarantinedTaskRecordsAndReturnsSnapshot", func(t *testing.T) {
