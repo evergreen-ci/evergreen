@@ -1094,15 +1094,21 @@ func TestGetManifestModuleWiki(t *testing.T) {
 	assert.Empty(t, m.URL)
 }
 
-func TestGetManifestModulePinnedFullSHAShouldNotNeedGitHub(t *testing.T) {
-	const sha = "cf46076567e4949f9fc68e0634139d4ac495c89b"
-	mod := Module{Name: "m", Owner: "nonexistent-owner", Repo: "nonexistent-repo", Branch: "main", Ref: sha}
-	m, err := getManifestModule(t.Context(), &ProjectRef{}, mod, evergreen.PatchVersionRequester, time.Time{})
-	require.NoError(t, err)
-	require.NotNil(t, m)
-	assert.Equal(t, sha, m.Revision)
-	assert.Equal(t, "https://api.github.com/repos/nonexistent-owner/nonexistent-repo/commits/"+sha, m.URL)
-	assert.Equal(t, manifest.ModuleSelectionPinnedRef, m.SelectionRule)
+func TestGetManifestModulePinnedRefShouldNotNeedGitHub(t *testing.T) {
+	for name, ref := range map[string]string{
+		"FullSHA":  "cf46076567e4949f9fc68e0634139d4ac495c89b",
+		"ShortSHA": "cf46076",
+	} {
+		t.Run(name, func(t *testing.T) {
+			mod := Module{Name: "m", Owner: "nonexistent-owner", Repo: "nonexistent-repo", Branch: "main", Ref: ref}
+			m, err := getManifestModule(t.Context(), &ProjectRef{}, mod, evergreen.PatchVersionRequester, time.Time{})
+			require.NoError(t, err)
+			require.NotNil(t, m)
+			assert.Equal(t, ref, m.Revision)
+			assert.Equal(t, "https://api.github.com/repos/nonexistent-owner/nonexistent-repo/commits/"+ref, m.URL)
+			assert.Equal(t, manifest.ModuleSelectionPinnedRef, m.SelectionRule)
+		})
+	}
 }
 
 func TestConstructManifestRecordsSelectionRulesAndChangedModules(t *testing.T) {

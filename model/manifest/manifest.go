@@ -17,7 +17,8 @@ const (
 	// ingested as of the version's ingest time.
 	ModuleSelectionLatestIngested ModuleSelectionRule = "latest_ingested"
 	// ModuleSelectionGitHubFallback is the newest commit on the module branch
-	// according to GitHub, used when Evergreen hasn't ingested any.
+	// according to GitHub (via git or the GitHub API), used when Evergreen
+	// hasn't ingested any.
 	ModuleSelectionGitHubFallback ModuleSelectionRule = "github_fallback"
 	// ModuleSelectionBaseVersion is inherited from the base version's manifest.
 	ModuleSelectionBaseVersion ModuleSelectionRule = "base_version"
