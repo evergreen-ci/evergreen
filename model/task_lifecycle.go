@@ -1105,10 +1105,12 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p 
 		return nil, errors.New("version is nil")
 	}
 
-	timeTaken, makespan, err := v.GetTimeSpent(ctx)
+	tasks, err := v.getTasksForTimeSpent(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting time spent")
 	}
+	timeTaken, makespan := task.GetTimeSpent(tasks)
+	monitoredDuration, hasMonitoredDuration := task.GetMonitoredHighValueWorkloadDuration(tasks)
 
 	highestExecutionTask, err := v.GetHighestTaskExecution(ctx)
 	if err != nil {
@@ -1129,6 +1131,13 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p 
 		attribute.String(evergreen.VersionAuthorOtelAttribute, v.Author),
 		attribute.String(evergreen.VersionBranchOtelAttribute, v.Branch),
 		attribute.Int(evergreen.VersionHighestExecutionTaskOtelAttribute, highestExecutionTask),
+	}
+
+	if hasMonitoredDuration {
+		attrs = append(attrs, attribute.Int(
+			evergreen.VersionHighValueWorkloadMonitoredDurationSecondsOtelAttribute,
+			int(monitoredDuration.Seconds()),
+		))
 	}
 
 	if !v.Cost.IsZero() {

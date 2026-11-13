@@ -11,6 +11,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+// MonitoredHighValueWorkloadTag selects tasks for the monitored HVW duration.
+const MonitoredHighValueWorkloadTag = "monitored_high_value_workload"
+
 const (
 	// User is the generic user representing the Evergreen application as a
 	// whole entity. If there's a more specific user performing an operation,
@@ -579,23 +582,24 @@ const (
 	DisplayTaskNameOtelAttribute = "evergreen.display_task.name"
 
 	// version otel attributes
-	VersionIDOtelAttribute                    = "evergreen.version.id"
-	VersionRequesterOtelAttribute             = "evergreen.version.requester"
-	VersionStatusOtelAttribute                = "evergreen.version.status"
-	VersionCreateTimeOtelAttribute            = "evergreen.version.create_time"
-	VersionStartTimeOtelAttribute             = "evergreen.version.start_time"
-	VersionFinishTimeOtelAttribute            = "evergreen.version.finish_time"
-	VersionAuthorOtelAttribute                = "evergreen.version.author"
-	VersionBranchOtelAttribute                = "evergreen.version.branch"
-	VersionHighestExecutionTaskOtelAttribute  = "evergreen.version.highest_execution_task"
-	VersionMakespanSecondsOtelAttribute       = "evergreen.version.makespan_seconds"
-	VersionTimeTakenSecondsOtelAttribute      = "evergreen.version.time_taken_seconds"
-	VersionPRNumOtelAttribute                 = "evergreen.version.pr_num"
-	VersionDescriptionOtelAttribute           = "evergreen.version.description"
-	VersionOnDemandCostOtelAttribute          = "evergreen.version.on_demand_cost"
-	VersionAdjustedCostOtelAttribute          = "evergreen.version.adjusted_cost"
-	VersionPredictedOnDemandCostOtelAttribute = "evergreen.version.predicted_on_demand_cost"
-	VersionPredictedAdjustedCostOtelAttribute = "evergreen.version.predicted_adjusted_cost"
+	VersionIDOtelAttribute                                        = "evergreen.version.id"
+	VersionRequesterOtelAttribute                                 = "evergreen.version.requester"
+	VersionStatusOtelAttribute                                    = "evergreen.version.status"
+	VersionCreateTimeOtelAttribute                                = "evergreen.version.create_time"
+	VersionStartTimeOtelAttribute                                 = "evergreen.version.start_time"
+	VersionFinishTimeOtelAttribute                                = "evergreen.version.finish_time"
+	VersionAuthorOtelAttribute                                    = "evergreen.version.author"
+	VersionBranchOtelAttribute                                    = "evergreen.version.branch"
+	VersionHighestExecutionTaskOtelAttribute                      = "evergreen.version.highest_execution_task"
+	VersionMakespanSecondsOtelAttribute                           = "evergreen.version.makespan_seconds"
+	VersionHighValueWorkloadMonitoredDurationSecondsOtelAttribute = "evergreen.version.high_value_workload_monitored_duration_seconds"
+	VersionTimeTakenSecondsOtelAttribute                          = "evergreen.version.time_taken_seconds"
+	VersionPRNumOtelAttribute                                     = "evergreen.version.pr_num"
+	VersionDescriptionOtelAttribute                               = "evergreen.version.description"
+	VersionOnDemandCostOtelAttribute                              = "evergreen.version.on_demand_cost"
+	VersionAdjustedCostOtelAttribute                              = "evergreen.version.adjusted_cost"
+	VersionPredictedOnDemandCostOtelAttribute                     = "evergreen.version.predicted_on_demand_cost"
+	VersionPredictedAdjustedCostOtelAttribute                     = "evergreen.version.predicted_adjusted_cost"
 	// VersionTotalAdjustedCostOtelAttribute and VersionPredictedTotalAdjustedCostOtelAttribute are pre-summed
 	// totals of all adjusted cost components, matching the total the UI displays for the version.
 	VersionTotalAdjustedCostOtelAttribute          = "evergreen.version.total_adjusted_cost"

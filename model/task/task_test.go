@@ -2162,6 +2162,83 @@ func TestGetTimeSpent(t *testing.T) {
 	assert.EqualValues(0, makespan)
 }
 
+func TestGetMonitoredHighValueWorkloadDuration(t *testing.T) {
+	start := time.Unix(1136239445, 0)
+	monitored := func(offset, duration time.Duration) Task {
+		return Task{
+			Tags:       []string{evergreen.MonitoredHighValueWorkloadTag},
+			StartTime:  start.Add(offset),
+			FinishTime: start.Add(offset + duration),
+		}
+	}
+
+	t.Run("SelectedTasksDetermineMakespan", func(t *testing.T) {
+		tasks := []Task{
+			monitored(0, 40*time.Minute),
+			monitored(10*time.Minute, time.Hour),
+			{
+				StartTime:  start.Add(-time.Hour),
+				FinishTime: start.Add(3 * time.Hour),
+			},
+		}
+		duration, ok := GetMonitoredHighValueWorkloadDuration(tasks)
+		assert.True(t, ok)
+		assert.Equal(t, 70*time.Minute, duration)
+	})
+
+	t.Run("DisplayAndInvalidTasksAreExcluded", func(t *testing.T) {
+		display := monitored(-time.Hour, 4*time.Hour)
+		display.DisplayOnly = true
+		unfinished := monitored(-time.Hour, time.Hour)
+		unfinished.FinishTime = utility.ZeroTime
+		notStarted := monitored(-time.Hour, time.Hour)
+		notStarted.StartTime = utility.ZeroTime
+		invalid := monitored(0, -time.Minute)
+
+		duration, ok := GetMonitoredHighValueWorkloadDuration([]Task{
+			monitored(0, 30*time.Minute),
+			display, unfinished, notStarted, invalid,
+		})
+		assert.True(t, ok)
+		assert.Equal(t, 30*time.Minute, duration)
+
+		duration, ok = GetMonitoredHighValueWorkloadDuration([]Task{
+			display, unfinished, notStarted, invalid,
+		})
+		assert.False(t, ok)
+		assert.Zero(t, duration)
+	})
+
+	t.Run("CompletedFailureCounts", func(t *testing.T) {
+		failed := monitored(0, 20*time.Minute)
+		failed.Status = evergreen.TaskFailed
+		duration, ok := GetMonitoredHighValueWorkloadDuration([]Task{failed})
+		assert.True(t, ok)
+		assert.Equal(t, 20*time.Minute, duration)
+	})
+
+	t.Run("NoEligibleTasksReturnsFalse", func(t *testing.T) {
+		duration, ok := GetMonitoredHighValueWorkloadDuration(nil)
+		assert.False(t, ok)
+		assert.Zero(t, duration)
+
+		duration, ok = GetMonitoredHighValueWorkloadDuration([]Task{{
+			StartTime:  start,
+			FinishTime: start.Add(time.Hour),
+		}})
+		assert.False(t, ok)
+		assert.Zero(t, duration)
+	})
+
+	t.Run("ZeroDurationReturnsTrue", func(t *testing.T) {
+		duration, ok := GetMonitoredHighValueWorkloadDuration([]Task{
+			monitored(0, 0),
+		})
+		assert.True(t, ok)
+		assert.Zero(t, duration)
+	})
+}
+
 func TestGetFormattedTimeSpent(t *testing.T) {
 	assert := assert.New(t)
 	referenceTime := time.Unix(1136239445, 0)

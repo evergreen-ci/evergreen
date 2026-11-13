@@ -335,18 +335,30 @@ func setVersionStatus(ctx context.Context, versionId, newStatus string) (modifie
 // GetTimeSpent returns the total time_taken and makespan of a version for
 // each task that has finished running
 func (v *Version) GetTimeSpent(ctx context.Context) (time.Duration, time.Duration, error) {
-	query := db.Query(task.ByVersion(v.Id)).WithFields(
-		task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
-	tasks, err := task.FindAllFirstExecution(ctx, query)
+	tasks, err := v.getTasksForTimeSpent(ctx)
 	if err != nil {
-		return 0, 0, errors.Wrapf(err, "getting tasks for version '%s'", v.Id)
-	}
-	if tasks == nil {
-		return 0, 0, errors.Errorf("no tasks found for version '%s'", v.Id)
+		return 0, 0, err
 	}
 
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 	return timeTaken, makespan, nil
+}
+
+// getTasksForTimeSpent loads first-execution task records for timing calculations,
+// including archived execution-0 records when a task has been restarted.
+func (v *Version) getTasksForTimeSpent(ctx context.Context) ([]task.Task, error) {
+	query := db.Query(task.ByVersion(v.Id)).WithFields(
+		task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey,
+		task.DisplayOnlyKey, task.ExecutionKey, task.TagsKey)
+	tasks, err := task.FindAllFirstExecution(ctx, query)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting tasks for version '%s'", v.Id)
+	}
+	if tasks == nil {
+		return nil, errors.Errorf("no tasks found for version '%s'", v.Id)
+	}
+
+	return tasks, nil
 }
 
 // UpdateProjectStorageMethod updates the version's parser project storage
