@@ -907,8 +907,9 @@ quarantine.
 
 The "Task-Level Test Selection" setting controls which tasks run test selection by default:
 
-- "Disabled" leaves test selection disabled by default. Manual patches can still enable it for selected variants or
-  tasks from [the CLI](../CLI.md#test-selection).
+- "Disabled" leaves test selection disabled by default. It can still be enabled for selected variants or tasks with
+  `test_selection: true` in the project configuration file (see below), and manual patches can enable it from
+  [the CLI](../CLI.md#test-selection).
 - "Enabled for patches" enables test selection by default for manual patches, GitHub pull requests, and merge queue
   patches.
 - "Enabled for patches and mainline commits" additionally enables test selection for commits created by repotracker.
@@ -916,6 +917,27 @@ The "Task-Level Test Selection" setting controls which tasks run test selection 
 The task-level setting only has an effect when project-level test selection is enabled. Git tags, periodic builds,
 triggered versions, and other non-patch versions do not run the
 [test selection command](Project-Commands#test_selectionget).
+
+To enable or disable test selection for specific build variants or tasks, set `test_selection: true` or
+`test_selection: false` in the [project configuration file](Project-Configuration-Files#build-variants). It can be set
+on a build variant or on a task within a build variant's `tasks` list:
+
+```yaml
+buildvariants:
+  - name: ubuntu
+    test_selection: false
+    tasks:
+      - name: unit_test
+        test_selection: true
+      - name: lint
+```
+
+If there are conflicting settings, the order of priority is:
+
+1. The CLI's test selection options for a patch, such as `--test-selection-include-variants`
+2. `test_selection` on the task within the build variant
+3. `test_selection` on the build variant
+4. The project's "Task-Level Test Selection" setting
 
 The "Require Jira Tickets When Quarantining Tests" setting (off by default) requires users to link at least one existing Jira ticket when manually quarantining a test from the task page.
 

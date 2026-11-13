@@ -4011,6 +4011,45 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 		}
 		assert.True(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
 	})
+	t.Run("BuildVariantYAMLSettingOverridesProjectDefault", func(t *testing.T) {
+		newCreationInfo := func(allowed, defaultEnabled *bool, bv1, bv2 *bool) TaskCreationInfo {
+			return TaskCreationInfo{
+				ProjectRef: &ProjectRef{
+					TestSelection: TestSelectionSettings{
+						Allowed:        allowed,
+						DefaultEnabled: defaultEnabled,
+					},
+				},
+				Project: &Project{
+					BuildVariants: BuildVariants{
+						{Name: "bv1", TestSelection: bv1},
+						{Name: "bv2", TestSelection: bv2},
+					},
+				},
+				Version: &Version{Requester: evergreen.PatchVersionRequester},
+			}
+		}
+		// Opts in only bv1 when the project default is disabled.
+		creationInfo := newCreationInfo(utility.TruePtr(), utility.FalsePtr(), utility.TruePtr(), nil)
+		assert.True(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
+		assert.False(t, canBuildVariantEnableTestSelection("bv2", creationInfo))
+
+		// Opts out bv2 when the project default is enabled.
+		creationInfo = newCreationInfo(utility.TruePtr(), utility.TruePtr(), nil, utility.FalsePtr())
+		assert.True(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
+		assert.False(t, canBuildVariantEnableTestSelection("bv2", creationInfo))
+
+		// Project-level test selection stays the master switch.
+		creationInfo = newCreationInfo(utility.FalsePtr(), utility.FalsePtr(), utility.TruePtr(), nil)
+		assert.False(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
+
+		// Patch-level excludes beat the YAML setting.
+		creationInfo = newCreationInfo(utility.TruePtr(), utility.FalsePtr(), utility.TruePtr(), nil)
+		creationInfo.TestSelectionParams.IncludeBuildVariants = []*regexp.Regexp{regexp.MustCompile("bv.*")}
+		creationInfo.TestSelectionParams.ExcludeBuildVariants = []*regexp.Regexp{regexp.MustCompile("bv1")}
+		assert.False(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
+		assert.True(t, canBuildVariantEnableTestSelection("bv2", creationInfo))
+	})
 	t.Run("ReturnsTrueIfTestSelectionDefaultEnabled", func(t *testing.T) {
 		creationInfo := TaskCreationInfo{
 			ProjectRef: &ProjectRef{
@@ -4152,5 +4191,86 @@ func TestSetTestSelectionEnabledForTasks(t *testing.T) {
 
 		require.NoError(t, setTestSelectionEnabledForTasks(execTasks, []*task.Task{dt}, displayTaskIDsToNames, creationInfo))
 		assert.False(t, dt.TestSelectionEnabled)
+	})
+}
+
+func TestTestSelectionTaskLevelYAMLSetting(t *testing.T) {
+	newCreationInfo := func(defaultEnabled *bool, bvs ...BuildVariant) TaskCreationInfo {
+		return TaskCreationInfo{
+			ProjectRef: &ProjectRef{
+				TestSelection: TestSelectionSettings{
+					Allowed:        utility.TruePtr(),
+					DefaultEnabled: defaultEnabled,
+				},
+			},
+			Project: &Project{
+				BuildVariants: bvs,
+				Tasks:         []ProjectTask{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}},
+				TaskGroups:    []TaskGroup{{Name: "tg", Tasks: []string{"t3"}}},
+			},
+			Version: &Version{Requester: evergreen.PatchVersionRequester},
+		}
+	}
+	// isEnabled runs the same two checks as task creation does.
+	isEnabled := func(ci TaskCreationInfo, bvName, taskName, taskGroup string) bool {
+		ci.TestSelectionParams.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(bvName, ci)
+		enabled, err := isTestSelectionEnabledForTask(&task.Task{DisplayName: taskName, TaskGroup: taskGroup, BuildVariant: bvName}, nil, ci)
+		require.NoError(t, err)
+		return enabled
+	}
+	units := func(t1, t2 *bool) []BuildVariantTaskUnit {
+		return []BuildVariantTaskUnit{{Name: "t1", TestSelection: t1}, {Name: "t2", TestSelection: t2}}
+	}
+
+	t.Run("TaskOptsInWhenProjectDefaultDisabled", func(t *testing.T) {
+		ci := newCreationInfo(utility.FalsePtr(),
+			BuildVariant{Name: "bv", Tasks: units(utility.TruePtr(), nil)},
+			BuildVariant{Name: "other", Tasks: units(nil, nil)})
+		assert.True(t, isEnabled(ci, "bv", "t1", ""))
+		assert.False(t, isEnabled(ci, "bv", "t2", ""))
+		assert.False(t, isEnabled(ci, "other", "t1", ""))
+	})
+	t.Run("TaskOptsOutWhenProjectDefaultEnabled", func(t *testing.T) {
+		ci := newCreationInfo(utility.TruePtr(), BuildVariant{Name: "bv", Tasks: units(nil, utility.FalsePtr())})
+		assert.True(t, isEnabled(ci, "bv", "t1", ""))
+		assert.False(t, isEnabled(ci, "bv", "t2", ""))
+	})
+	t.Run("TaskSettingBeatsBuildVariantSetting", func(t *testing.T) {
+		ci := newCreationInfo(utility.FalsePtr(), BuildVariant{Name: "bv", TestSelection: utility.FalsePtr(), Tasks: units(utility.TruePtr(), nil)})
+		assert.True(t, isEnabled(ci, "bv", "t1", ""))
+		assert.False(t, isEnabled(ci, "bv", "t2", ""))
+
+		ci = newCreationInfo(utility.FalsePtr(), BuildVariant{Name: "bv", TestSelection: utility.TruePtr(), Tasks: units(utility.FalsePtr(), nil)})
+		assert.False(t, isEnabled(ci, "bv", "t1", ""))
+		assert.True(t, isEnabled(ci, "bv", "t2", ""))
+	})
+	t.Run("TaskGroupSettingAppliesToItsTasks", func(t *testing.T) {
+		ci := newCreationInfo(utility.FalsePtr(), BuildVariant{Name: "bv", Tasks: []BuildVariantTaskUnit{{Name: "tg", TestSelection: utility.TruePtr()}, {Name: "t1"}}})
+		assert.True(t, isEnabled(ci, "bv", "t3", "tg"))
+		assert.False(t, isEnabled(ci, "bv", "t1", ""))
+	})
+	t.Run("ProjectAllowedStaysMasterSwitch", func(t *testing.T) {
+		ci := newCreationInfo(utility.FalsePtr(), BuildVariant{Name: "bv", Tasks: units(utility.TruePtr(), nil)})
+		ci.ProjectRef.TestSelection.Allowed = utility.FalsePtr()
+		assert.False(t, isEnabled(ci, "bv", "t1", ""))
+	})
+	t.Run("PatchLevelSettingsBeatTaskSetting", func(t *testing.T) {
+		bv := BuildVariant{Name: "bv", Tasks: units(utility.FalsePtr(), utility.TruePtr())}
+		ci := newCreationInfo(utility.FalsePtr(), bv)
+		ci.TestSelectionParams.IncludeBuildVariants = []*regexp.Regexp{regexp.MustCompile("bv")}
+		assert.True(t, isEnabled(ci, "bv", "t1", ""), "included variant enables tasks the YAML disables")
+
+		ci = newCreationInfo(utility.FalsePtr(), bv)
+		ci.TestSelectionParams.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("t1")}
+		assert.True(t, isEnabled(ci, "bv", "t1", ""), "included task is enabled despite the YAML")
+		assert.False(t, isEnabled(ci, "bv", "t2", ""), "tasks not included are disabled despite the YAML")
+
+		ci = newCreationInfo(utility.FalsePtr(), bv)
+		ci.TestSelectionParams.ExcludeTasks = []*regexp.Regexp{regexp.MustCompile("t2")}
+		assert.False(t, isEnabled(ci, "bv", "t2", ""), "excluded task is disabled despite the YAML")
+
+		ci = newCreationInfo(utility.FalsePtr(), bv)
+		ci.TestSelectionParams.ExcludeBuildVariants = []*regexp.Regexp{regexp.MustCompile("bv")}
+		assert.False(t, isEnabled(ci, "bv", "t2", ""), "excluded variant is disabled despite the YAML")
 	})
 }

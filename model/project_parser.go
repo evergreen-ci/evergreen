@@ -353,6 +353,7 @@ type parserBV struct {
 	CronBatchTime      string            `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	Stepback           *bool             `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	DeactivatePrevious *bool             `yaml:"deactivate_previous,omitempty" bson:"deactivate_previous,omitempty"`
+	TestSelection      *bool             `yaml:"test_selection,omitempty" bson:"test_selection,omitempty"`
 
 	RunOn        parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
 	Tasks        parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
@@ -430,6 +431,7 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.CronBatchTime == "" &&
 		pbv.Stepback == nil &&
 		pbv.DeactivatePrevious == nil &&
+		pbv.TestSelection == nil &&
 		pbv.RunOn == nil &&
 		pbv.DependsOn == nil &&
 		pbv.Activate == nil &&
@@ -456,6 +458,7 @@ type parserBVTaskUnit struct {
 	Disable           *bool                     `yaml:"disable,omitempty" bson:"disable,omitempty"`
 	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	TestSelection     *bool                     `yaml:"test_selection,omitempty" bson:"test_selection,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 	AllowedBranches   parserStringSlice         `yaml:"allowed_branches,omitempty" bson:"allowed_branches,omitempty"`
 	IgnoredBranches   parserStringSlice         `yaml:"ignored_branches,omitempty" bson:"ignored_branches,omitempty"`
@@ -2053,6 +2056,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			AllowedBranches:    pbv.AllowedBranches,
 			IgnoredBranches:    pbv.IgnoredBranches,
 			ExecTimeoutSecs:    pbv.ExecTimeoutSecs,
+			TestSelection:      pbv.TestSelection,
 			Stepback:           pbv.Stepback,
 			DeactivatePrevious: pbv.DeactivatePrevious,
 			RunOn:              pbv.RunOn,
@@ -2294,6 +2298,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		Disable:           bvt.Disable,
 		AllowForGitTag:    bvt.AllowForGitTag,
 		GitTagOnly:        bvt.GitTagOnly,
+		TestSelection:     bvt.TestSelection,
 		AllowedRequesters: bvt.AllowedRequesters,
 		AllowedBranches:   bvt.AllowedBranches,
 		IgnoredBranches:   bvt.IgnoredBranches,

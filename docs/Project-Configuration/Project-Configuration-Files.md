@@ -309,6 +309,10 @@ Fields:
   will check that task once per day. If the most recent mainline commit is
   inactive, Evergreen will activate it. In this way, cron is tied more closely
   to project commit activity. For more on the differences between cron, batchtime and [periodic builds](Project-and-Distro-Settings#periodic-builds), see [controlling when tasks run](Controlling-when-tasks-run).
+- `test_selection`: indicate if this variant should opt-in or out of
+  [test selection](Project-and-Distro-Settings#test-selection-settings). This overrides the project's task-level test
+  selection setting. (If test selection is not enabled at the project-level, this value will be ignored.) It can also
+  be set on an item in the `tasks` list to override the variant's value for that task.
 - `tags`: optional list of tags to group the build variant for alias definitions (explained [here](#task-and-variant-tags))
 - `paths`: optional list of gitignore-style patterns that define which files should trigger
   this build variant when changed. If provided, the build variant will only run if at least
