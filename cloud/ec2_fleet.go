@@ -719,7 +719,7 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return errors.Wrap(err, "getting admin settings")
+		return fmt.Errorf("Error getting Evergreen admin settings: '%s'", err.Error())
 	}
 	useElasticIP := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseElasticIP(settings, ec2Settings, m.account, h)
 	if useElasticIP && h.IPAllocationID == "" {

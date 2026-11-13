@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
@@ -26,7 +27,7 @@ func (DisableQuery) Validate(graphql.ExecutableSchema) error {
 func (DisableQuery) MutateOperationContext(ctx context.Context, rc *graphql.OperationContext) *gqlerror.Error {
 	settings, err := evergreen.GetConfigWithoutSecrets(ctx)
 	if err != nil {
-		grip.ErrorWhen(ctx, !errors.Is(context.Canceled, err), errors.Wrap(err, "getting Evergreen admin settings"))
+		grip.ErrorWhen(ctx, !errors.Is(context.Canceled, err), fmt.Errorf("Error getting Evergreen admin settings: '%s'", err.Error()))
 	} else if utility.StringSliceContains(settings.DisabledGQLQueries, rc.Operation.Name) {
 		return ServiceUnavailable.Send(ctx, "Query is disabled by admin")
 	}

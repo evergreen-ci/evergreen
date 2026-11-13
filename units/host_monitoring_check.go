@@ -67,7 +67,7 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "getting admin settings"))
+		j.AddError(fmt.Errorf("Error getting Evergreen admin settings: '%s'", err.Error()))
 		return
 	}
 	if flags.MonitorDisabled {

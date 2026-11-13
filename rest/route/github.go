@@ -1732,7 +1732,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		if gh.settings == nil {
 			gh.settings, err = evergreen.GetConfig(ctx)
 			if err != nil {
-				return nil, errors.Wrap(err, "getting admin settings")
+				return nil, fmt.Errorf("Error getting Evergreen admin settings: '%s'", err.Error())
 			}
 		}
 		projectInfo, err = gh.sc.GetProjectFromFile(ctx, pRef, remotePath, gh.settings)

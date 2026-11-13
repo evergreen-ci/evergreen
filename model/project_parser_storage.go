@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -42,7 +43,7 @@ func GetParserProjectStorage(ctx context.Context, settings *evergreen.Settings, 
 	case evergreen.ProjectStorageMethodS3:
 		settingsFromDB, err := evergreen.GetConfig(ctx)
 		if err != nil {
-			return nil, errors.Wrap(err, "getting admin settings")
+			return nil, fmt.Errorf("Error getting Evergreen admin settings: '%s'", err.Error())
 		}
 		if settingsFromDB.ServiceFlags.LargeParserProjectsDisabled {
 			return nil, errors.New("large parser projects are disabled")

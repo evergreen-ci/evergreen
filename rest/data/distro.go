@@ -155,7 +155,7 @@ func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string, singl
 func NewDistro(ctx context.Context, d *distro.Distro, u *user.DBUser) error {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return errors.Wrap(err, "getting admin settings")
+		return fmt.Errorf("Error getting Evergreen admin settings: '%s'", err.Error())
 	}
 
 	ec2instancereferenceprice.ApplyReferenceCostDataOrWarn(ctx, d)
