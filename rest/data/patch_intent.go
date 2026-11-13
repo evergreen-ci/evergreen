@@ -73,6 +73,13 @@ func AddGithubMergeIntent(ctx context.Context, intent patch.Intent, projectID st
 			"message":   "GitHub merge group not queued for processing",
 			"intent_id": intent.ID(),
 		}))
+		// Remove the intent so it doesn't stay unprocessed forever and block
+		// merge queue patch recovery for this merge group.
+		grip.Error(ctx, message.WrapError(patch.RemoveIntent(ctx, intent.ID()), message.Fields{
+			"source":    "GitHub hook",
+			"message":   "could not remove unqueued GitHub merge group intent",
+			"intent_id": intent.ID(),
+		}))
 
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

@@ -1,10 +1,15 @@
 package units
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/google/go-github/v70/github"
+	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/pool"
+	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -65,5 +70,56 @@ func TestMergeGroupStagedAt(t *testing.T) {
 	t.Run("NilCommitReturnsZero", func(t *testing.T) {
 		assert.True(t, mergeGroupStagedAt(nil).IsZero())
 		assert.True(t, mergeGroupStagedAt(&github.RepositoryCommit{}).IsZero())
+	})
+}
+
+func TestIsMergeIntentInFlight(t *testing.T) {
+	now := time.Now()
+	oldIntent := patch.UnprocessedMergeIntent{
+		ID:        "intent",
+		HeadSHA:   "sha",
+		CreatedAt: now.Add(-2 * pendingIntentMaxAge),
+	}
+
+	makeQueue := func(t *testing.T) amboy.Queue {
+		q := queue.NewLocalLimitedSize(1, 10)
+		// Use a no-op runner so queued jobs stay pending.
+		runner := pool.NewNoop()
+		require.NoError(t, runner.SetQueue(q))
+		require.NoError(t, q.SetRunner(runner))
+		ctx, cancel := context.WithCancel(t.Context())
+		t.Cleanup(cancel)
+		require.NoError(t, q.Start(ctx))
+		return q
+	}
+	makeProcessor := func(intentID string) *patchIntentProcessor {
+		j := makePatchIntentProcessor()
+		j.SetID(patchIntentProcessorJobID(patch.GithubMergeIntentType, intentID))
+		return j
+	}
+
+	t.Run("RecentIntentWithNoJobIsInFlight", func(t *testing.T) {
+		intent := patch.UnprocessedMergeIntent{ID: "intent", HeadSHA: "sha", CreatedAt: now.Add(-time.Minute)}
+		assert.True(t, isMergeIntentInFlight(t.Context(), makeQueue(t), intent, now))
+	})
+	t.Run("OldIntentWithQueuedJobIsInFlight", func(t *testing.T) {
+		q := makeQueue(t)
+		require.NoError(t, q.Put(t.Context(), makeProcessor(oldIntent.ID)))
+		assert.True(t, isMergeIntentInFlight(t.Context(), q, oldIntent, now))
+	})
+	t.Run("OldIntentWithNoJobIsStale", func(t *testing.T) {
+		assert.False(t, isMergeIntentInFlight(t.Context(), makeQueue(t), oldIntent, now))
+	})
+	t.Run("OldIntentWithCompletedJobIsStale", func(t *testing.T) {
+		q := makeQueue(t)
+		j := makeProcessor(oldIntent.ID)
+		require.NoError(t, q.Put(t.Context(), j))
+		j.MarkComplete()
+		assert.False(t, isMergeIntentInFlight(t.Context(), q, oldIntent, now))
+	})
+	t.Run("OldIntentWithJobForDifferentIntentIsStale", func(t *testing.T) {
+		q := makeQueue(t)
+		require.NoError(t, q.Put(t.Context(), makeProcessor("other_intent")))
+		assert.False(t, isMergeIntentInFlight(t.Context(), q, oldIntent, now))
 	})
 }

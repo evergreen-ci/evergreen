@@ -80,7 +80,7 @@ func NewPatchIntentProcessor(env evergreen.Environment, patchID mgobson.ObjectId
 	j.intent = intent
 	j.env = env
 
-	j.SetID(fmt.Sprintf("%s-%s-%s", patchIntentJobName, j.IntentType, j.IntentID))
+	j.SetID(patchIntentProcessorJobID(j.IntentType, j.IntentID))
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
 		MaxTime: maxPatchIntentJobTime,
 	})
@@ -92,6 +92,10 @@ func NewGitHubPatchIntentProcessor(env evergreen.Environment, patchID mgobson.Ob
 	j := NewPatchIntentProcessor(env, patchID, intent).(*patchIntentProcessor)
 	j.ProjectID = projectID
 	return j
+}
+
+func patchIntentProcessorJobID(intentType, intentID string) string {
+	return fmt.Sprintf("%s-%s-%s", patchIntentJobName, intentType, intentID)
 }
 
 func makePatchIntentProcessor() *patchIntentProcessor {
