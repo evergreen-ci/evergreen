@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -752,5 +753,34 @@ func TestGetDiffTip(t *testing.T) {
 
 	t.Run("CommitRangeReturnsEndOfRange", func(t *testing.T) {
 		assert.Equal(t, "def456", getDiffTip("", "abc123..def456"))
+	})
+}
+
+func TestCheckBaseCommitExists(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake gh script requires a Unix shell")
+	}
+	fakeGH := func(t *testing.T, output string, exitCode int) {
+		dir := t.TempDir()
+		script := fmt.Sprintf("#!/bin/sh\necho '%s'\nexit %d\n", output, exitCode)
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "gh"), []byte(script), 0755))
+		t.Setenv("PATH", dir)
+	}
+
+	t.Run("CommitNotFoundShouldError", func(t *testing.T) {
+		fakeGH(t, "gh: No commit found for SHA: abc (HTTP 422)", 1)
+		assert.Error(t, checkBaseCommitExists(t.Context(), "owner", "repo", "abc"))
+	})
+	t.Run("OtherGitHubErrorShouldBeIgnored", func(t *testing.T) {
+		fakeGH(t, "gh: Not Found (HTTP 404)", 1)
+		assert.NoError(t, checkBaseCommitExists(t.Context(), "owner", "repo", "abc"))
+	})
+	t.Run("ExistingCommitShouldSucceed", func(t *testing.T) {
+		fakeGH(t, "abc", 0)
+		assert.NoError(t, checkBaseCommitExists(t.Context(), "owner", "repo", "abc"))
+	})
+	t.Run("MissingGHShouldBeIgnored", func(t *testing.T) {
+		t.Setenv("PATH", t.TempDir())
+		assert.NoError(t, checkBaseCommitExists(t.Context(), "owner", "repo", "abc"))
 	})
 }

@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -989,6 +990,33 @@ func gitCmdWithDir(cmdName, dir string, gitArgs ...string) (string, error) {
 	args = append(args, gitArgs...)
 
 	return gitExecCmd(args)
+}
+
+const ghBaseCommitCheckTimeout = 3 * time.Second
+
+// checkBaseCommitExists uses the GitHub CLI, if it's installed, to check that
+// the base commit exists in the project's repo so that a bad base fails before
+// the patch is created. This is best effort: it only returns an error if GitHub
+// says the commit doesn't exist and ignores any other failure.
+func checkBaseCommitExists(ctx context.Context, owner, repo, base string) error {
+	if owner == "" || repo == "" || base == "" {
+		return nil
+	}
+	ghPath, err := exec.LookPath("gh")
+	if err != nil {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, ghBaseCommitCheckTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, ghPath, "api", "--hostname", "github.com", fmt.Sprintf("repos/%s/%s/commits/%s", owner, repo, base), "--jq", ".sha")
+	cmd.Env = append(os.Environ(), "GH_PROMPT_DISABLED=1")
+	out, err := cmd.CombinedOutput()
+	if err != nil && strings.Contains(string(out), "No commit found for SHA") && strings.Contains(string(out), "HTTP 422") {
+		return errors.Errorf("base '%s' does not exist in repo '%s/%s'", base, owner, repo)
+	}
+	return nil
 }
 
 // gitExecCmd assumes that the command name has already been added to args, and executes the command.
