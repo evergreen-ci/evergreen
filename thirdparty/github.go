@@ -633,6 +633,12 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref string, ghAppAuth
 			defer resp.Body.Close()
 			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 			if resp.StatusCode == http.StatusNotFound {
+				// GitHub also returns a 404 when the ref doesn't exist, which
+				// is distinguishable only by the error message.
+				var errResp *github.ErrorResponse
+				if errors.As(err, &errResp) && strings.HasPrefix(errResp.Message, "No commit found for the ref") {
+					return RevisionNotFoundError{owner: owner, repo: repo, revision: ref}
+				}
 				return FileNotFoundError{filepath: path}
 			}
 			if err != nil {

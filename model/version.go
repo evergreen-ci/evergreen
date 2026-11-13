@@ -1209,11 +1209,16 @@ func resolveModuleRevision(ctx context.Context, owner, repo string, module Modul
 	ctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
-	// Versions aligned by ingest time use the latest module commit Evergreen
-	// had ingested by then. Otherwise, use the current branch head, resolved
-	// with git so it doesn't depend on the GitHub API being available.
 	var until time.Time
-	if !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester {
+	if evergreen.IsPatchRequester(requester) || requester == evergreen.AdHocRequester {
+		// Patches use the current branch head, resolved with git so it doesn't
+		// depend on the GitHub API being available.
+		if sha, err := thirdparty.GitLsRemote(ctx, owner, repo, moduleBranchRef(module.Branch)); err == nil {
+			return sha, manifest.ModuleSelectionGitHubFallback, nil
+		}
+	} else {
+		// Versions aligned by ingest time use the latest module commit
+		// Evergreen had ingested by then.
 		repoRevision, err := FindLatestRepositoryRevisionByIngestTime(ctx, owner, repo, module.Branch, ingestTime)
 		if err != nil {
 			return "", "", errors.Wrapf(err, "finding latest repository revision by ingest time for module '%s' in '%s/%s'", module.Name, owner, repo)
@@ -1222,8 +1227,6 @@ func resolveModuleRevision(ctx context.Context, owner, repo string, module Modul
 			return repoRevision.Revision, manifest.ModuleSelectionLatestIngested, nil
 		}
 		until = ingestTime
-	} else if sha, err := thirdparty.GitLsRemote(ctx, owner, repo, moduleBranchRef(module.Branch)); err == nil {
-		return sha, manifest.ModuleSelectionGitHubFallback, nil
 	}
 
 	githubCommits, _, err := thirdparty.GetGithubCommits(ctx, owner, repo, &github.CommitsListOptions{
