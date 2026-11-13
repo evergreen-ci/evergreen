@@ -387,6 +387,12 @@ func truncateString(s string, capacity int) (string, string) {
 	return head, tail
 }
 
+// isGitHubStatusSubscriber returns whether the subscriber type sends commit
+// statuses to a GitHub PR or merge group.
+func isGitHubStatusSubscriber(subscriberType string) bool {
+	return subscriberType == event.GithubPullRequestSubscriberType || subscriberType == event.GithubMergeSubscriberType
+}
+
 func makeCommonPayload(sub *event.Subscription, eventAttributes event.Attributes,
 	data *commonTemplateData) (any, error) {
 	var err error
