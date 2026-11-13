@@ -1851,70 +1851,131 @@ func isRepoAllowedForTask(ctx context.Context, env evergreen.Environment, t *tas
 	if projectRef == nil {
 		return false, errors.Errorf("project ref '%s' doesn't exist", t.Project)
 	}
-
 	if strings.EqualFold(projectRef.Owner, owner) && strings.EqualFold(projectRef.Repo, repo) {
 		return true, nil
 	}
 
-	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
+	allowedRepos, err := allowedReposForTask(ctx, env, t, projectRef, owner)
 	if err != nil {
-		return false, errors.Wrap(err, "finding version for task")
+		return false, err
 	}
-	if v == nil {
-		return false, errors.Errorf("version '%s' not found", t.Version)
+	repo = model.GitHubAppTokenRepo(repo)
+	for _, allowedRepo := range allowedRepos {
+		if strings.EqualFold(allowedRepo, repo) {
+			return true, nil
+		}
 	}
-	if strings.EqualFold(v.Owner, owner) && strings.EqualFold(v.Repo, repo) {
-		return true, nil
+	return false, nil
+}
+
+// Returns the repos under owner that the task may use.
+func allowedReposForTask(ctx context.Context, env evergreen.Environment, t *task.Task, projectRef *model.ProjectRef, owner string) ([]string, error) {
+	repos, v, err := baseReposForTask(ctx, t, projectRef, owner)
+	if err != nil {
+		return nil, err
 	}
 
 	mfest, err := manifest.FindFromVersion(ctx, t.Version, t.Project, "", t.Requester)
 	if err != nil {
-		return false, errors.Wrap(err, "finding manifest for task")
+		return nil, errors.Wrap(err, "finding manifest for task")
 	}
 	if mfest != nil {
 		for _, m := range mfest.Modules {
-			if matchesModule(m.Owner, m.Repo, owner, repo) {
-				return true, nil
-			}
+			addRepo(repos, owner, m.Owner, m.Repo)
 		}
-		return false, nil
-	}
-
-	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
-	if err != nil {
-		return false, errors.Wrap(err, "loading project for version")
-	}
-	if project == nil {
-		return false, errors.Errorf("project for version '%s' not found", t.Version)
-	}
-
-	for _, m := range project.Modules {
-		moduleOwner, moduleRepo, err := m.GetOwnerAndRepo()
+	} else {
+		project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
 		if err != nil {
-			continue
+			return nil, errors.Wrap(err, "loading project for version")
 		}
-		if matchesModule(moduleOwner, moduleRepo, owner, repo) {
-			return true, nil
+		if project == nil {
+			return nil, errors.Errorf("project for version '%s' not found", t.Version)
+		}
+		for _, m := range project.Modules {
+			moduleOwner, moduleRepo, err := m.GetOwnerAndRepo()
+			if err != nil {
+				continue
+			}
+			addRepo(repos, owner, moduleOwner, moduleRepo)
 		}
 	}
 
-	return false, nil
+	return sortedRepos(repos), nil
 }
 
-// matchesModule checks whether the requested owner/repo matches a module's
-// owner/repo.
-func matchesModule(moduleOwner, moduleRepo, owner, repo string) bool {
-	if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(moduleRepo, repo) {
-		return true
+// Returns the repos under owner that the task may create a token for.
+// Patch authors can declare modules in their own config, so this only trusts committed modules.
+func allowedWriteReposForTask(ctx context.Context, env evergreen.Environment, t *task.Task, projectRef *model.ProjectRef, owner string) ([]string, error) {
+	// Merge queue patches come from a reviewed PR, so their config is trusted.
+	if !evergreen.IsPatchRequester(t.Requester) || evergreen.IsGithubMergeQueueRequester(t.Requester) {
+		return allowedReposForTask(ctx, env, t, projectRef, owner)
 	}
-	if model.IsWikiRepo(moduleRepo) {
-		// The agent strips ".wiki" from repo names before requesting
-		// tokens, so this also matches the parent repo name for wiki modules.
-		if strings.EqualFold(moduleOwner, owner) && strings.EqualFold(model.GitHubAppTokenRepo(moduleRepo), repo) {
-			return true
+
+	repos, _, err := baseReposForTask(ctx, t, projectRef, owner)
+	if err != nil {
+		return nil, err
+	}
+	modules, err := model.CommittedModuleRepos(ctx, t.Project)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding modules in the committed config for project '%s'", t.Project)
+	}
+	for _, m := range modules {
+		addRepo(repos, owner, m.Owner, m.Repo)
+	}
+	return sortedRepos(repos), nil
+}
+
+// Returns the repos under owner from the task's project and version.
+func baseReposForTask(ctx context.Context, t *task.Task, projectRef *model.ProjectRef, owner string) (map[string]struct{}, *model.Version, error) {
+	repos := map[string]struct{}{}
+	addRepo(repos, owner, projectRef.Owner, projectRef.Repo)
+
+	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "finding version for task")
+	}
+	if v == nil {
+		return nil, nil, errors.Errorf("version '%s' not found", t.Version)
+	}
+	addRepo(repos, owner, v.Owner, v.Repo)
+	return repos, v, nil
+}
+
+func addRepo(repos map[string]struct{}, owner, repoOwner, repo string) {
+	if repo != "" && strings.EqualFold(repoOwner, owner) {
+		repos[model.GitHubAppTokenRepo(repo)] = struct{}{}
+	}
+}
+
+func sortedRepos(repos map[string]struct{}) []string {
+	allowed := make([]string, 0, len(repos))
+	for repo := range repos {
+		allowed = append(allowed, repo)
+	}
+	slices.Sort(allowed)
+	return allowed
+}
+
+// Can be overridden in tests to mock the GitHub API.
+var isGitHubAppInstalledOnRepo = (*githubapp.GithubAppAuth).IsGithubAppInstalledOnRepo
+
+// Returns the repos that the GitHub app's installation can access.
+// GitHub rejects the whole token request if it includes a repo the installation can't access.
+func filterReposForInstallation(ctx context.Context, appAuth *githubapp.GithubAppAuth, owner string, repos []string) ([]string, error) {
+	accessible := make([]string, 0, len(repos))
+	for _, repo := range repos {
+		installed, err := isGitHubAppInstalledOnRepo(appAuth, ctx, owner, repo)
+		if err != nil {
+			if errors.Is(err, githubapp.ErrGitHubAppNotInstalled) {
+				continue
+			}
+			return nil, errors.Wrapf(err, "checking if GitHub app is installed on '%s/%s'", owner, repo)
+		}
+		if installed {
+			accessible = append(accessible, repo)
 		}
 	}
-	return false
+	return accessible, nil
 }
 
 // POST /task/{task_id}/check_run
@@ -2132,6 +2193,29 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 			Message:    fmt.Sprintf("project ref '%s' not found", t.Project),
 		})
 	}
+
+	// Limit the token to repos the task is allowed to use.
+	// This prevents a task from minting a token for another repo the project's
+	// GitHub app can see.
+	repos, err := allowedWriteReposForTask(ctx, h.env, t, p, h.owner)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	if len(repos) == 0 {
+		grip.Warning(ctx, message.Fields{
+			"message":   "GitHub dynamic access token requested for an owner the task can't use",
+			"task_id":   t.Id,
+			"execution": t.Execution,
+			"project":   t.Project,
+			"owner":     h.owner,
+			"requester": t.Requester,
+		})
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("task isn't allowed to create a GitHub token for owner '%s'", h.owner),
+		})
+	}
+
 	requester := t.Requester
 	user := gimlet.GetUser(ctx)
 	isUserRequest := user != nil
@@ -2179,11 +2263,33 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		})
 	}
 
+	// GitHub rejects the whole token request if it includes a repo the app's
+	// installation can't access.
+	repos, err = filterReposForInstallation(ctx, githubAppAuth, h.owner, repos)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	if len(repos) == 0 {
+		grip.Warning(ctx, message.Fields{
+			"message":   "GitHub dynamic access token requested for an owner with no repos the app can access",
+			"task_id":   t.Id,
+			"execution": t.Execution,
+			"project":   t.Project,
+			"owner":     h.owner,
+			"requester": t.Requester,
+		})
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("task isn't allowed to create a GitHub token for owner '%s'", h.owner),
+		})
+	}
+
 	// This cannot use a cached token because if the token was shared, it
 	// wouldn't be possible to revoke them without revoking tokens that other
 	// tasks could be using.
 	token, permissions, err := githubAppAuth.CreateInstallationToken(ctx, h.owner, "", &github.InstallationTokenOptions{
-		Permissions: permissions,
+		Repositories: repos,
+		Permissions:  permissions,
 	})
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
