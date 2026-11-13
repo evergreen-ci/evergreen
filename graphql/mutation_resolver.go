@@ -1612,6 +1612,30 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, ve
 	return scheduledTasks, nil
 }
 
+// ScheduleVersionTasks is the resolver for the scheduleVersionTasks field.
+func (r *mutationResolver) ScheduleVersionTasks(ctx context.Context, versionID string, selection TaskSelection) (*BulkTaskOperationResult, error) {
+	selectedTasks, taskErrors, err := resolveTaskSelection(ctx, versionID, selection)
+	if err != nil {
+		return nil, err
+	}
+	taskIDsToSchedule, unschedulableErrors := getSchedulableTaskIDs(selectedTasks)
+	taskErrors = append(taskErrors, unschedulableErrors...)
+	result := &BulkTaskOperationResult{
+		ModifiedTasks: []*restModel.APITask{},
+		TaskErrors:    taskErrors,
+	}
+	if len(taskIDsToSchedule) == 0 {
+		return result, nil
+	}
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+	scheduled, err := setManyTasksScheduled(ctx, logURL, true, taskIDsToSchedule...)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("scheduling tasks: %s", err.Error()))
+	}
+	result.ModifiedTasks = scheduled
+	return result, nil
+}
+
 // SetVersionPriority is the resolver for the setVersionPriority field.
 func (r *mutationResolver) SetVersionPriority(ctx context.Context, versionID string, priority int) (*string, error) {
 	modifications := model.VersionModification{

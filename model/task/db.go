@@ -1588,6 +1588,13 @@ func Find(ctx context.Context, filter bson.M) ([]Task, error) {
 	return tasks, err
 }
 
+func FindAllByIdsAndVersion(ctx context.Context, ids []string, versionID string, fields ...string) ([]Task, error) {
+	return FindAll(ctx, db.Query(bson.M{
+		IdKey:      bson.M{"$in": ids},
+		VersionKey: versionID,
+	}).WithFields(fields...))
+}
+
 func FindWithFields(ctx context.Context, filter bson.M, fields ...string) ([]Task, error) {
 	tasks := []Task{}
 	_, exists := filter[DisplayOnlyKey]

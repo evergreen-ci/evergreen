@@ -128,6 +128,7 @@ type Mutation {
   refreshGitHubStatuses(opts: RefreshGitHubStatusesInput!): RefreshGitHubStatusesPayload # Has directive on RefreshGitHubStatusesInput.
   restartVersions(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
   scheduleUndispatchedBaseTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): [Task!]
+  scheduleVersionTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), selection: TaskSelection!): BulkTaskOperationResult!
   setVersionPriority(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): String
   unscheduleVersionTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!): String
 }
