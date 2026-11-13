@@ -1210,6 +1210,18 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 			}
 		}
 
+		if revision == "" && !useHistory {
+			// Resolving the branch head with git avoids depending on the
+			// GitHub API being available. If that doesn't work, fall back to
+			// the GitHub API below.
+			sha, err := thirdparty.GitLsRemote(ghCtx, owner, repo, module.Branch)
+			if err == nil {
+				revision = sha
+				url = thirdparty.GitHubCommitURL(owner, repo, sha)
+				rule = manifest.ModuleSelectionGitHubFallback
+			}
+		}
+
 		if revision == "" {
 			opts := &github.CommitsListOptions{
 				SHA: module.Branch,
@@ -1242,10 +1254,21 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 		}, nil
 	}
 
+	sha := module.Ref
+	if thirdparty.IsFullCommitSHA(sha) {
+		return &manifest.Module{
+			Branch:        module.Branch,
+			Revision:      sha,
+			Repo:          repo,
+			Owner:         owner,
+			URL:           thirdparty.GitHubCommitURL(owner, repo, sha),
+			SelectionRule: manifest.ModuleSelectionPinnedRef,
+		}, nil
+	}
+
 	ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
-	sha := module.Ref
 	gitCommit, err := thirdparty.GetCommitEvent(ghCtx, owner, repo, module.Ref)
 	if err != nil {
 		return nil, errors.Wrapf(err, "retrieving getting git commit for module '%s' with hash '%s'", module.Name, module.Ref)

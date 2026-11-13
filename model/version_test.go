@@ -1094,6 +1094,17 @@ func TestGetManifestModuleWiki(t *testing.T) {
 	assert.Empty(t, m.URL)
 }
 
+func TestGetManifestModulePinnedFullSHAShouldNotNeedGitHub(t *testing.T) {
+	const sha = "cf46076567e4949f9fc68e0634139d4ac495c89b"
+	mod := Module{Name: "m", Owner: "nonexistent-owner", Repo: "nonexistent-repo", Branch: "main", Ref: sha}
+	m, err := getManifestModule(t.Context(), &ProjectRef{}, mod, evergreen.PatchVersionRequester, time.Time{})
+	require.NoError(t, err)
+	require.NotNil(t, m)
+	assert.Equal(t, sha, m.Revision)
+	assert.Equal(t, "https://api.github.com/repos/nonexistent-owner/nonexistent-repo/commits/"+sha, m.URL)
+	assert.Equal(t, manifest.ModuleSelectionPinnedRef, m.SelectionRule)
+}
+
 func TestConstructManifestRecordsSelectionRulesAndChangedModules(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(VersionCollection, ProjectRefCollection, ProjectVarsCollection, RepositoryRevisionsHistoryCollection, manifest.Collection, patch.Collection))
