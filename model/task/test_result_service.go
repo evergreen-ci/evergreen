@@ -91,22 +91,7 @@ func (s *testResultService) Get(ctx context.Context, tasks []Task, getOpts GetTa
 		{Key: bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoTaskIDKey), Value: 1},
 		{Key: bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoExecutionKey), Value: 1},
 	})
-	if len(getOpts.Fields) > 0 {
-		projection := bson.M{}
-		for _, field := range getOpts.Fields {
-			projection[field] = 1
-		}
-		if getOpts.QuarantinedTestsLimit != nil {
-			if *getOpts.QuarantinedTestsLimit == 0 {
-				delete(projection, testresult.QuarantinedTestsKey)
-			} else if *getOpts.QuarantinedTestsLimit > 0 {
-				projection[testresult.QuarantinedTestsKey] = bson.M{"$slice": *getOpts.QuarantinedTestsLimit}
-			}
-		}
-		opts.SetProjection(projection)
-	} else {
-		opts.SetProjection(defaultTestResultsProjection(getOpts))
-	}
+	opts.SetProjection(testResultsProjection(getOpts))
 
 	var allDBTaskResults []testresult.DbTaskTestResults
 	cur, err := s.env.CedarDB().Collection(testresult.Collection).Find(ctx, filter, opts)

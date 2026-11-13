@@ -309,9 +309,9 @@ func GetQuarantinedTestSamples(ctx context.Context, env evergreen.Environment, t
 	return samples, nil
 }
 
-// GetTestSelectionCheckedTests returns the test results info and the tests
-// that test selection checked for each task run specified.
-func GetTestSelectionCheckedTests(ctx context.Context, env evergreen.Environment, tasks []Task) ([]testresult.TaskTestResults, error) {
+// GetTestSelectionCheckedTests returns the test results info and which of the
+// given tests test selection checked for each task run specified.
+func GetTestSelectionCheckedTests(ctx context.Context, env evergreen.Environment, tasks []Task, testNames []string) ([]testresult.TaskTestResults, error) {
 	if len(tasks) == 0 {
 		return nil, nil
 	}
@@ -328,6 +328,7 @@ func GetTestSelectionCheckedTests(ctx context.Context, env evergreen.Environment
 			testresult.TestResultsInfoKey,
 			testresult.TestSelectionCheckedTestsKey,
 		},
+		CheckedTestsFilter: testNames,
 	})
 	return allTaskResults, errors.Wrap(err, "getting test results")
 }

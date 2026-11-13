@@ -91,22 +91,7 @@ func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, getO
 	filter := bson.M{testresult.IdKey: bson.M{"$in": ids}}
 	opts := options.Find()
 	opts.SetSort(bson.D{{Name: TestResultTaskIDKey, Value: 1}, {Name: TestResultExecutionKey, Value: 1}})
-	if len(getOpts.Fields) > 0 {
-		projection := bson.M{}
-		for _, field := range getOpts.Fields {
-			projection[field] = 1
-		}
-		if getOpts.QuarantinedTestsLimit != nil {
-			if *getOpts.QuarantinedTestsLimit == 0 {
-				delete(projection, testresult.QuarantinedTestsKey)
-			} else if *getOpts.QuarantinedTestsLimit > 0 {
-				projection[testresult.QuarantinedTestsKey] = bson.M{"$slice": *getOpts.QuarantinedTestsLimit}
-			}
-		}
-		opts.SetProjection(projection)
-	} else {
-		opts.SetProjection(defaultTestResultsProjection(getOpts))
-	}
+	opts.SetProjection(testResultsProjection(getOpts))
 
 	var allDBTaskResults []localDbTaskTestResults
 	cur, err := s.env.DB().Collection(testresult.Collection).Find(ctx, filter, opts)

@@ -818,7 +818,7 @@ func TestRecordTestSelection(t *testing.T) {
 		assert.Equal(t, taskName, record.Info.TaskName)
 		assert.Equal(t, 1, record.QuarantinedTestsCount)
 		assert.Equal(t, []testresult.QuarantinedTest{{TestName: "test1"}}, record.QuarantinedTests)
-		assert.Equal(t, []string{"test0", "test1", "test2"}, record.TestSelectionCheckedTests)
+		assert.ElementsMatch(t, []string{"test0", "test1", "test2"}, record.TestSelectionCheckedTests)
 		assert.Equal(t, 1, findTask(t).NumQuarantinedTestsSkipped)
 	})
 
@@ -832,7 +832,7 @@ func TestRecordTestSelection(t *testing.T) {
 
 		assert.Zero(t, *hits, "no status call should be made when no tests were skipped")
 		record := findRecord(t)
-		assert.Equal(t, []string{"test0", "test1"}, record.TestSelectionCheckedTests)
+		assert.ElementsMatch(t, []string{"test0", "test1"}, record.TestSelectionCheckedTests)
 		assert.Empty(t, record.QuarantinedTests)
 		assert.Zero(t, findTask(t).NumQuarantinedTestsSkipped)
 	})
@@ -848,7 +848,7 @@ func TestRecordTestSelection(t *testing.T) {
 		require.NoError(t, RecordTestSelection(ctx, env, req, req.Tests))
 
 		assert.Equal(t, int64(1), countRecords(t))
-		assert.Equal(t, []string{"test0", "test1", "test2"}, findRecord(t).TestSelectionCheckedTests)
+		assert.ElementsMatch(t, []string{"test0", "test1", "test2"}, findRecord(t).TestSelectionCheckedTests)
 	})
 
 	t.Run("KnownTestsPathUsesVariantState", func(t *testing.T) {
@@ -870,7 +870,7 @@ func TestRecordTestSelection(t *testing.T) {
 		record := findRecord(t)
 		assert.Equal(t, 2, record.QuarantinedTestsCount)
 		assert.Equal(t, []testresult.QuarantinedTest{{TestName: "test1"}, {TestName: "test2"}}, record.QuarantinedTests, "quarantined tests that were still selected should not be recorded")
-		assert.Equal(t, []string{"test0", "test3", "test1", "test2"}, record.TestSelectionCheckedTests, "the known tests that were selected or skipped should be recorded as checked")
+		assert.ElementsMatch(t, []string{"test0", "test3", "test1", "test2"}, record.TestSelectionCheckedTests, "the known tests that were selected or skipped should be recorded as checked")
 		assert.Equal(t, 2, findTask(t).NumQuarantinedTestsSkipped)
 	})
 
@@ -885,7 +885,7 @@ func TestRecordTestSelection(t *testing.T) {
 		assert.Error(t, RecordTestSelection(ctx, env, baseReq, []string{"test0", "test3"}))
 
 		record := findRecord(t)
-		assert.Equal(t, []string{"test0", "test3"}, record.TestSelectionCheckedTests)
+		assert.ElementsMatch(t, []string{"test0", "test3"}, record.TestSelectionCheckedTests)
 		assert.Empty(t, record.QuarantinedTests)
 	})
 

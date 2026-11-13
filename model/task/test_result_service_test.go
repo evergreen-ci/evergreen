@@ -843,7 +843,7 @@ func TestAppendTestSelectionResults(t *testing.T) {
 		allTaskResults, err := svc.Get(ctx, []Task{tsk}, GetTaskTestResultsOptions{Fields: []string{testresult.TestSelectionCheckedTestsKey}})
 		require.NoError(t, err)
 		require.Len(t, allTaskResults, 1)
-		assert.Equal(t, checkedTests, allTaskResults[0].TestSelectionCheckedTests)
+		assert.ElementsMatch(t, checkedTests, allTaskResults[0].TestSelectionCheckedTests)
 	})
 
 	t.Run("AppendingResultMetadataPreservesTestSelectionResults", func(t *testing.T) {
@@ -858,5 +858,38 @@ func TestAppendTestSelectionResults(t *testing.T) {
 		assert.Len(t, allTaskResults[0].TestSelectionCheckedTests, 3)
 		assert.Equal(t, 2, allTaskResults[0].Stats.TotalCount)
 		assert.Equal(t, 1, allTaskResults[0].Stats.FailedCount)
+	})
+
+	t.Run("CheckedTestsFilterOnlyReturnsMatchingTests", func(t *testing.T) {
+		allTaskResults, err := svc.Get(ctx, []Task{tsk}, GetTaskTestResultsOptions{
+			Fields:             []string{testresult.TestSelectionCheckedTestsKey},
+			CheckedTestsFilter: []string{"c0", "q1", "not_checked"},
+		})
+		require.NoError(t, err)
+		require.Len(t, allTaskResults, 1)
+		assert.ElementsMatch(t, []string{"c0", "q1"}, allTaskResults[0].TestSelectionCheckedTests)
+	})
+
+	t.Run("CheckedTestsAreCappedWithoutDroppingRecordedTests", func(t *testing.T) {
+		cappedTask := Task{Id: "capped_task", Execution: 0, Status: evergreen.TaskStarted, TaskOutputInfo: &output}
+		cappedRecord := record
+		cappedRecord.Info.TaskID = cappedTask.Id
+		cappedRecord.ID = cappedRecord.Info.ID()
+
+		recordedTests := make([]string, maxTestSelectionCheckedTestsPerRecord-1)
+		for i := range recordedTests {
+			recordedTests[i] = fmt.Sprintf("recorded%d", i)
+		}
+		require.NoError(t, svc.AppendTestSelectionResults(ctx, cappedRecord, recordedTests, nil))
+		require.NoError(t, svc.AppendTestSelectionResults(ctx, cappedRecord, []string{"recorded0", "new0", "new1"}, nil))
+		require.NoError(t, svc.AppendTestSelectionResults(ctx, cappedRecord, []string{"new2"}, nil))
+
+		allTaskResults, err := svc.Get(ctx, []Task{cappedTask}, GetTaskTestResultsOptions{Fields: []string{testresult.TestSelectionCheckedTestsKey}})
+		require.NoError(t, err)
+		require.Len(t, allTaskResults, 1)
+		checkedTests := allTaskResults[0].TestSelectionCheckedTests
+		require.Len(t, checkedTests, maxTestSelectionCheckedTestsPerRecord)
+		assert.Equal(t, recordedTests, checkedTests[:len(recordedTests)])
+		assert.Contains(t, []string{"new0", "new1"}, checkedTests[len(recordedTests)])
 	})
 }

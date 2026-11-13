@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	stderrors "errors"
+	"maps"
 	"net"
 	"net/http"
 	"slices"
@@ -529,26 +530,37 @@ func DecorateQuarantineStatus(ctx context.Context, env evergreen.Environment, t 
 	if len(results) == 0 {
 		return nil
 	}
-	tasks, err := t.GetTestResultsTasks(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting test results tasks")
-	}
-	taskRuns, err := task.GetTestSelectionCheckedTests(ctx, env, tasks)
-	if err != nil {
-		return errors.Wrap(err, "getting tests checked by test selection")
-	}
+	ctx, cancel := context.WithTimeout(ctx, testSelectionDecorationTimeout)
+	defer cancel()
 
 	type taskRunKey struct {
 		taskID    string
 		execution int
 	}
 	resultIndicesByTaskRun := map[taskRunKey][]int{}
+	testNameSet := map[string]bool{}
 	for i, r := range results {
 		key := taskRunKey{taskID: r.TaskID, execution: r.Execution}
 		resultIndicesByTaskRun[key] = append(resultIndicesByTaskRun[key], i)
+		testNameSet[r.GetDisplayTestName()] = true
 	}
-	ctx, cancel := context.WithTimeout(ctx, testSelectionDecorationTimeout)
-	defer cancel()
+	allTasks, err := t.GetTestResultsTasks(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting test results tasks")
+	}
+	// Only look up the task runs and tests in the results, since the checked
+	// tests for a task run can be large.
+	var tasks []task.Task
+	for _, tsk := range allTasks {
+		if _, ok := resultIndicesByTaskRun[taskRunKey{taskID: tsk.Id, execution: tsk.Execution}]; ok {
+			tasks = append(tasks, tsk)
+		}
+	}
+	taskRuns, err := task.GetTestSelectionCheckedTests(ctx, env, tasks, slices.Collect(maps.Keys(testNameSet)))
+	if err != nil {
+		return errors.Wrap(err, "getting tests checked by test selection")
+	}
+
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, taskRun := range taskRuns {
 		checked := make(map[string]bool, len(taskRun.TestSelectionCheckedTests))
