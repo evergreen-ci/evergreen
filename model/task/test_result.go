@@ -52,13 +52,14 @@ func AppendTestResultMetadata(ctx context.Context, t *Task, env evergreen.Enviro
 	return svc.AppendTestResultMetadata(ctx, failedTestSample, failedCount, totalResults, record)
 }
 
-// AppendQuarantinedTests records tests skipped by test selection because they
-// were quarantined in TSS on the test results record for the given task run.
-// A record is created if the task has not attached any test results yet.
-// Tests already present in the snapshot are skipped. It returns the
-// number of tests newly added to the snapshot.
-func AppendQuarantinedTests(ctx context.Context, t *Task, env evergreen.Environment, quarantinedTests []testresult.QuarantinedTest) (int, error) {
-	if len(quarantinedTests) == 0 {
+// AppendTestSelectionResults records the outcome of a test selection request on
+// the test results record for the given task run: the tests that test
+// selection checked, and the tests it skipped because they were quarantined in
+// TSS. A record is created if the task has not attached any test results yet.
+// Tests already recorded are skipped. It returns the number of quarantined
+// tests newly added to the snapshot.
+func AppendTestSelectionResults(ctx context.Context, t *Task, env evergreen.Environment, checkedTests []string, quarantinedTests []testresult.QuarantinedTest) (int, error) {
+	if len(checkedTests) == 0 && len(quarantinedTests) == 0 {
 		return 0, nil
 	}
 	output, ok := t.GetTaskOutputSafe()
@@ -70,24 +71,35 @@ func AppendQuarantinedTests(ctx context.Context, t *Task, env evergreen.Environm
 		return 0, errors.Wrap(err, "getting test result service")
 	}
 
-	allTaskResults, err := svc.Get(ctx, []Task{*t}, GetTaskTestResultsOptions{Fields: []string{testresult.QuarantinedTestsKey}})
+	allTaskResults, err := svc.Get(ctx, []Task{*t}, GetTaskTestResultsOptions{Fields: []string{testresult.TestSelectionCheckedTestsKey, testresult.QuarantinedTestsKey}})
 	if err != nil {
-		return 0, errors.Wrap(err, "getting existing quarantined tests")
+		return 0, errors.Wrap(err, "getting existing test selection results")
 	}
-	recorded := map[string]bool{}
+	recordedChecked := map[string]bool{}
+	recordedQuarantined := map[string]bool{}
 	for _, taskResults := range allTaskResults {
+		for _, name := range taskResults.TestSelectionCheckedTests {
+			recordedChecked[name] = true
+		}
 		for _, quarantinedTest := range taskResults.QuarantinedTests {
-			recorded[quarantinedTest.TestName] = true
+			recordedQuarantined[quarantinedTest.TestName] = true
 		}
 	}
-	newTests := make([]testresult.QuarantinedTest, 0, len(quarantinedTests))
+	newChecked := make([]string, 0, len(checkedTests))
+	for _, name := range checkedTests {
+		if !recordedChecked[name] {
+			newChecked = append(newChecked, name)
+			recordedChecked[name] = true
+		}
+	}
+	newQuarantined := make([]testresult.QuarantinedTest, 0, len(quarantinedTests))
 	for _, quarantinedTest := range quarantinedTests {
-		if !recorded[quarantinedTest.TestName] {
-			newTests = append(newTests, quarantinedTest)
-			recorded[quarantinedTest.TestName] = true
+		if !recordedQuarantined[quarantinedTest.TestName] {
+			newQuarantined = append(newQuarantined, quarantinedTest)
+			recordedQuarantined[quarantinedTest.TestName] = true
 		}
 	}
-	if len(newTests) == 0 {
+	if len(newChecked) == 0 && len(newQuarantined) == 0 {
 		return 0, nil
 	}
 
@@ -99,10 +111,10 @@ func AppendQuarantinedTests(ctx context.Context, t *Task, env evergreen.Environm
 		ID:   info.ID(),
 		Info: info,
 	}
-	if err = svc.AppendQuarantinedTests(ctx, record, newTests); err != nil {
+	if err = svc.AppendTestSelectionResults(ctx, record, newChecked, newQuarantined); err != nil {
 		return 0, err
 	}
-	return len(newTests), nil
+	return len(newQuarantined), nil
 }
 
 // AppendVirtualTestResultMetadata records test result metadata pushed on
@@ -293,6 +305,29 @@ func GetQuarantinedTestSamples(ctx context.Context, env evergreen.Environment, t
 	}
 
 	return samples, nil
+}
+
+// GetTestSelectionCheckedTests returns the test results info and the tests
+// that test selection checked for each task run specified.
+func GetTestSelectionCheckedTests(ctx context.Context, env evergreen.Environment, tasks []Task) ([]testresult.TaskTestResults, error) {
+	if len(tasks) == 0 {
+		return nil, nil
+	}
+	output, ok := tasks[0].GetTaskOutputSafe()
+	if !ok {
+		return nil, nil
+	}
+	svc, err := getTestResultService(env, output.TestResults.Version)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting test results service")
+	}
+	allTaskResults, err := svc.Get(ctx, tasks, GetTaskTestResultsOptions{
+		Fields: []string{
+			testresult.TestResultsInfoKey,
+			testresult.TestSelectionCheckedTestsKey,
+		},
+	})
+	return allTaskResults, errors.Wrap(err, "getting test results")
 }
 
 func getFailedTestSamples(allTaskResults []testresult.TaskTestResults, regexFilters []string) ([]testresult.TaskTestResultsFailedSample, error) {

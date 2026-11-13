@@ -50,18 +50,18 @@ func (s *localTestResultsService) AppendTestResultMetadata(ctx context.Context, 
 	return errors.Wrap(err, "appending DB test results")
 }
 
-// AppendQuarantinedTests upserts the task run's test results record, appending
-// the given tests to its quarantined-tests snapshot and incrementing the
-// snapshot count by the full number of tests, even when the stored snapshot is
-// capped.
-func (s *localTestResultsService) AppendQuarantinedTests(ctx context.Context, tr testresult.DbTaskTestResults, quarantinedTests []testresult.QuarantinedTest) error {
-	update := appendQuarantinedTestsUpdate(tr.Info, quarantinedTests)
+// AppendTestSelectionResults upserts the task run's test results record,
+// appending the checked tests and the quarantined tests to it and incrementing
+// the quarantined-tests snapshot count by the full number of quarantined
+// tests, even when the stored snapshot is capped.
+func (s *localTestResultsService) AppendTestSelectionResults(ctx context.Context, tr testresult.DbTaskTestResults, checkedTests []string, quarantinedTests []testresult.QuarantinedTest) error {
+	update := appendTestSelectionResultsUpdate(tr.Info, checkedTests, quarantinedTests)
 	id := dbTaskTestResultsID{
 		TaskID:    tr.Info.TaskID,
 		Execution: tr.Info.Execution,
 	}
 	_, err := s.env.DB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: id}, update, options.Update().SetUpsert(true))
-	return errors.Wrap(err, "appending quarantined tests to DB test results")
+	return errors.Wrap(err, "appending test selection results to DB test results")
 }
 
 func (s *localTestResultsService) GetTaskTestResultsStats(ctx context.Context, taskOpts []Task) (testresult.TaskTestResultsStats, error) {
@@ -104,8 +104,8 @@ func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, getO
 			}
 		}
 		opts.SetProjection(projection)
-	} else if !getOpts.IncludeQuarantinedTests {
-		opts.SetProjection(bson.M{testresult.QuarantinedTestsKey: 0})
+	} else {
+		opts.SetProjection(defaultTestResultsProjection(getOpts))
 	}
 
 	var allDBTaskResults []localDbTaskTestResults
@@ -128,6 +128,7 @@ func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, getO
 		allTaskResults[i].Results = dbTaskResults.Results
 		allTaskResults[i].QuarantinedTestsCount = dbTaskResults.QuarantinedTestsCount
 		allTaskResults[i].QuarantinedTests = dbTaskResults.QuarantinedTests
+		allTaskResults[i].TestSelectionCheckedTests = dbTaskResults.TestSelectionCheckedTests
 	}
 
 	return allTaskResults, nil
@@ -145,8 +146,9 @@ type localDbTaskTestResults struct {
 	FailedTestsSample []string                `bson:"failed_tests_sample"`
 	Results           []testresult.TestResult `bson:"results"`
 
-	QuarantinedTestsCount int                          `bson:"quarantined_tests_count,omitempty"`
-	QuarantinedTests      []testresult.QuarantinedTest `bson:"quarantined_tests,omitempty"`
+	QuarantinedTestsCount     int                          `bson:"quarantined_tests_count,omitempty"`
+	QuarantinedTests          []testresult.QuarantinedTest `bson:"quarantined_tests,omitempty"`
+	TestSelectionCheckedTests []string                     `bson:"test_selection_checked_tests,omitempty"`
 }
 
 type dbTaskTestResultsID struct {

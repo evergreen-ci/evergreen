@@ -2037,7 +2037,7 @@ func TestAttachTestResultsHandlerRun(t *testing.T) {
 
 		svc := task.NewTestResultService(env)
 		record := testresult.DbTaskTestResults{ID: matchingInfo.ID(), Info: matchingInfo}
-		require.NoError(t, svc.AppendQuarantinedTests(ctx, record, []testresult.QuarantinedTest{{TestName: "quarantined_test"}}))
+		require.NoError(t, svc.AppendTestSelectionResults(ctx, record, []string{"quarantined_test"}, []testresult.QuarantinedTest{{TestName: "quarantined_test"}}))
 
 		createdAt := time.Now().UTC().Round(time.Millisecond)
 		h := makeHandler(apimodels.AttachTestResultsRequest{

@@ -50,13 +50,13 @@ func (s *testResultService) AppendTestResultMetadata(ctx context.Context, failed
 	return errors.Wrap(err, "appending DB test results")
 }
 
-// AppendQuarantinedTests upserts the task's test results record, appending
-// the tests to its quarantined-tests snapshot and incrementing the
-// snapshot count by the number of tests.
-func (s *testResultService) AppendQuarantinedTests(ctx context.Context, record testresult.DbTaskTestResults, quarantinedTests []testresult.QuarantinedTest) error {
-	update := appendQuarantinedTestsUpdate(record.Info, quarantinedTests)
+// AppendTestSelectionResults upserts the task's test results record, appending
+// the checked tests and the quarantined tests to it and incrementing the
+// quarantined-tests snapshot count by the number of quarantined tests.
+func (s *testResultService) AppendTestSelectionResults(ctx context.Context, record testresult.DbTaskTestResults, checkedTests []string, quarantinedTests []testresult.QuarantinedTest) error {
+	update := appendTestSelectionResultsUpdate(record.Info, checkedTests, quarantinedTests)
 	_, err := s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: record.ID}, update, options.Update().SetUpsert(true))
-	return errors.Wrap(err, "appending quarantined tests to DB test results")
+	return errors.Wrap(err, "appending test selection results to DB test results")
 }
 
 func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, tasks []Task) (testresult.TaskTestResultsStats, error) {
@@ -105,8 +105,8 @@ func (s *testResultService) Get(ctx context.Context, tasks []Task, getOpts GetTa
 			}
 		}
 		opts.SetProjection(projection)
-	} else if !getOpts.IncludeQuarantinedTests {
-		opts.SetProjection(bson.M{testresult.QuarantinedTestsKey: 0})
+	} else {
+		opts.SetProjection(defaultTestResultsProjection(getOpts))
 	}
 
 	var allDBTaskResults []testresult.DbTaskTestResults
@@ -160,6 +160,7 @@ func (s *testResultService) Get(ctx context.Context, tasks []Task, getOpts GetTa
 		allTaskResults[i].Results = dbTaskResults.Results
 		allTaskResults[i].QuarantinedTestsCount = dbTaskResults.QuarantinedTestsCount
 		allTaskResults[i].QuarantinedTests = dbTaskResults.QuarantinedTests
+		allTaskResults[i].TestSelectionCheckedTests = dbTaskResults.TestSelectionCheckedTests
 	}
 
 	return allTaskResults, nil

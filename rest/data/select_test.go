@@ -541,23 +541,39 @@ func TestGetVariantQuarantineStatus(t *testing.T) {
 }
 
 func TestDecorateQuarantineStatus(t *testing.T) {
-	setTSSURL := func(t *testing.T, url string) {
-		original := evergreen.GetEnvironment().Settings().TestSelection.URL
-		evergreen.GetEnvironment().Settings().TestSelection.URL = url
-		t.Cleanup(func() {
-			evergreen.GetEnvironment().Settings().TestSelection.URL = original
-		})
+	ctx := t.Context()
+	env := testutil.NewEnvironment(ctx, t)
+	taskOutput := task.TaskOutput{
+		TestResults: task.TestResultOutput{Version: task.TestResultServiceEvergreen},
 	}
 
+	setup := func(t *testing.T, tasks ...task.Task) {
+		require.NoError(t, db.ClearCollections(task.Collection))
+		require.NoError(t, task.ClearTestResults(ctx, env))
+		t.Cleanup(func() {
+			assert.NoError(t, db.ClearCollections(task.Collection))
+			assert.NoError(t, task.ClearTestResults(context.Background(), env))
+		})
+		for _, tsk := range tasks {
+			require.NoError(t, tsk.Insert(ctx))
+		}
+	}
+	recordCheckedTests := func(t *testing.T, info testresult.TestResultsInfo, checkedTests ...string) {
+		record := testresult.DbTaskTestResults{ID: info.ID(), Info: info}
+		require.NoError(t, task.NewTestResultService(env).AppendTestSelectionResults(ctx, record, checkedTests, nil))
+	}
 	// statusServer returns a TSS server that resolves quarantine state from a
-	// per-task-name map.
-	statusServer := func(t *testing.T, statesByTaskName map[string]map[string]string) *httptest.Server {
+	// per-task-name map and records the tests it was asked about.
+	statusServer := func(t *testing.T, statesByTaskName map[string]map[string]string) *[]string {
+		var requested []string
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			var request struct {
-				TaskName string `json:"task_name"`
+				TaskName  string   `json:"task_name"`
+				TestNames []string `json:"test_names"`
 			}
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&request))
+			requested = append(requested, request.TestNames...)
 			body := map[string]map[string]any{}
 			for testName, state := range statesByTaskName[request.TaskName] {
 				body[testName] = map[string]any{"state": state}
@@ -565,207 +581,116 @@ func TestDecorateQuarantineStatus(t *testing.T) {
 			require.NoError(t, json.NewEncoder(w).Encode(body))
 		}))
 		t.Cleanup(srv.Close)
-		return srv
+		setTSSURLForTest(t, srv.URL)
+		return &requested
 	}
 
-	t.Run("NoOpWhenTestSelectionDisabled", func(t *testing.T) {
-		parent := &task.Task{
-			Id:                   "exec_task",
-			Project:              "p",
-			BuildVariant:         "bv",
-			DisplayName:          "exec_task",
-			TestSelectionEnabled: false,
-		}
-		results := []testresult.TestResult{{TaskID: "exec_task", TestName: "TestFoo"}}
-		require.NoError(t, DecorateQuarantineStatus(t.Context(), parent, results))
-		assert.False(t, results[0].IsManuallyQuarantined)
-	})
+	execTask := task.Task{
+		Id:             "exec_task",
+		Project:        "p",
+		BuildVariant:   "bv",
+		DisplayName:    "exec_task",
+		HasTestResults: true,
+		TaskOutputInfo: &taskOutput,
+	}
+	execTaskInfo := testresult.TestResultsInfo{
+		Project:  "p",
+		Variant:  "bv",
+		TaskID:   "exec_task",
+		TaskName: "exec_task",
+	}
 
 	t.Run("NoOpWhenResultsEmpty", func(t *testing.T) {
-		parent := &task.Task{
-			Id:                   "exec_task",
-			TestSelectionEnabled: true,
-		}
-		require.NoError(t, DecorateQuarantineStatus(t.Context(), parent, nil))
+		setup(t)
+		require.NoError(t, DecorateQuarantineStatus(ctx, env, &execTask, nil))
 	})
 
-	t.Run("ExecutionTaskUsesParentTaskFields", func(t *testing.T) {
-		srv := statusServer(t, map[string]map[string]string{
+	t.Run("OnlyTestsCheckedByTestSelectionCanBeQuarantined", func(t *testing.T) {
+		setup(t, execTask)
+		recordCheckedTests(t, execTaskInfo, "TestFoo", "TestBar")
+		requested := statusServer(t, map[string]map[string]string{
 			"exec_task": {"TestFoo": "manually_quarantined", "TestBar": "stable"},
 		})
-		setTSSURL(t, srv.URL)
 
-		parent := &task.Task{
-			Id:                   "exec_task",
-			Project:              "p",
-			BuildVariant:         "bv",
-			DisplayName:          "exec_task",
-			TestSelectionEnabled: true,
-		}
 		results := []testresult.TestResult{
 			{TaskID: "exec_task", TestName: "TestFoo"},
 			{TaskID: "exec_task", TestName: "TestBar"},
+			{TaskID: "exec_task", TestName: "job0_fixture_setup_0"},
 		}
-		require.NoError(t, DecorateQuarantineStatus(t.Context(), parent, results))
+		tsk := execTask
+		require.NoError(t, DecorateQuarantineStatus(ctx, env, &tsk, results))
+		assert.True(t, results[0].CanQuarantine)
 		assert.True(t, results[0].IsManuallyQuarantined)
+		assert.True(t, results[1].CanQuarantine)
 		assert.False(t, results[1].IsManuallyQuarantined)
+		assert.False(t, results[2].CanQuarantine)
+		assert.False(t, results[2].IsManuallyQuarantined)
+		assert.ElementsMatch(t, []string{"TestFoo", "TestBar"}, *requested, "TSS should only be asked about checked tests")
 	})
 
-	t.Run("ExecutionTaskTSSFailureDoesNotError", func(t *testing.T) {
+	t.Run("TaskRunWithoutCheckedTestsSkipsTSS", func(t *testing.T) {
+		setup(t, execTask)
+		requested := statusServer(t, map[string]map[string]string{
+			"exec_task": {"TestFoo": "manually_quarantined"},
+		})
+
+		results := []testresult.TestResult{{TaskID: "exec_task", TestName: "TestFoo"}}
+		tsk := execTask
+		require.NoError(t, DecorateQuarantineStatus(ctx, env, &tsk, results))
+		assert.False(t, results[0].CanQuarantine)
+		assert.False(t, results[0].IsManuallyQuarantined)
+		assert.Empty(t, *requested)
+	})
+
+	t.Run("TSSFailureStillAllowsQuarantiningCheckedTests", func(t *testing.T) {
+		setup(t, execTask)
+		recordCheckedTests(t, execTaskInfo, "TestFoo")
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "boom", http.StatusInternalServerError)
 		}))
 		t.Cleanup(srv.Close)
-		setTSSURL(t, srv.URL)
+		setTSSURLForTest(t, srv.URL)
 
-		parent := &task.Task{
-			Id:                   "exec_task",
-			Project:              "p",
-			BuildVariant:         "bv",
-			DisplayName:          "exec_task",
-			TestSelectionEnabled: true,
-		}
 		results := []testresult.TestResult{{TaskID: "exec_task", TestName: "TestFoo"}}
-		require.NoError(t, DecorateQuarantineStatus(t.Context(), parent, results))
+		tsk := execTask
+		require.NoError(t, DecorateQuarantineStatus(ctx, env, &tsk, results))
+		assert.True(t, results[0].CanQuarantine)
 		assert.False(t, results[0].IsManuallyQuarantined)
 	})
 
-	t.Run("DisplayTaskFansOutAcrossExecutionTasks", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(task.Collection))
-		require.NoError(t, (&task.Task{
-			Id:                   "exec_a",
-			Project:              "p",
-			BuildVariant:         "bv",
-			DisplayName:          "task_a",
-			TestSelectionEnabled: true,
-		}).Insert(t.Context()))
-		require.NoError(t, (&task.Task{
-			Id:                   "exec_b",
-			Project:              "p",
-			BuildVariant:         "bv",
-			DisplayName:          "task_b",
-			TestSelectionEnabled: true,
-		}).Insert(t.Context()))
-
-		srv := statusServer(t, map[string]map[string]string{
+	t.Run("DisplayTaskUsesEachExecutionTaskRun", func(t *testing.T) {
+		execA := task.Task{Id: "exec_a", DisplayName: "task_a", HasTestResults: true, TaskOutputInfo: &taskOutput}
+		execB := task.Task{Id: "exec_b", DisplayName: "task_b", HasTestResults: true, TaskOutputInfo: &taskOutput}
+		setup(t, execA, execB)
+		recordCheckedTests(t, testresult.TestResultsInfo{Project: "p", Variant: "bv", TaskID: "exec_a", TaskName: "task_a", DisplayTaskName: "display_task"}, "TestA1")
+		recordCheckedTests(t, testresult.TestResultsInfo{Project: "p", Variant: "bv", TaskID: "exec_b", TaskName: "task_b", DisplayTaskName: "display_task"}, "TestB2")
+		statusServer(t, map[string]map[string]string{
 			"task_a": {"TestA1": "manually_quarantined"},
-			"task_b": {"TestB1": "stable", "TestB2": "manually_quarantined"},
+			"task_b": {"TestB1": "manually_quarantined", "TestB2": "manually_quarantined"},
 		})
-		setTSSURL(t, srv.URL)
 
 		display := &task.Task{
-			Id:                   "display_task",
-			Project:              "p",
-			BuildVariant:         "bv",
-			DisplayName:          "display_task",
-			DisplayOnly:          true,
-			ExecutionTasks:       []string{"exec_a", "exec_b"},
-			TestSelectionEnabled: true,
+			Id:             "display_task",
+			DisplayName:    "display_task",
+			DisplayOnly:    true,
+			ExecutionTasks: []string{"exec_a", "exec_b"},
 		}
 		results := []testresult.TestResult{
 			{TaskID: "exec_a", TestName: "TestA1"},
 			{TaskID: "exec_b", TestName: "TestB1"},
 			{TaskID: "exec_b", TestName: "TestB2"},
 		}
-		require.NoError(t, DecorateQuarantineStatus(t.Context(), display, results))
-		assert.True(t, results[0].IsManuallyQuarantined, "TestA1 should be quarantined")
-		assert.False(t, results[1].IsManuallyQuarantined, "TestB1 should not be quarantined")
-		assert.True(t, results[2].IsManuallyQuarantined, "TestB2 should be quarantined")
-	})
-
-	t.Run("DisplayTaskSkipsExecutionTaskWithoutTestSelection", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(task.Collection))
-		require.NoError(t, (&task.Task{
-			Id:                   "exec_enabled",
-			Project:              "p",
-			BuildVariant:         "bv",
-			DisplayName:          "enabled",
-			TestSelectionEnabled: true,
-		}).Insert(t.Context()))
-		require.NoError(t, (&task.Task{
-			Id:                   "exec_disabled",
-			Project:              "p",
-			BuildVariant:         "bv",
-			DisplayName:          "disabled",
-			TestSelectionEnabled: false,
-		}).Insert(t.Context()))
-
-		srv := statusServer(t, map[string]map[string]string{
-			"enabled":  {"TestEnabled": "manually_quarantined"},
-			"disabled": {"TestDisabled": "manually_quarantined"},
-		})
-		setTSSURL(t, srv.URL)
-
-		display := &task.Task{
-			Id:                   "display_task",
-			DisplayOnly:          true,
-			ExecutionTasks:       []string{"exec_enabled", "exec_disabled"},
-			TestSelectionEnabled: true,
-		}
-		results := []testresult.TestResult{
-			{TaskID: "exec_enabled", TestName: "TestEnabled"},
-			{TaskID: "exec_disabled", TestName: "TestDisabled"},
-		}
-		require.NoError(t, DecorateQuarantineStatus(t.Context(), display, results))
+		require.NoError(t, DecorateQuarantineStatus(ctx, env, display, results))
+		assert.True(t, results[0].CanQuarantine)
 		assert.True(t, results[0].IsManuallyQuarantined)
-		assert.False(t, results[1].IsManuallyQuarantined, "TSS should not be queried for execution tasks without test selection enabled")
-	})
-
-	t.Run("DisplayTaskWithMissingExecutionTaskDoesNotError", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(task.Collection))
-		// No execution tasks inserted.
-
-		srv := statusServer(t, map[string]map[string]string{})
-		setTSSURL(t, srv.URL)
-
-		display := &task.Task{
-			Id:                   "display_task",
-			DisplayOnly:          true,
-			ExecutionTasks:       []string{"missing_exec"},
-			TestSelectionEnabled: true,
-		}
-		results := []testresult.TestResult{
-			{TaskID: "missing_exec", TestName: "TestOrphan"},
-		}
-		require.NoError(t, DecorateQuarantineStatus(t.Context(), display, results))
-		assert.False(t, results[0].IsManuallyQuarantined)
-	})
-
-	t.Run("DisplayTaskFansOutEvenWhenDisplayTaskTestSelectionDisabled", func(t *testing.T) {
-		// Covers the case where the display task's TestSelectionEnabled flag is
-		// stale (e.g. a new display task was created over a mix of new and
-		// pre-existing execution tasks, and only the pre-existing one had TSS
-		// enabled). The fan-out should still decorate based on each execution
-		// task's actual state.
-		require.NoError(t, db.ClearCollections(task.Collection))
-		require.NoError(t, (&task.Task{
-			Id:                   "exec_enabled",
-			Project:              "p",
-			BuildVariant:         "bv",
-			DisplayName:          "enabled",
-			TestSelectionEnabled: true,
-		}).Insert(t.Context()))
-
-		srv := statusServer(t, map[string]map[string]string{
-			"enabled": {"TestEnabled": "manually_quarantined"},
-		})
-		setTSSURL(t, srv.URL)
-
-		display := &task.Task{
-			Id:                   "display_task",
-			DisplayOnly:          true,
-			ExecutionTasks:       []string{"exec_enabled"},
-			TestSelectionEnabled: false,
-		}
-		results := []testresult.TestResult{
-			{TaskID: "exec_enabled", TestName: "TestEnabled"},
-		}
-		require.NoError(t, DecorateQuarantineStatus(t.Context(), display, results))
-		assert.True(t, results[0].IsManuallyQuarantined)
+		assert.False(t, results[1].CanQuarantine, "TestB1 was not checked by test selection in its task run")
+		assert.False(t, results[1].IsManuallyQuarantined)
+		assert.True(t, results[2].CanQuarantine)
+		assert.True(t, results[2].IsManuallyQuarantined)
 	})
 }
 
-func TestRecordQuarantinedTestsSkipped(t *testing.T) {
+func TestRecordTestSelection(t *testing.T) {
 	const (
 		projectID = "my_project"
 		bvName    = "ubuntu"
@@ -849,7 +774,7 @@ func TestRecordQuarantinedTestsSkipped(t *testing.T) {
 
 		req := baseReq
 		req.Tests = []string{"test0", "test1", "test2"}
-		require.NoError(t, RecordQuarantinedTestsSkipped(ctx, env, req, []string{"test0"}))
+		require.NoError(t, RecordTestSelection(ctx, env, req, []string{"test0"}))
 
 		record := findRecord(t)
 		assert.Equal(t, record.Info.ID(), record.ID)
@@ -857,20 +782,37 @@ func TestRecordQuarantinedTestsSkipped(t *testing.T) {
 		assert.Equal(t, taskName, record.Info.TaskName)
 		assert.Equal(t, 1, record.QuarantinedTestsCount)
 		assert.Equal(t, []testresult.QuarantinedTest{{TestName: "test1"}}, record.QuarantinedTests)
+		assert.Equal(t, []string{"test0", "test1", "test2"}, record.TestSelectionCheckedTests)
 		assert.Equal(t, 1, findTask(t).NumQuarantinedTestsSkipped)
 	})
 
-	t.Run("AllTestsSelectedSkipsStatusCheckAndRecordsNothing", func(t *testing.T) {
+	t.Run("AllTestsSelectedSkipsStatusCheckAndRecordsOnlyCheckedTests", func(t *testing.T) {
 		setupTask(t)
 		hits := newTSSServer(t, nil, nil)
 
 		req := baseReq
 		req.Tests = []string{"test0", "test1"}
-		require.NoError(t, RecordQuarantinedTestsSkipped(ctx, env, req, []string{"test0", "test1"}))
+		require.NoError(t, RecordTestSelection(ctx, env, req, []string{"test0", "test1"}))
 
 		assert.Zero(t, *hits, "no status call should be made when no tests were skipped")
-		assert.Zero(t, countRecords(t))
+		record := findRecord(t)
+		assert.Equal(t, []string{"test0", "test1"}, record.TestSelectionCheckedTests)
+		assert.Empty(t, record.QuarantinedTests)
 		assert.Zero(t, findTask(t).NumQuarantinedTestsSkipped)
+	})
+
+	t.Run("RepeatedRequestsAppendCheckedTestsOnce", func(t *testing.T) {
+		setupTask(t)
+		newTSSServer(t, nil, nil)
+
+		req := baseReq
+		req.Tests = []string{"test0", "test1"}
+		require.NoError(t, RecordTestSelection(ctx, env, req, req.Tests))
+		req.Tests = []string{"test1", "test2"}
+		require.NoError(t, RecordTestSelection(ctx, env, req, req.Tests))
+
+		assert.Equal(t, int64(1), countRecords(t))
+		assert.Equal(t, []string{"test0", "test1", "test2"}, findRecord(t).TestSelectionCheckedTests)
 	})
 
 	t.Run("KnownTestsPathUsesVariantState", func(t *testing.T) {
@@ -887,11 +829,12 @@ func TestRecordQuarantinedTestsSkipped(t *testing.T) {
 			},
 		})
 
-		require.NoError(t, RecordQuarantinedTestsSkipped(ctx, env, baseReq, []string{"test0", "test3"}))
+		require.NoError(t, RecordTestSelection(ctx, env, baseReq, []string{"test0", "test3"}))
 
 		record := findRecord(t)
 		assert.Equal(t, 2, record.QuarantinedTestsCount)
 		assert.Equal(t, []testresult.QuarantinedTest{{TestName: "test1"}, {TestName: "test2"}}, record.QuarantinedTests, "quarantined tests that were still selected should not be recorded")
+		assert.Equal(t, []string{"test0", "test3", "test1", "test2"}, record.TestSelectionCheckedTests, "the known tests that were selected or skipped should be recorded as checked")
 		assert.Equal(t, 2, findTask(t).NumQuarantinedTestsSkipped)
 	})
 
@@ -904,7 +847,7 @@ func TestRecordQuarantinedTestsSkipped(t *testing.T) {
 
 		req := baseReq
 		req.Tests = []string{"test0", "test1"}
-		require.NoError(t, RecordQuarantinedTestsSkipped(ctx, env, req, nil))
+		require.NoError(t, RecordTestSelection(ctx, env, req, nil))
 
 		dbTask := findTask(t)
 		assert.Equal(t, 2, dbTask.NumQuarantinedTestsSkipped)
