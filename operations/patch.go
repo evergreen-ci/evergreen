@@ -525,7 +525,8 @@ func PatchFile() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
-			if _, err = params.validatePatchCommand(ctx, conf, ac, comm); err != nil {
+			ref, err := params.validatePatchCommand(ctx, conf, ac, comm)
+			if err != nil {
 				return err
 			}
 			params.Description = params.getDescription(ctx)
@@ -556,6 +557,11 @@ func PatchFile() cli.Command {
 				}
 			}
 
+			if diffPatchId == "" {
+				if err = checkBaseCommitExists(ctx, ref.Owner, ref.Repo, base); err != nil {
+					return err
+				}
+			}
 			if err = params.validateSubmission(ctx, &diffData); err != nil {
 				return err
 			}
