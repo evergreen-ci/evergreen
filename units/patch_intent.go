@@ -1017,9 +1017,11 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	}
 
 	// With `evergreen patch-file`, a user can pass a branch name, tag, or
-	// short hash instead of a full hash. We must normalize this to a full hash
-	// before storing the patch doc.
-	if !thirdparty.IsFullCommitSHA(patchDoc.Githash) {
+	// short hash instead of a full hash. We must normalize this to a full
+	// lowercase hash before storing the patch doc.
+	if thirdparty.IsFullCommitSHA(patchDoc.Githash) {
+		patchDoc.Githash = strings.ToLower(patchDoc.Githash)
+	} else {
 		sha, err := resolveCliPatchBaseRevision(ctx, projectRef, patchDoc.Githash)
 		if err != nil {
 			return err
@@ -1038,10 +1040,10 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 
 // resolveCliPatchBaseRevision resolves a base revision that isn't a full commit
 // hash using git so that it doesn't depend on the GitHub API being available.
-// It falls back to the GitHub API for revisions git can't resolve, such as short
-// hashes.
+// Like git, tags take precedence over branches with the same name. It falls
+// back to the GitHub API for revisions git can't resolve, such as short hashes.
 func resolveCliPatchBaseRevision(ctx context.Context, projectRef *model.ProjectRef, revision string) (string, error) {
-	sha, gitErr := thirdparty.GitLsRemote(ctx, projectRef.Owner, projectRef.Repo, revision)
+	sha, gitErr := thirdparty.GitLsRemote(ctx, projectRef.Owner, projectRef.Repo, "refs/tags/"+revision, "refs/heads/"+revision)
 	if gitErr == nil {
 		return sha, nil
 	}
