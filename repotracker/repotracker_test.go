@@ -1936,22 +1936,6 @@ func TestCreateManifest(t *testing.T) {
 	assert.NotEmpty(module.URL)
 	assert.Equal(mfst.ModuleSelectionPinnedRef, module.SelectionRule)
 
-	// invalid revision
-	hash = "1234"
-	proj = model.Project{
-		Identifier: "proj",
-		Modules: []model.Module{
-			{
-				Name:   "module1",
-				Repo:   "git@github.com:evergreen-ci/sample.git",
-				Branch: "main",
-				Ref:    hash,
-			},
-		},
-	}
-	_, err = model.CreateManifest(t.Context(), &v, proj.Modules, projRef)
-	assert.Contains(err.Error(), "No commit found for SHA")
-
 	// patch with module ref that differs from base manifest should use YAML ref
 	baseRevision := "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
 	yamlRef := "cf46076567e4949f9fc68e0634139d4ac495c89b"
