@@ -87,6 +87,19 @@ type VirtualTaskArtifact struct {
 	Name       string `json:"name"`
 	URL        string `json:"url"`
 	Visibility string `json:"visibility,omitempty"`
+
+	// Fields for S3 artifacts with signed visibility.
+	Bucket  string `json:"bucket,omitempty"`
+	FileKey string `json:"file_key,omitempty"`
+	// AWSKeyVarName and AWSSecretVarName name the project variables holding the
+	// static credentials used to presign a signed artifact.
+	AWSKeyVarName    string `json:"aws_key_var_name,omitempty"`
+	AWSSecretVarName string `json:"aws_secret_var_name,omitempty"`
+	// AWSRoleARN is a role assumed to presign a signed artifact.
+	AWSRoleARN string `json:"aws_role_arn,omitempty"`
+	// PresignDuration is how long a presigned URL stays valid, in Go duration
+	// syntax. It is only supported with static credentials.
+	PresignDuration string `json:"presign_duration,omitempty"`
 }
 
 // CompleteVirtualTasksResponse contains the per-task outcomes of a push completion.

@@ -8,8 +8,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -152,6 +154,10 @@ type completeVirtualTasksHandler struct {
 	env    evergreen.Environment
 	taskID string
 	body   apimodels.CompleteVirtualTasksRequest
+
+	// roleExternalID is the STS external ID to presign role-backed artifacts
+	// with, computed from the runner so it matches the runner's AssumeRole.
+	roleExternalID string
 }
 
 func makeCompleteVirtualTasks(env evergreen.Environment) gimlet.RouteHandler {
@@ -192,6 +198,17 @@ func (h *completeVirtualTasksHandler) Run(ctx context.Context) gimlet.Responder 
 	runner, errResp := resolveVirtualTaskRunner(ctx, h.taskID)
 	if errResp != nil {
 		return errResp
+	}
+
+	if h.needsRoleExternalID() {
+		// When artifacts with signed visibility need to assuming a role to
+		// presign, reuse the runner's external ID. The runner and virtual tasks
+		// can share the same external ID since it's not task-specific.
+		externalID, err := h.getRunnerExternalID(ctx, runner)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "computing external ID for role-backed artifacts"))
+		}
+		h.roleExternalID = externalID
 	}
 
 	response := apimodels.CompleteVirtualTasksResponse{}
@@ -247,11 +264,17 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 		if !utility.StringSliceContains(artifact.ValidVisibilities, a.Visibility) {
 			return failed(fmt.Sprintf("invalid visibility '%s' for artifact '%s'", a.Visibility, a.Name))
 		}
-		files = append(files, artifact.File{
+		file := artifact.File{
 			Name:       a.Name,
 			Link:       a.URL,
 			Visibility: a.Visibility,
-		})
+		}
+		if a.Visibility == artifact.Signed {
+			if err := h.setSignedArtifactFields(&file, a); err != nil {
+				return failed(err.Error())
+			}
+		}
+		files = append(files, file)
 	}
 	if err := artifact.ValidateFiles(files); err != nil {
 		return failed(err.Error())
@@ -318,6 +341,82 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 		TaskID:  completion.TaskID,
 		Outcome: apimodels.VirtualTaskCompletionOutcomeSuccess,
 	}
+}
+
+// setSignedArtifactFields fills in the S3 location and presign credentials for
+// a signed artifact, which are required to presign it later. It errors if the
+// fields are invalid.
+func (h *completeVirtualTasksHandler) setSignedArtifactFields(file *artifact.File, a apimodels.VirtualTaskArtifact) error {
+	catcher := grip.NewBasicCatcher()
+
+	awsKeyVarNameSet := a.AWSKeyVarName != ""
+	awsSecretVarNameSet := a.AWSSecretVarName != ""
+	catcher.NewWhen(a.Bucket == "" || a.FileKey == "", "must specify bucket")
+	catcher.NewWhen(a.FileKey == "", "must specify file_key")
+	catcher.NewWhen(awsKeyVarNameSet != awsSecretVarNameSet, "must specify aws_key_var_name and aws_secret_var_name together")
+	catcher.NewWhen(a.AWSRoleARN != "" && awsKeyVarNameSet, "cannot combine aws_role_arn with aws_key_var_name/aws_secret_var_name")
+
+	var presignDuration time.Duration
+	if a.PresignDuration != "" {
+		duration, err := time.ParseDuration(a.PresignDuration)
+		if err != nil {
+			catcher.Wrapf(err, "parsing presign_duration '%s' for artifact '%s'", a.PresignDuration, a.Name)
+		} else if err := artifact.ValidatePresignDuration(duration); err != nil {
+			catcher.Wrapf(err, "validating presign_duration for artifact '%s'", a.Name)
+		} else {
+			presignDuration = duration
+		}
+	}
+	catcher.NewWhen(a.AWSRoleARN != "" && presignDuration != 0, "cannot combine aws_role_arn with presign_duration")
+
+	if catcher.HasErrors() {
+		return errors.Wrapf(catcher.Resolve(), "validating signed artifact '%s'", a.Name)
+	}
+
+	file.Bucket = a.Bucket
+	file.FileKey = a.FileKey
+	file.AWSKeyVarName = a.AWSKeyVarName
+	file.AWSSecretVarName = a.AWSSecretVarName
+	file.AWSRoleARN = a.AWSRoleARN
+	file.PresignDuration = presignDuration
+	if file.AWSRoleARN != "" {
+		file.ExternalID = h.roleExternalID
+	}
+
+	return nil
+}
+
+// needsRoleExternalID reports whether any pushed artifact uses a role ARN to
+// presign, in which case the external ID must be computed from the runner.
+func (h *completeVirtualTasksHandler) needsRoleExternalID() bool {
+	for _, completion := range h.body.Tasks {
+		for _, a := range completion.Artifacts {
+			if a.Visibility == artifact.Signed && a.AWSRoleARN != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// getRunnerExternalID returns the STS external ID the runner uses when
+// assuming roles.
+func (h *completeVirtualTasksHandler) getRunnerExternalID(ctx context.Context, runner *task.Task) (string, error) {
+	pRef, err := model.GetProjectRefForTask(ctx, runner.Id)
+	if err != nil {
+		return "", errors.Wrapf(err, "getting project ref for runner task '%s'", runner.Id)
+	}
+
+	var isDebug bool
+	if runner.HostId != "" {
+		runnerHost, err := host.FindOneId(ctx, runner.HostId)
+		if err != nil {
+			return "", errors.Wrapf(err, "finding host '%s' for runner task '%s'", runner.HostId, runner.Id)
+		}
+		isDebug = runnerHost != nil && runnerHost.IsDebug
+	}
+
+	return cloud.CreateExternalID(runner, pRef, isDebug), nil
 }
 
 // POST /task/{task_id}/virtual_tasks/prepare
