@@ -109,6 +109,27 @@ func getDaemonURL() (string, error) {
 	return url, nil
 }
 
+// daemonProcessAlive reports whether a live process matches the daemon's PID file.
+func daemonProcessAlive() bool {
+	dir, err := getDaemonDir()
+	if err != nil {
+		return false
+	}
+	data, err := os.ReadFile(filepath.Join(dir, daemonPIDFile))
+	if err != nil {
+		return false
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		return false
+	}
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	return process.Signal(syscall.Signal(0)) == nil
+}
+
 // Debug returns the "debug" command for running Evergreen tasks locally.
 func Debug() cli.Command {
 	return cli.Command{
@@ -317,6 +338,9 @@ func startDebugDaemonCmd(c *cli.Context) error {
 
 	if _, err := getDaemonURL(); err == nil {
 		return errors.New("daemon is already running")
+	}
+	if daemonProcessAlive() {
+		return errors.New("daemon process is running but not responding; run 'evergreen debug daemon stop' and try again")
 	}
 
 	if os.Getenv(daemonEnvVar) == "1" {

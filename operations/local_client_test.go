@@ -257,6 +257,47 @@ buildvariants:
 	assert.Equal(t, float64(3), response["variant_count"])
 }
 
+func TestDaemonProcessAlive(t *testing.T) {
+	tempDir := t.TempDir()
+	setHomeDir(t, tempDir)
+
+	daemonDir := filepath.Join(tempDir, ".evergreen-local")
+	require.NoError(t, os.MkdirAll(daemonDir, 0755))
+	pidFile := filepath.Join(daemonDir, daemonPIDFile)
+
+	t.Run("NoPIDFileShouldReportNotAlive", func(t *testing.T) {
+		assert.False(t, daemonProcessAlive())
+	})
+
+	t.Run("LivePIDShouldReportAlive", func(t *testing.T) {
+		require.NoError(t, os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", os.Getpid())), 0644))
+		t.Cleanup(func() {
+			require.NoError(t, os.Remove(pidFile))
+		})
+		assert.True(t, daemonProcessAlive())
+	})
+
+	t.Run("StalePIDShouldReportNotAlive", func(t *testing.T) {
+		require.NoError(t, os.WriteFile(pidFile, []byte("999999999"), 0644))
+		assert.False(t, daemonProcessAlive())
+	})
+}
+
+func TestStartFailsWhenDaemonInfoCannotBeWritten(t *testing.T) {
+	tempDir := t.TempDir()
+	setHomeDir(t, tempDir)
+
+	// A file where the daemon directory belongs makes the directory creation fail.
+	dir, err := getDaemonDir()
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(dir, []byte("not a directory"), 0644))
+
+	daemon := newLocalDaemonREST(0, &ClientSettings{})
+	err = daemon.Start(t.Context())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "writing daemon info")
+}
+
 func TestWriteDaemonInfo(t *testing.T) {
 	tempDir := t.TempDir()
 	setHomeDir(t, tempDir)

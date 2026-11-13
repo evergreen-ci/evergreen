@@ -49,7 +49,7 @@ func (d *localDaemonREST) Start(ctx context.Context) error {
 	router := d.newRouter()
 
 	if err := d.writeDaemonInfo(); err != nil {
-		grip.Warning(ctx, errors.Wrap(err, "writing daemon info"))
+		return errors.Wrap(err, "writing daemon info")
 	}
 
 	grip.Infof(ctx, "Starting REST daemon on port %d", d.port)
@@ -310,7 +310,7 @@ func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Reques
 	}))
 }
 
-// writeDaemonInfo writes PID and port files
+// writeDaemonInfo writes the PID, port, and token files.
 func (d *localDaemonREST) writeDaemonInfo() error {
 	dir, err := getDaemonDir()
 	if err != nil {
