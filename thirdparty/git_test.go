@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -151,6 +152,71 @@ func TestGetGitHubFileFromGit(t *testing.T) {
 		assert.Error(t, err)
 		assert.True(t, IsFileNotFound(err))
 	})
+}
+
+func TestGitLsRemote(t *testing.T) {
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config)
+
+	t.Run("ResolvesBranchToSameCommitAndURLAsGitHubAPI", func(t *testing.T) {
+		sha, err := GitLsRemote(t.Context(), "evergreen-ci", "sample", "refs/heads/main")
+		require.NoError(t, err)
+
+		commits, _, err := GetGithubCommits(t.Context(), "evergreen-ci", "sample", &github.CommitsListOptions{SHA: "main", ListOptions: github.ListOptions{PerPage: 1}})
+		require.NoError(t, err)
+		require.Len(t, commits, 1)
+		assert.Equal(t, commits[0].GetSHA(), sha)
+		assert.Equal(t, commits[0].GetURL(), GitHubCommitURL("evergreen-ci", "sample", sha))
+	})
+	t.Run("ResolvesHEADToDefaultBranch", func(t *testing.T) {
+		headSHA, err := GitLsRemote(t.Context(), "evergreen-ci", "sample", "HEAD")
+		require.NoError(t, err)
+		mainSHA, err := GitLsRemote(t.Context(), "evergreen-ci", "sample", "refs/heads/main")
+		require.NoError(t, err)
+		assert.Equal(t, mainSHA, headSHA)
+	})
+	t.Run("ResolvesAnnotatedTagToCommit", func(t *testing.T) {
+		sha, err := GitLsRemote(t.Context(), "evergreen-ci", "evergreen", "refs/tags/v1")
+		require.NoError(t, err)
+		assert.Equal(t, "da7cb3cbbce495e7bb66602d2c4cd79ae64ce668", sha)
+	})
+	t.Run("NonexistentRefShouldError", func(t *testing.T) {
+		_, err := GitLsRemote(t.Context(), "evergreen-ci", "sample", "refs/heads/nonexistent-branch")
+		assert.Error(t, err)
+	})
+}
+
+func TestParseLsRemote(t *testing.T) {
+	const output = "1111111111111111111111111111111111111111\trefs/heads/both\n" +
+		"2222222222222222222222222222222222222222\trefs/tags/both\n" +
+		"3333333333333333333333333333333333333333\trefs/tags/both^{}\n" +
+		"4444444444444444444444444444444444444444\trefs/tags/lightweight\n" +
+		"5555555555555555555555555555555555555555\trefs/heads/feature/main\n"
+
+	for name, tc := range map[string]struct {
+		refs     []string
+		expected string
+	}{
+		"AnnotatedTagShouldResolveToPeeledCommit": {refs: []string{"refs/tags/both"}, expected: "3333333333333333333333333333333333333333"},
+		"LightweightTagShouldResolveToTag":        {refs: []string{"refs/tags/lightweight"}, expected: "4444444444444444444444444444444444444444"},
+		"FirstRefFoundShouldTakePrecedence":       {refs: []string{"refs/heads/both", "refs/tags/both"}, expected: "1111111111111111111111111111111111111111"},
+		"LaterRefShouldBeUsedIfEarlierIsMissing":  {refs: []string{"refs/tags/feature/main", "refs/heads/feature/main"}, expected: "5555555555555555555555555555555555555555"},
+		"PartialNameShouldNotMatch":               {refs: []string{"refs/heads/main"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			sha, ok := parseLsRemote(output, tc.refs)
+			assert.Equal(t, tc.expected != "", ok)
+			assert.Equal(t, tc.expected, sha)
+		})
+	}
+}
+
+func TestIsFullCommitSHA(t *testing.T) {
+	assert.True(t, IsFullCommitSHA("7e05633b9bc529e19eba18b1fc88f78d346855b2"))
+	assert.True(t, IsFullCommitSHA("7E05633B9BC529E19EBA18B1FC88F78D346855B2"))
+	assert.False(t, IsFullCommitSHA("7e05633"))
+	assert.False(t, IsFullCommitSHA("main"))
+	assert.False(t, IsFullCommitSHA(""))
 }
 
 func TestGitCreateWorktree(t *testing.T) {

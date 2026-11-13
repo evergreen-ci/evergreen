@@ -1016,19 +1016,17 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		return errors.Errorf("project ref '%s' not found", patchDoc.Project)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	commit, err := thirdparty.GetCommitEvent(ctx, projectRef.Owner,
-		projectRef.Repo, patchDoc.Githash)
-	if err != nil {
-		return errors.Wrapf(err, "finding base revision '%s' for project '%s'",
-			patchDoc.Githash, projectRef.Id)
-	}
-	// With `evergreen patch-file`, a user can pass a branch name or tag instead of a hash. We
-	// must normalize this to a hash before storing the patch doc.
-	if commit != nil && commit.SHA != nil && patchDoc.Githash != *commit.SHA {
-		patchDoc.Githash = *commit.SHA
+	// With `evergreen patch-file`, a user can pass a branch name, tag, or
+	// short hash instead of a full hash. We must normalize this to a full
+	// lowercase hash before storing the patch doc.
+	if thirdparty.IsFullCommitSHA(patchDoc.Githash) {
+		patchDoc.Githash = strings.ToLower(patchDoc.Githash)
+	} else {
+		sha, err := resolveCliPatchBaseRevision(ctx, projectRef, patchDoc.Githash)
+		if err != nil {
+			return err
+		}
+		patchDoc.Githash = sha
 	}
 
 	if len(patchDoc.Patches) > 0 {
@@ -1038,6 +1036,33 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	}
 
 	return nil
+}
+
+// resolveCliPatchBaseRevision resolves a base revision that isn't a full commit
+// hash using git so that it doesn't depend on the GitHub API being available.
+// Like the GitHub API, branches take precedence over tags with the same name.
+// It falls back to the GitHub API for revisions git can't resolve, such as
+// short hashes.
+func resolveCliPatchBaseRevision(ctx context.Context, projectRef *model.ProjectRef, revision string) (string, error) {
+	sha, gitErr := thirdparty.GitLsRemote(ctx, projectRef.Owner, projectRef.Repo, "refs/heads/"+revision, "refs/tags/"+revision)
+	if gitErr == nil {
+		return sha, nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	commit, err := thirdparty.GetCommitEvent(ctx, projectRef.Owner, projectRef.Repo, revision)
+	if err != nil {
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(gitErr)
+		catcher.Add(err)
+		return "", errors.Wrapf(catcher.Resolve(), "finding base revision '%s' for project '%s'", revision, projectRef.Id)
+	}
+	if commit == nil || commit.SHA == nil {
+		return "", errors.Errorf("base revision '%s' for project '%s' not found", revision, projectRef.Id)
+	}
+	return *commit.SHA, nil
 }
 
 // getModulePatch reads the patch from GridFS, processes it, and

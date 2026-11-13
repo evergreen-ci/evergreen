@@ -347,6 +347,106 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	return tmpDir, nil
 }
 
+var fullCommitSHARegexp = regexp.MustCompile("(?i)^[0-9a-f]{40}$")
+
+// IsFullCommitSHA returns whether the ref is a full 40-character commit SHA.
+func IsFullCommitSHA(ref string) bool {
+	return fullCommitSHARegexp.MatchString(ref)
+}
+
+// GitHubCommitURL returns the GitHub API URL for a commit, in the same format
+// that the GitHub API returns for the commit.
+func GitHubCommitURL(owner, repo, sha string) string {
+	return fmt.Sprintf("https://api.github.com/repos/%s/%s/commits/%s", owner, repo, sha)
+}
+
+// GitLsRemote returns the commit SHA that the first of the given refs that
+// exists in the repo points to, using git rather than the GitHub API. Refs
+// must be full ref names (e.g. "refs/heads/main", "refs/tags/v1") or "HEAD".
+// Annotated tags resolve to the commit they point to. It returns an error if
+// none of the refs exist.
+func GitLsRemote(ctx context.Context, owner, repo string, refs ...string) (string, error) {
+	ctx, span := tracer.Start(ctx, "GitLsRemote", trace.WithAttributes(
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, strings.Join(refs, ",")),
+	))
+	defer span.End()
+
+	ctx, cancel := context.WithTimeout(ctx, GitOperationTimeout)
+	defer cancel()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "creating GitHub app installation token")
+	}
+
+	patterns := make([]string, 0, 2*len(refs))
+	for _, ref := range refs {
+		patterns = append(patterns, ref)
+		if strings.HasPrefix(ref, "refs/tags/") {
+			patterns = append(patterns, peeledRef(ref))
+		}
+	}
+
+	// Pass "--" so git never interprets a user-provided ref as an option.
+	args := append([]string{"ls-remote", "--", FormGitURLForApp(owner, repo, token)}, patterns...)
+	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd.WaitDelay = gitOperationWaitDelay
+	var stdout, stderr strings.Builder
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message":          "git ls-remote failed",
+			"owner":            owner,
+			"repo":             repo,
+			"refs":             refs,
+			"stdout":           stdout.String(),
+			"stderr":           stderr.String(),
+			"is_context_error": ctx.Err() != nil,
+		}))
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(ctx.Err())
+		catcher.Wrapf(err, "running git ls-remote in repo '%s/%s'", owner, repo)
+		return "", catcher.Resolve()
+	}
+
+	sha, ok := parseLsRemote(stdout.String(), refs)
+	if !ok {
+		return "", errors.Errorf("refs %v not found in repo '%s/%s'", refs, owner, repo)
+	}
+	return sha, nil
+}
+
+// peeledRef returns the name git ls-remote uses for the commit that an
+// annotated tag points to.
+func peeledRef(ref string) string {
+	return ref + "^{}"
+}
+
+// parseLsRemote returns the commit SHA for the first of the refs found in git
+// ls-remote output.
+func parseLsRemote(output string, refs []string) (string, bool) {
+	shas := map[string]string{}
+	for line := range strings.SplitSeq(output, "\n") {
+		sha, name, ok := strings.Cut(strings.TrimSpace(line), "\t")
+		if ok {
+			shas[name] = sha
+		}
+	}
+	for _, ref := range refs {
+		if sha, ok := shas[peeledRef(ref)]; ok {
+			return sha, true
+		}
+		if sha, ok := shas[ref]; ok {
+			return sha, true
+		}
+	}
+	return "", false
+}
+
 // GitCreateWorktree creates a new git worktree in worktreeDir based on gitDir.
 // It does not perform a checkout. Callers are assumed to have already cloned
 // the repo into gitDir and HEAD is assumed to be already pointing to the
