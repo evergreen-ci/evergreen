@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -48,7 +49,7 @@ func (s *githubStatusRefreshSuite) TearDownSuite() {
 func (s *githubStatusRefreshSuite) SetupTest() {
 	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 
-	s.NoError(db.ClearCollections(patch.Collection, build.Collection, task.Collection, model.ProjectRefCollection, evergreen.ConfigCollection))
+	s.NoError(db.ClearCollections(patch.Collection, build.Collection, task.Collection, model.ProjectRefCollection, evergreen.ConfigCollection, patch.GitHubStatusResyncCollection))
 
 	uiConfig := evergreen.UIConfig{}
 	uiConfig.Url = "https://example.com"
@@ -116,6 +117,97 @@ func (s *githubStatusRefreshSuite) TestSendErrorIsReported() {
 	})
 
 	s.EqualError(job.Error(), "GitHub unavailable")
+}
+
+func (s *githubStatusRefreshSuite) markGitHubStatusResync() {
+	failedAt := time.Now().Add(-time.Minute)
+	s.Require().NoError(db.Insert(s.ctx, patch.GitHubStatusResyncCollection, patch.GitHubStatusResync{
+		PatchID:      s.patchDoc.Id.Hex(),
+		DirtySince:   failedAt,
+		LastFailedAt: failedAt,
+	}))
+}
+
+func (s *githubStatusRefreshSuite) runWithGitHubSender(p *patch.Patch, sender send.Sender) *githubStatusRefreshJob {
+	job := NewGithubStatusRefreshJob(p).(*githubStatusRefreshJob)
+	job.env = &eventSendEnvironment{Environment: s.env, githubSender: sender}
+	job.Run(s.ctx)
+	return job
+}
+
+func (s *githubStatusRefreshSuite) TestRunClearsGitHubStatusResyncOnSuccess() {
+	s.markGitHubStatusResync()
+
+	job := s.runWithGitHubSender(s.patchDoc, s.env.InternalSender)
+	s.Require().NoError(job.Error())
+
+	resync, err := findGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
+	s.Require().NoError(err)
+	s.Nil(resync)
+}
+
+func (s *githubStatusRefreshSuite) TestRunFailureDoesNotClearGitHubStatusResync() {
+	errSender := &eventSendErrorSender{Sender: s.env.InternalSender, err: errors.New("GitHub unavailable")}
+
+	s.Run("SendFailureKeepsMark", func() {
+		s.Require().NoError(db.ClearCollections(patch.GitHubStatusResyncCollection))
+		s.markGitHubStatusResync()
+
+		job := s.runWithGitHubSender(s.patchDoc, errSender)
+		s.Error(job.Error())
+
+		resync, err := findGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
+		s.Require().NoError(err)
+		s.NotNil(resync)
+	})
+	s.Run("SendFailureDoesNotCreateMark", func() {
+		s.Require().NoError(db.ClearCollections(patch.GitHubStatusResyncCollection))
+
+		job := s.runWithGitHubSender(s.patchDoc, errSender)
+		s.Error(job.Error())
+
+		resync, err := findGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
+		s.Require().NoError(err)
+		s.Nil(resync)
+	})
+	s.Run("PatchWithoutGitHubTargetDoesNotCreateMark", func() {
+		s.Require().NoError(db.ClearCollections(patch.GitHubStatusResyncCollection))
+		p := *s.patchDoc
+		p.GithubPatchData = thirdparty.GithubPatch{}
+
+		job := s.runWithGitHubSender(&p, s.env.InternalSender)
+		s.Error(job.Error())
+
+		resync, err := findGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
+		s.Require().NoError(err)
+		s.Nil(resync)
+	})
+}
+
+func (s *githubStatusRefreshSuite) TestRunStopsSendingAtGitHubRateLimit() {
+	for _, id := range []string{"b1", "b2"} {
+		b := build.Build{
+			Id:           id,
+			BuildVariant: id,
+			Version:      s.patchDoc.Version,
+			Status:       evergreen.BuildStarted,
+			Activated:    true,
+		}
+		s.Require().NoError(b.Insert(s.ctx))
+	}
+	s.markGitHubStatusResync()
+	errSender := &eventSendErrorSender{
+		Sender: s.env.InternalSender,
+		err:    &send.GitHubSendError{StatusCode: http.StatusTooManyRequests, Attempts: 1, Err: errors.New("rate limit exceeded")},
+	}
+
+	job := s.runWithGitHubSender(s.patchDoc, errSender)
+	s.Error(job.Error())
+
+	s.Equal(1, errSender.sends)
+	resync, err := findGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
+	s.Require().NoError(err)
+	s.NotNil(resync)
 }
 
 func (s *githubStatusRefreshSuite) TestFetch() {
