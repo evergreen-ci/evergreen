@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -206,11 +207,8 @@ func (p *Patch) IsFinished() bool {
 // it returns the earliest start time and latest finish time across all patches.
 // For non-parent patches or parents without children, it returns the patch's own times.
 func (p *Patch) GetCollectiveTimes(ctx context.Context) (startTime, finishTime time.Time, err error) {
-	startTime = p.StartTime
-	finishTime = p.FinishTime
-
 	if !p.IsParent() || len(p.Triggers.ChildPatches) == 0 {
-		return startTime, finishTime, nil
+		return p.StartTime, p.FinishTime, nil
 	}
 
 	childPatches, err := Find(ctx, ByStringIds(ctx, p.Triggers.ChildPatches))
@@ -218,6 +216,16 @@ func (p *Patch) GetCollectiveTimes(ctx context.Context) (startTime, finishTime t
 		return time.Time{}, time.Time{}, errors.Wrap(err, "getting child patches for collective time calculations")
 	}
 
+	startTime, finishTime = GetCollectiveTimesFromPatches(p, childPatches)
+	return startTime, finishTime, nil
+}
+
+// GetCollectiveTimesFromPatches returns the earliest start time and latest
+// finish time across the parent patch and the given child patches. Zero
+// child times are ignored.
+func GetCollectiveTimesFromPatches(parent *Patch, childPatches []Patch) (startTime, finishTime time.Time) {
+	startTime = parent.StartTime
+	finishTime = parent.FinishTime
 	for _, childPatch := range childPatches {
 		if !childPatch.StartTime.IsZero() && (startTime.IsZero() || childPatch.StartTime.Before(startTime)) {
 			startTime = childPatch.StartTime
@@ -226,8 +234,7 @@ func (p *Patch) GetCollectiveTimes(ctx context.Context) (startTime, finishTime t
 			finishTime = childPatch.FinishTime
 		}
 	}
-
-	return startTime, finishTime, nil
+	return startTime, finishTime
 }
 
 // SetDescription sets a patch's description in the database
@@ -779,7 +786,7 @@ func (p *Patch) CollectiveStatus(ctx context.Context) (string, error) {
 			return "", errors.Wrapf(err, "getting child patch '%s' ", childPatchId)
 		}
 		if cp == nil {
-			return "", errors.Wrapf(err, "child patch '%s' not found", childPatchId)
+			return "", errors.Errorf("child patch '%s' not found", childPatchId)
 		}
 		allStatuses = append(allStatuses, cp.Status)
 	}
@@ -1015,4 +1022,57 @@ func GetCollectiveStatusFromPatchStatuses(ctx context.Context, statuses []string
 		return evergreen.VersionSucceeded
 	}
 	return evergreen.VersionCreated
+}
+
+// GetGitHubStateAndDescription returns the GitHub status state and description
+// to report for a patch with the given status, which may be a collective
+// status. A zero finish time is treated as the current time.
+func GetGitHubStateAndDescription(status string, startTime, finishTime time.Time) (message.GithubState, string) {
+	var state message.GithubState
+	if status == evergreen.VersionSucceeded {
+		state = message.GithubStateSuccess
+	} else if status == evergreen.VersionFailed {
+		state = message.GithubStateFailure
+	} else {
+		return message.GithubStatePending, evergreen.PRTasksRunningDescription
+	}
+	if utility.IsZeroTime(finishTime) {
+		finishTime = time.Now()
+	}
+	return state, fmt.Sprintf("patch finished in %s", finishTime.Sub(startTime).String())
+}
+
+// CollectiveGitHubStatus is the collective status of a parent patch and its
+// child patches, along with the GitHub state and description to report for it.
+type CollectiveGitHubStatus struct {
+	Status      string
+	State       message.GithubState
+	Description string
+}
+
+// GetCollectiveGitHubStatus returns the collective status of the parent patch
+// and the given child patches, which must include every child patch in the
+// parent's triggers.
+func GetCollectiveGitHubStatus(ctx context.Context, parent *Patch, childPatches []Patch) (*CollectiveGitHubStatus, error) {
+	statuses := []string{parent.Status}
+	loadedChildIDs := make(map[string]bool, len(childPatches))
+	for _, childPatch := range childPatches {
+		statuses = append(statuses, childPatch.Status)
+		loadedChildIDs[childPatch.Id.Hex()] = true
+	}
+	// A missing child could otherwise turn the collective status green.
+	for _, childPatchID := range parent.Triggers.ChildPatches {
+		if !loadedChildIDs[childPatchID] {
+			return nil, errors.Errorf("child patch '%s' not found", childPatchID)
+		}
+	}
+
+	collectiveStatus := GetCollectiveStatusFromPatchStatuses(ctx, statuses)
+	startTime, finishTime := GetCollectiveTimesFromPatches(parent, childPatches)
+	state, description := GetGitHubStateAndDescription(collectiveStatus, startTime, finishTime)
+	return &CollectiveGitHubStatus{
+		Status:      collectiveStatus,
+		State:       state,
+		Description: description,
+	}, nil
 }

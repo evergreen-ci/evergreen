@@ -573,6 +573,30 @@ func TestHandleMergeGroupDestroyedCancelsPatches(t *testing.T) {
 	assert.False(t, utility.FromBoolPtr(v.Activated))
 }
 
+func TestRefreshPatchStatusReturnsJobError(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(patch.Collection))
+
+	owner := "evergreen-ci"
+	repo := "evergreen"
+	prNumber := 1234
+	patchDoc := patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: "version1",
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: owner,
+			BaseRepo:  repo,
+			PRNumber:  prNumber,
+		},
+	}
+	require.NoError(t, patchDoc.Insert(ctx))
+
+	gh := &githubHookApi{}
+	err := gh.refreshPatchStatus(ctx, owner, repo, prNumber)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), patchDoc.Id.Hex())
+}
+
 func TestShouldSkipWebhookPersonalStaging(t *testing.T) {
 	ctx := t.Context()
 
