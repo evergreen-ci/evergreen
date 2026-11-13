@@ -34,7 +34,15 @@ func TestShouldDecorateTestQuarantineStatus(t *testing.T) {
 		assert.True(t, shouldDecorateTestQuarantineStatus(ctx))
 	})
 
-	t.Run("FalseWhenIsManuallyQuarantinedNotSelected", func(t *testing.T) {
+	t.Run("TrueWhenCanQuarantineNestedUnderTestResults", func(t *testing.T) {
+		ctx := ctxWithTestResultsSelection(ast.SelectionSet{
+			&ast.Field{Name: "testFile", Alias: "testFile"},
+			&ast.Field{Name: "canQuarantine", Alias: "canQuarantine"},
+		})
+		assert.True(t, shouldDecorateTestQuarantineStatus(ctx))
+	})
+
+	t.Run("FalseWhenQuarantineFieldsNotSelected", func(t *testing.T) {
 		ctx := ctxWithTestResultsSelection(ast.SelectionSet{
 			&ast.Field{Name: "testFile", Alias: "testFile"},
 		})

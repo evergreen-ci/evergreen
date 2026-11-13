@@ -536,10 +536,12 @@
               "testResults": [
                 {
                   "testFile": "TestHostTaskAuditing",
+                  "canQuarantine": false,
                   "isManuallyQuarantined": false
                 },
                 {
                   "testFile": "TestStuckHostAuditing",
+                  "canQuarantine": false,
                   "isManuallyQuarantined": false
                 }
               ]
@@ -551,10 +553,12 @@
               "testResults": [
                 {
                   "testFile": "TestHostTaskAuditing",
+                  "canQuarantine": false,
                   "isManuallyQuarantined": false
                 },
                 {
                   "testFile": "TestStuckHostAuditing",
+                  "canQuarantine": false,
                   "isManuallyQuarantined": false
                 }
               ]

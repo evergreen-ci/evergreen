@@ -41,8 +41,7 @@ func (s *testResultService) AppendTestResultMetadata(ctx context.Context, failed
 	if !record.CreatedAt.IsZero() {
 		// The created timestamp determines the partition key of the offline
 		// test results, so it must reflect when the results were attached
-		// even if the record was created earlier by the quarantined-tests
-		// snapshot.
+		// even if the record was created earlier by test selection.
 		set[testresult.TestResultsCreatedAtKey] = record.CreatedAt
 	}
 	update := bson.M{"$set": set}
@@ -50,13 +49,13 @@ func (s *testResultService) AppendTestResultMetadata(ctx context.Context, failed
 	return errors.Wrap(err, "appending DB test results")
 }
 
-// AppendQuarantinedTests upserts the task's test results record, appending
-// the tests to its quarantined-tests snapshot and incrementing the
-// snapshot count by the number of tests.
-func (s *testResultService) AppendQuarantinedTests(ctx context.Context, record testresult.DbTaskTestResults, quarantinedTests []testresult.QuarantinedTest) error {
-	update := appendQuarantinedTestsUpdate(record.Info, quarantinedTests)
+// AppendTestSelectionResults upserts the task's test results record, appending
+// the checked tests and the quarantined tests to it and incrementing the
+// quarantined-tests snapshot count by the number of quarantined tests.
+func (s *testResultService) AppendTestSelectionResults(ctx context.Context, record testresult.DbTaskTestResults, checkedTests []string, quarantinedTests []testresult.QuarantinedTest) error {
+	update := appendTestSelectionResultsUpdate(record.Info, checkedTests, quarantinedTests)
 	_, err := s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: record.ID}, update, options.Update().SetUpsert(true))
-	return errors.Wrap(err, "appending quarantined tests to DB test results")
+	return errors.Wrap(err, "appending test selection results to DB test results")
 }
 
 func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, tasks []Task) (testresult.TaskTestResultsStats, error) {
@@ -92,22 +91,7 @@ func (s *testResultService) Get(ctx context.Context, tasks []Task, getOpts GetTa
 		{Key: bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoTaskIDKey), Value: 1},
 		{Key: bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoExecutionKey), Value: 1},
 	})
-	if len(getOpts.Fields) > 0 {
-		projection := bson.M{}
-		for _, field := range getOpts.Fields {
-			projection[field] = 1
-		}
-		if getOpts.QuarantinedTestsLimit != nil {
-			if *getOpts.QuarantinedTestsLimit == 0 {
-				delete(projection, testresult.QuarantinedTestsKey)
-			} else if *getOpts.QuarantinedTestsLimit > 0 {
-				projection[testresult.QuarantinedTestsKey] = bson.M{"$slice": *getOpts.QuarantinedTestsLimit}
-			}
-		}
-		opts.SetProjection(projection)
-	} else if !getOpts.IncludeQuarantinedTests {
-		opts.SetProjection(bson.M{testresult.QuarantinedTestsKey: 0})
-	}
+	opts.SetProjection(testResultsProjection(getOpts))
 
 	var allDBTaskResults []testresult.DbTaskTestResults
 	cur, err := s.env.CedarDB().Collection(testresult.Collection).Find(ctx, filter, opts)
@@ -160,6 +144,7 @@ func (s *testResultService) Get(ctx context.Context, tasks []Task, getOpts GetTa
 		allTaskResults[i].Results = dbTaskResults.Results
 		allTaskResults[i].QuarantinedTestsCount = dbTaskResults.QuarantinedTestsCount
 		allTaskResults[i].QuarantinedTests = dbTaskResults.QuarantinedTests
+		allTaskResults[i].TestSelectionCheckedTests = dbTaskResults.TestSelectionCheckedTests
 	}
 
 	return allTaskResults, nil

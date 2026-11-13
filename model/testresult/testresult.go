@@ -20,6 +20,9 @@ type TaskTestResults struct {
 	Results               []TestResult         `json:"results"`
 	QuarantinedTestsCount int                  `json:"quarantined_tests_count,omitempty"`
 	QuarantinedTests      []QuarantinedTest    `json:"quarantined_tests,omitempty"`
+	// TestSelectionCheckedTests are the names of the tests that test selection
+	// checked during the task run.
+	TestSelectionCheckedTests []string `json:"test_selection_checked_tests,omitempty"`
 }
 
 // TaskTestResultsStats represents basic statistics of a set of test results.
@@ -67,6 +70,9 @@ type TestResult struct {
 	// IsManuallyQuarantined indicates whether this test is currently manually
 	// quarantined in the test selection service.
 	IsManuallyQuarantined bool `json:"-" bson:"-"`
+	// CanQuarantine indicates whether test selection checked this test during
+	// its task run, which is required for quarantining it to have an effect.
+	CanQuarantine bool `json:"-" bson:"-"`
 }
 
 // TestLogInfo describes a metadata for a test result's log stored using

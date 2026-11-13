@@ -64,11 +64,12 @@ func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
 		return makeSelectTestsErrorResponse(err)
 	}
 
-	// The quarantined-tests snapshot is best effort and shouldn't fail test selection
+	// Recording the test selection results is best effort and shouldn't fail
+	// test selection.
 	startAt := time.Now()
-	if err := data.RecordQuarantinedTestsSkipped(ctx, t.env, t.selectTests, selectedTests); err != nil {
+	if err := data.RecordTestSelection(ctx, t.env, t.selectTests, selectedTests); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message":       "error recording quarantined tests skipped by test selection",
+			"message":       "error recording test selection results",
 			"project_id":    t.selectTests.Project,
 			"requester":     t.selectTests.Requester,
 			"build_variant": t.selectTests.BuildVariant,

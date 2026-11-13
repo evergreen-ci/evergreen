@@ -894,7 +894,7 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 			attribute.Bool("test_selection_enabled", dbTask.TestSelectionEnabled),
 			attribute.Int("test_results.count", len(taskResults.Results)),
 		)
-		if err := data.DecorateQuarantineStatus(decorateCtx, dbTask, taskResults.Results); err != nil {
+		if err := data.DecorateQuarantineStatus(decorateCtx, evergreen.GetEnvironment(), dbTask, taskResults.Results); err != nil {
 			decorateSpan.RecordError(err)
 			decorateSpan.SetStatus(codes.Error, err.Error())
 			grip.Error(ctx, message.WrapError(err, message.Fields{

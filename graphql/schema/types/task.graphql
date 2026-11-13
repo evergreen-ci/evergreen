@@ -319,6 +319,7 @@ type TaskTestResult {
 type TestResult {
   id: String!
   baseStatus: String
+  canQuarantine: Boolean!
   duration: Float
   endTime: Time
   execution: Int
