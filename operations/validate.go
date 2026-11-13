@@ -188,13 +188,15 @@ func validateProjectRemotely(conf *ClientSettings, projectYaml []byte, path stri
 func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model.GetProjectOpts, errorOnWarnings bool,
 	project *model.Project, projectID string) (*model.ParserProject, *model.ProjectConfig, validator.ValidationErrors) {
 	errs := validator.ValidationErrors{}
-	pp, err := model.LoadProjectInto(ctx, data, opts, projectID, project)
+	pp, warnings, err := model.LoadProjectInto(ctx, data, opts, projectID, project)
+	errs = append(errs, validator.WarningsToValidationErrors(warnings)...)
 	if err != nil {
 		// If the error came from unmarshalling strict, try it again without strict to verify if
 		// it's a legitimate unmarshal error or just an error from strict (which should be a warning)
 		if !errorOnWarnings && strings.Contains(err.Error(), util.UnmarshalStrictError) {
 			opts.UnmarshalStrict = false
-			pp, err2 := model.LoadProjectInto(ctx, data, opts, projectID, project)
+			pp, warnings, err2 := model.LoadProjectInto(ctx, data, opts, projectID, project)
+			errs = append(errs, validator.WarningsToValidationErrors(warnings)...)
 			if err2 == nil {
 				errs = append(errs, validator.ValidationError{
 					Level:   validator.Warning,

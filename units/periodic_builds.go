@@ -177,7 +177,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 		ReadFileFrom:   model.ReadFromGithub,
 		ModuleResolver: resolver,
 	}
-	intermediateProject, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj)
+	intermediateProject, _, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj)
 	if err != nil {
 		return errors.Wrap(err, "parsing config file")
 	}

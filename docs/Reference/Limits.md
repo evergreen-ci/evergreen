@@ -63,6 +63,21 @@ per project based on this
 [investigation](https://jira.mongodb.org/browse/DEVPROD-3509) about GitHub
 usage.
 
+## Cross-file YAML Anchor Limits
+
+Two limits protect the
+[cross-file YAML anchor](../Project-Configuration/Project-Configuration-Files/#YAML-Anchors)
+parsing that joins anchor definitions across include files:
+
+- Anchor definitions may expand to at most 100,000 nodes per include file. Deeply chained
+  aliases multiply the expanded size, so a config that exceeds this is treated as a misuse of
+  the feature.
+- The combined anchor definitions shipped between include files are capped at 1MB.
+
+Exceeding either limit fails the project load with an error describing which limit was hit;
+reduce the number and size of your anchor definitions (define each anchor once, remove anchors
+you no longer use) to fix it.
+
 ## Config YAML Size Limits
 
 ### Current Limitations

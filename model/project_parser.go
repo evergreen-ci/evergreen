@@ -130,6 +130,10 @@ type ParserProject struct {
 	// structs that were defined in more than one YAML file. It is
 	// intentionally unexported so that it's never persisted to the DB and it only exists in memory.
 	redefinedProjectConfigSettings []string
+	// parseWarnings records user-facing warnings encountered while parsing. It
+	// is intentionally unexported so that it's never persisted to the DB and it
+	// only exists in memory.
+	parseWarnings []string
 } // End of ParserProject mergeable fields (this comment is used by the linter).
 
 type parserTaskGroup struct {
@@ -927,7 +931,7 @@ type yamlTuple struct {
 // and sets the project's ID field to projectID. Tags are evaluated. Returns the intermediate step.
 // If reading from a version config, LoadProjectInfoForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
-func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, projectID string, project *Project) (*ParserProject, error) {
+func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, projectID string, project *Project) (*ParserProject, []string, error) {
 	attrs := []attribute.KeyValue{
 		attribute.String(evergreen.ProjectIDOtelAttribute, projectID),
 	}
@@ -948,7 +952,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	}
 	intermediateProject, decodeErr, err := createIntermediateProject(data, unmarshalStrict, registry)
 	if err != nil {
-		return nil, errors.Wrapf(err, LoadProjectError)
+		return nil, nil, errors.Wrapf(err, LoadProjectError)
 	}
 	logDecodeErrorWithOpts(ctx, projectID, "", "LoadProjectInto", decodeErr, opts)
 
@@ -958,7 +962,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 
 	if len(intermediateProject.Include) > 0 {
 		if err := mergeIncludes(ctx, projectID, intermediateProject, registry, opts); err != nil {
-			return nil, errors.Wrap(err, "merging included files")
+			return nil, nil, errors.Wrap(err, "merging included files")
 		}
 	}
 
@@ -980,7 +984,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	// they have been processed.
 	intermediateProject.Include = nil
 
-	return intermediateProject, errors.Wrapf(err, LoadProjectError)
+	return intermediateProject, intermediateProject.parseWarnings, errors.Wrapf(err, LoadProjectError)
 }
 
 func logDecodeErrorWithOpts(ctx context.Context, projectID, filename, caller string, decodeErr error, opts *GetProjectOpts) {
@@ -1115,6 +1119,10 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 			return errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
 		}
 		logDecodeErrorWithOpts(ctx, projectID, path.FileName, "mergeIncludes", decodeErr, opts)
+
+		for i, warning := range add.parseWarnings {
+			add.parseWarnings[i] = fmt.Sprintf("included file '%s': %s", path.FileName, warning)
+		}
 
 		if err = intermediateProject.mergeMultipleParserProjects(add); err != nil {
 			// Return intermediateProject even if we run into issues to show merge progress.
@@ -1655,7 +1663,7 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 	}
 
 	config := Project{}
-	pp, err := LoadProjectInto(ctx, fileContents, &opts, opts.Ref.Id, &config)
+	pp, _, err := LoadProjectInto(ctx, fileContents, &opts, opts.Ref.Id, &config)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrapf(err, "parsing config file for '%s'", opts.Ref.Id)
 	}
@@ -1675,7 +1683,9 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 // If unmarshalStrict is true, use the strict version of unmarshalling.
 // Uses decodeWithAnchors to collect anchors from each file into the registry.
 // If the registry already has entries, a preamble is prepended so aliases from
-// prior files resolve.
+// prior files resolve. If decoding with anchors fails, falls back to standard
+// unmarshalling and records the reason as a warning on the returned project;
+// a breached anchor limit fails the load instead.
 func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (pp *ParserProject, decodeErr error, err error) {
 	var combined []byte
 	if anchorRegistry.Length() > 0 {
@@ -1694,7 +1704,15 @@ func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRe
 			return pp, nil, nil
 		}
 	}
+	// Falling back to standard unmarshalling would silently drop the anchors, so a breached
+	// anchor limit must fail the whole load instead.
+	if errors.Is(decodeErr, errAnchorExpansionLimit) || errors.Is(decodeErr, errAnchorPreambleSize) {
+		return nil, nil, decodeErr
+	}
 	pp, err = standardUnmarshal(parseBytes, unmarshalStrict)
+	if decodeErr != nil && pp != nil {
+		pp.parseWarnings = append(pp.parseWarnings, errors.Wrapf(decodeErr, "parsing with cross-file YAML anchors, falling back to parsing without anchors so YAML aliases defined in other files will not resolve in this file").Error())
+	}
 	return pp, decodeErr, err
 }
 
@@ -1773,7 +1791,10 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 		return &ParserProject{}, nil
 	}
 
-	stripEvgAnchorsKey(&node)
+	// A top-level _evg_anchors key in a file parsed without a prepended
+	// preamble can only be user content, since Evergreen did not put it there.
+	// It is still removed, but warn that the user-defined key is being ignored.
+	strippedUserEvgAnchorsKey := stripEvgAnchorsKey(&node) && anchorRegistry.Length() == 0
 
 	var p ParserProject
 	if unmarshalStrict {
@@ -1795,6 +1816,9 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
 			return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
 		}
+	}
+	if strippedUserEvgAnchorsKey {
+		p.parseWarnings = append(p.parseWarnings, fmt.Sprintf("ignoring reserved top-level YAML key '%s'; this key is reserved for Evergreen's internal use when applying cross-file YAML anchors", evgAnchorsKey))
 	}
 	// The unexported projectConfigFields are not populated by the decodes above,
 	// so always set them from the raw bytes, matching standardUnmarshal.

@@ -253,7 +253,7 @@ func ftAnalyzeFile(ctx context.Context, path string, dets []ftDetector) ftResult
 	// The dumped config is a merged parser project whose Include field has been
 	// cleared, so LoadProjectInto needs no network or DB access; nil opts is safe.
 	var project model.Project
-	pp, err := model.LoadProjectInto(ctx, data, nil, projectID, &project)
+	pp, _, err := model.LoadProjectInto(ctx, data, nil, projectID, &project)
 	if err != nil {
 		res.Err = fmt.Sprintf("parsing project: %v", err)
 		// LoadProjectInto fills the project even on error, so continue and detect.
