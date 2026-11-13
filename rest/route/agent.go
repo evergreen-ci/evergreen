@@ -1851,6 +1851,9 @@ func isRepoAllowedForTask(ctx context.Context, env evergreen.Environment, t *tas
 	if projectRef == nil {
 		return false, errors.Errorf("project ref '%s' doesn't exist", t.Project)
 	}
+	if strings.EqualFold(projectRef.Owner, owner) && strings.EqualFold(projectRef.Repo, repo) {
+		return true, nil
+	}
 
 	allowedRepos, err := allowedReposForTask(ctx, env, t, projectRef, owner)
 	if err != nil {
@@ -1867,23 +1870,10 @@ func isRepoAllowedForTask(ctx context.Context, env evergreen.Environment, t *tas
 
 // Returns the repos under owner that the task may use.
 func allowedReposForTask(ctx context.Context, env evergreen.Environment, t *task.Task, projectRef *model.ProjectRef, owner string) ([]string, error) {
-	repos := map[string]struct{}{}
-	add := func(repoOwner, repo string) {
-		if repo != "" && strings.EqualFold(repoOwner, owner) {
-			repos[model.GitHubAppTokenRepo(repo)] = struct{}{}
-		}
-	}
-
-	add(projectRef.Owner, projectRef.Repo)
-
-	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
+	repos, v, err := baseReposForTask(ctx, t, projectRef, owner)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding version for task")
+		return nil, err
 	}
-	if v == nil {
-		return nil, errors.Errorf("version '%s' not found", t.Version)
-	}
-	add(v.Owner, v.Repo)
 
 	mfest, err := manifest.FindFromVersion(ctx, t.Version, t.Project, "", t.Requester)
 	if err != nil {
@@ -1891,7 +1881,7 @@ func allowedReposForTask(ctx context.Context, env evergreen.Environment, t *task
 	}
 	if mfest != nil {
 		for _, m := range mfest.Modules {
-			add(m.Owner, m.Repo)
+			addRepo(repos, owner, m.Owner, m.Repo)
 		}
 	} else {
 		project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
@@ -1906,16 +1896,86 @@ func allowedReposForTask(ctx context.Context, env evergreen.Environment, t *task
 			if err != nil {
 				continue
 			}
-			add(moduleOwner, moduleRepo)
+			addRepo(repos, owner, moduleOwner, moduleRepo)
 		}
 	}
 
+	return sortedRepos(repos), nil
+}
+
+// Returns the repos under owner that the task may create a token for.
+// Patch authors can declare modules in their own config, so this only trusts committed modules.
+func allowedWriteReposForTask(ctx context.Context, env evergreen.Environment, t *task.Task, projectRef *model.ProjectRef, owner string) ([]string, error) {
+	// Merge queue patches come from a reviewed PR, so their config is trusted.
+	if !evergreen.IsPatchRequester(t.Requester) || evergreen.IsGithubMergeQueueRequester(t.Requester) {
+		return allowedReposForTask(ctx, env, t, projectRef, owner)
+	}
+
+	repos, _, err := baseReposForTask(ctx, t, projectRef, owner)
+	if err != nil {
+		return nil, err
+	}
+	modules, err := model.CommittedModuleRepos(ctx, t.Project)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding modules in the committed config for project '%s'", t.Project)
+	}
+	for _, m := range modules {
+		addRepo(repos, owner, m.Owner, m.Repo)
+	}
+	return sortedRepos(repos), nil
+}
+
+// Returns the repos under owner from the task's project and version.
+func baseReposForTask(ctx context.Context, t *task.Task, projectRef *model.ProjectRef, owner string) (map[string]struct{}, *model.Version, error) {
+	repos := map[string]struct{}{}
+	addRepo(repos, owner, projectRef.Owner, projectRef.Repo)
+
+	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "finding version for task")
+	}
+	if v == nil {
+		return nil, nil, errors.Errorf("version '%s' not found", t.Version)
+	}
+	addRepo(repos, owner, v.Owner, v.Repo)
+	return repos, v, nil
+}
+
+func addRepo(repos map[string]struct{}, owner, repoOwner, repo string) {
+	if repo != "" && strings.EqualFold(repoOwner, owner) {
+		repos[model.GitHubAppTokenRepo(repo)] = struct{}{}
+	}
+}
+
+func sortedRepos(repos map[string]struct{}) []string {
 	allowed := make([]string, 0, len(repos))
 	for repo := range repos {
 		allowed = append(allowed, repo)
 	}
 	slices.Sort(allowed)
-	return allowed, nil
+	return allowed
+}
+
+// Can be overridden in tests to mock the GitHub API.
+var isGitHubAppInstalledOnRepo = (*githubapp.GithubAppAuth).IsGithubAppInstalledOnRepo
+
+// Returns the repos that the GitHub app's installation can access.
+// GitHub rejects the whole token request if it includes a repo the installation can't access.
+func filterReposForInstallation(ctx context.Context, appAuth *githubapp.GithubAppAuth, owner string, repos []string) ([]string, error) {
+	accessible := make([]string, 0, len(repos))
+	for _, repo := range repos {
+		installed, err := isGitHubAppInstalledOnRepo(appAuth, ctx, owner, repo)
+		if err != nil {
+			if errors.Is(err, githubapp.ErrGitHubAppNotInstalled) {
+				continue
+			}
+			return nil, errors.Wrapf(err, "checking if GitHub app is installed on '%s/%s'", owner, repo)
+		}
+		if installed {
+			accessible = append(accessible, repo)
+		}
+	}
+	return accessible, nil
 }
 
 // POST /task/{task_id}/check_run
@@ -2137,7 +2197,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	// Limit the token to repos the task is allowed to use.
 	// This prevents a task from minting a token for another repo the project's
 	// GitHub app can see.
-	repos, err := allowedReposForTask(ctx, h.env, t, p, h.owner)
+	repos, err := allowedWriteReposForTask(ctx, h.env, t, p, h.owner)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -2200,6 +2260,27 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("github app auth not found for project '%s'", t.Project),
+		})
+	}
+
+	// GitHub rejects the whole token request if it includes a repo the app's
+	// installation can't access.
+	repos, err = filterReposForInstallation(ctx, githubAppAuth, h.owner, repos)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	if len(repos) == 0 {
+		grip.Warning(ctx, message.Fields{
+			"message":   "GitHub dynamic access token requested for an owner with no repos the app can access",
+			"task_id":   t.Id,
+			"execution": t.Execution,
+			"project":   t.Project,
+			"owner":     h.owner,
+			"requester": t.Requester,
+		})
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("task isn't allowed to create a GitHub token for owner '%s'", h.owner),
 		})
 	}
 

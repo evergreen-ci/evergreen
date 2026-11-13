@@ -1023,7 +1023,7 @@ The github.generate_token command will use the github app saved in your [project
 
 Parameters:
 
-- `owner`: The organization the GitHub app is installed on. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's owner. The token is limited to the project's repository and its declared modules, so this must be the owner of one of those repositories.
+- `owner`: The organization the GitHub app is installed on. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's owner. The token is limited to the project's repository, its declared modules, and the repositories the app's installation can access, so this must be the owner of one of those repositories. For patch versions, only modules from the project's committed configuration are included.
 - `expansion_name`: The name for the expansion the token will be saved in.
 - `permissions`: By default, the token will have the full permissions of the GitHub app that it's generated from. If you want the token to have less permissions, specify which permissions it should be restricted to. Permissions can also be restricted in project settings. For more on how to set that up and how it interacts with the permissions defined here, please see [here](Github-Integrations#dynamic-github-access-tokens). For a list of available permission types and levels, please take a look at `properties of permissions` in [the github documentation](https://docs.github.com/en/rest/apps/apps?apiVersion=2022-11-28#create-an-installation-access-token-for-an-app). Expansions cannot be used for this field.
 

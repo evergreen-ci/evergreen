@@ -36,6 +36,7 @@ import (
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1129,6 +1130,96 @@ func TestIsRepoAllowedForTask(t *testing.T) {
 	}
 }
 
+func TestAllowedWriteReposForTask(t *testing.T) {
+	const (
+		mainlineVersionID = "aaaaaaaaaaff001122334400"
+		patchVersionID    = "aaaaaaaaaaff001122334401"
+	)
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	require.NoError(t, db.ClearCollections(
+		task.Collection, model.ProjectRefCollection,
+		model.VersionCollection, model.ParserProjectCollection,
+		manifest.Collection, patch.Collection,
+	))
+
+	pRef := model.ProjectRef{Id: "p1", Owner: "myorg", Repo: "myrepo"}
+	require.NoError(t, pRef.Insert(t.Context()))
+	require.NoError(t, (&model.Version{
+		Id: mainlineVersionID, Identifier: pRef.Id, RevisionOrderNumber: 1, Requester: evergreen.RepotrackerVersionRequester,
+	}).Insert(t.Context()))
+	require.NoError(t, (&manifest.Manifest{
+		Id: mainlineVersionID, ProjectName: pRef.Id,
+		Modules: map[string]*manifest.Module{"committed": {Owner: "myorg", Repo: "committed-repo"}},
+	}).Insert(t.Context()))
+	require.NoError(t, (&model.Version{
+		Id: patchVersionID, Identifier: pRef.Id, RevisionOrderNumber: 2, Requester: evergreen.PatchVersionRequester,
+	}).Insert(t.Context()))
+	// Simulate a patch author declaring an extra module in their own config.
+	require.NoError(t, (&manifest.Manifest{
+		Id: patchVersionID, ProjectName: pRef.Id,
+		Modules: map[string]*manifest.Module{"patch-declared": {Owner: "myorg", Repo: "patch-declared-repo"}},
+	}).Insert(t.Context()))
+	require.NoError(t, (&patch.Patch{Id: patch.NewId(patchVersionID), Version: patchVersionID}).Insert(t.Context()))
+
+	for name, tc := range map[string]struct {
+		requester string
+		versionID string
+		repos     []string
+	}{
+		"MainlineTaskMayUseModulesFromItsConfig": {
+			requester: evergreen.RepotrackerVersionRequester,
+			versionID: mainlineVersionID,
+			repos:     []string{"committed-repo", "myrepo"},
+		},
+		"PatchTaskMayNotUseModulesFromItsOwnConfig": {
+			requester: evergreen.PatchVersionRequester,
+			versionID: patchVersionID,
+			repos:     []string{"committed-repo", "myrepo"},
+		},
+		"MergeQueueTaskMayUseModulesFromItsConfig": {
+			requester: evergreen.GithubMergeRequester,
+			versionID: patchVersionID,
+			repos:     []string{"myrepo", "patch-declared-repo"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			tsk := task.Task{Id: "t1", Project: pRef.Id, Version: tc.versionID, Requester: tc.requester}
+			repos, err := allowedWriteReposForTask(t.Context(), env, &tsk, &pRef, "myorg")
+			require.NoError(t, err)
+			assert.Equal(t, tc.repos, repos)
+		})
+	}
+}
+
+func TestFilterReposForInstallation(t *testing.T) {
+	origIsInstalled := isGitHubAppInstalledOnRepo
+	t.Cleanup(func() { isGitHubAppInstalledOnRepo = origIsInstalled })
+	isGitHubAppInstalledOnRepo = func(_ *githubapp.GithubAppAuth, _ context.Context, owner, repo string) (bool, error) {
+		switch repo {
+		case "uninstalled-repo":
+			return false, nil
+		case "not-installed-repo":
+			return false, errors.Wrap(githubapp.ErrGitHubAppNotInstalled, "installation id not found")
+		case "error-repo":
+			return false, errors.New("GitHub is down")
+		default:
+			return true, nil
+		}
+	}
+
+	t.Run("DropsReposTheInstallationCantAccess", func(t *testing.T) {
+		repos, err := filterReposForInstallation(t.Context(), nil, "myorg", []string{"myrepo", "uninstalled-repo", "not-installed-repo"})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"myrepo"}, repos)
+	})
+	t.Run("ErrorsOnGitHubFailure", func(t *testing.T) {
+		_, err := filterReposForInstallation(t.Context(), nil, "myorg", []string{"myrepo", "error-repo"})
+		assert.Error(t, err)
+	})
+}
+
 func TestCreateInstallationTokenRepoAccess(t *testing.T) {
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(t.Context()))
@@ -1174,6 +1265,29 @@ func TestCreateGitHubDynamicAccessTokenRepoAccess(t *testing.T) {
 	r.owner = "attacker"
 
 	assert.Equal(t, http.StatusForbidden, r.Run(t.Context()).Status())
+
+	t.Run("ForbiddenWhenInstallationCanAccessNoRepos", func(t *testing.T) {
+		require.NoError(t, githubapp.UpsertGitHubAppAuth(t.Context(), &githubapp.GithubAppAuth{
+			Id: "p1", AppID: 12345, PrivateKey: []byte("fake-private-key"),
+		}))
+		t.Cleanup(func() {
+			require.NoError(t, db.ClearCollections(githubapp.GitHubAppAuthCollection, fakeparameter.Collection))
+		})
+
+		origIsInstalled := isGitHubAppInstalledOnRepo
+		t.Cleanup(func() { isGitHubAppInstalledOnRepo = origIsInstalled })
+		isGitHubAppInstalledOnRepo = func(*githubapp.GithubAppAuth, context.Context, string, string) (bool, error) {
+			return false, nil
+		}
+
+		r, ok := makeCreateGitHubDynamicAccessToken(env).(*createGitHubDynamicAccessToken)
+		require.True(t, ok)
+		r.taskID = tsk.Id
+		r.owner = "myorg"
+		r.allPermissions = true
+
+		assert.Equal(t, http.StatusForbidden, r.Run(t.Context()).Status())
+	})
 }
 
 func TestUpsertCheckRunParse(t *testing.T) {
