@@ -62,7 +62,7 @@ func AppendTestSelectionResults(ctx context.Context, t *Task, env evergreen.Envi
 	if len(checkedTests) == 0 && len(quarantinedTests) == 0 {
 		return 0, nil
 	}
-	output, ok := t.GetTaskOutputSafe()
+	output, ok := getTestSelectionTaskOutput(env, t)
 	if !ok {
 		return 0, nil
 	}
@@ -91,6 +91,17 @@ func AppendTestSelectionResults(ctx context.Context, t *Task, env evergreen.Envi
 		return 0, err
 	}
 	return len(newQuarantinedTests), nil
+}
+
+// getTestSelectionTaskOutput returns the task output to record test selection
+// results with. A virtual task is still undispatched while its runner checks
+// its tests with test selection, so it uses the task output it will have once
+// it's push-completed.
+func getTestSelectionTaskOutput(env evergreen.Environment, t *Task) (*TaskOutput, bool) {
+	if t.IsVirtual && t.Status == evergreen.TaskUndispatched {
+		return InitializeTaskOutput(env, t.Project), true
+	}
+	return t.GetTaskOutputSafe()
 }
 
 // filterRecordedQuarantinedTests returns the quarantined tests that are not

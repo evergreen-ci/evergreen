@@ -889,6 +889,78 @@ func TestRecordTestSelection(t *testing.T) {
 		assert.Empty(t, record.QuarantinedTests)
 	})
 
+	t.Run("UndispatchedTaskRecordsNothing", func(t *testing.T) {
+		setupTask(t)
+		newTSSServer(t, nil, nil)
+		require.NoError(t, (&task.Task{
+			Id:           "undispatched",
+			Project:      projectID,
+			BuildVariant: bvName,
+			DisplayName:  "undispatched",
+			Version:      "version_id",
+			Requester:    evergreen.PatchVersionRequester,
+			Status:       evergreen.TaskUndispatched,
+		}).Insert(ctx))
+
+		req := baseReq
+		req.TaskID = "undispatched"
+		req.TaskName = "undispatched"
+		req.Tests = []string{"test0"}
+		require.NoError(t, RecordTestSelection(ctx, env, req, req.Tests))
+
+		count, err := env.CedarDB().Collection(testresult.Collection).CountDocuments(ctx, task.ByTaskIDAndExecution("undispatched", 0))
+		require.NoError(t, err)
+		assert.Zero(t, count)
+	})
+
+	t.Run("VirtualTaskCheckedBeforePushCompletionCanBeQuarantined", func(t *testing.T) {
+		setupTask(t)
+		newTSSServer(t, nil, nil)
+		runner := task.Task{
+			Id:             "runner",
+			Project:        projectID,
+			BuildVariant:   bvName,
+			DisplayName:    "runner",
+			Version:        "version_id",
+			Requester:      evergreen.PatchVersionRequester,
+			Status:         evergreen.TaskStarted,
+			TaskOutputInfo: &taskOutput,
+		}
+		virtualTask := task.Task{
+			Id:           "virtual",
+			Project:      projectID,
+			BuildVariant: bvName,
+			DisplayName:  "virtual",
+			Version:      "version_id",
+			Requester:    evergreen.PatchVersionRequester,
+			Status:       evergreen.TaskUndispatched,
+			IsVirtual:    true,
+		}
+		require.NoError(t, runner.Insert(ctx))
+		require.NoError(t, virtualTask.Insert(ctx))
+
+		req := baseReq
+		req.TaskID = virtualTask.Id
+		req.TaskName = virtualTask.DisplayName
+		req.Tests = []string{"test0", "test1"}
+		require.NoError(t, RecordTestSelection(ctx, env, req, req.Tests))
+
+		// Push-complete the virtual task the same way the runner's
+		// completion does.
+		virtualTask.TaskOutputInfo = runner.TaskOutputInfo
+		require.NoError(t, task.AppendVirtualTestResultMetadata(ctx, &virtualTask, env, nil, 0, 2, time.Now()))
+		virtualTask.HasTestResults = true
+		virtualTask.Status = evergreen.TaskSucceeded
+
+		results := []testresult.TestResult{
+			{TaskID: virtualTask.Id, TestName: "test0"},
+			{TaskID: virtualTask.Id, TestName: "job0_fixture_setup_0"},
+		}
+		require.NoError(t, DecorateQuarantineStatus(ctx, env, &virtualTask, results))
+		assert.True(t, results[0].CanQuarantine)
+		assert.False(t, results[1].CanQuarantine)
+	})
+
 	t.Run("FullyQuarantinedTaskRecordsAndReturnsSnapshot", func(t *testing.T) {
 		setupTask(t)
 		newTSSServer(t, map[string]map[string]any{
