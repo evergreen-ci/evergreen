@@ -97,51 +97,6 @@ func EnsureRepoPermissionScopes(ctx context.Context, rm gimlet.RoleManager, repo
 	return nil
 }
 
-// ReconcileRepoPermissionScopes repairs scope membership for a one-time migration.
-// Callers must pause project attachment, detachment, and restriction changes for
-// this repo until reconciliation completes. This must not run on the grant path.
-func ReconcileRepoPermissionScopes(ctx context.Context, rm gimlet.RoleManager, repo *RepoRef) error {
-	if err := EnsureRepoPermissionScopes(ctx, rm, repo); err != nil {
-		return err
-	}
-	resources, err := repoPermissionScopeResources(ctx, repo)
-	if err != nil {
-		return err
-	}
-	for kind, scopeID := range RepoPermissionScopes(repo.Id) {
-		scope, err := rm.GetScope(ctx, scopeID)
-		if err != nil {
-			return errors.Wrap(err, "getting repo permission scope")
-		}
-		if scope == nil {
-			return errors.Errorf("repo permission scope '%s' not found", scopeID)
-		}
-		wanted := map[string]bool{}
-		present := map[string]bool{}
-		for _, resourceID := range scope.Resources {
-			present[resourceID] = true
-		}
-		for _, resourceID := range resources[kind] {
-			wanted[resourceID] = true
-			if present[resourceID] {
-				continue
-			}
-			if err := rm.AddResourceToScope(ctx, scopeID, resourceID); err != nil {
-				return errors.Wrap(err, "adding resource to repo permission scope")
-			}
-		}
-		for _, resourceID := range scope.Resources {
-			if wanted[resourceID] {
-				continue
-			}
-			if err := rm.RemoveResourceFromScope(ctx, scopeID, resourceID); err != nil {
-				return errors.Wrap(err, "removing resource from repo permission scope")
-			}
-		}
-	}
-	return nil
-}
-
 func repoPermissionScopeResources(ctx context.Context, repo *RepoRef) (map[RepoPermissionScope][]string, error) {
 	projects := []ProjectRef{}
 	err := db.FindAllQ(ctx, ProjectRefCollection, db.Query(bson.M{ProjectRefRepoRefIdKey: repo.Id}).WithFields(ProjectRefIdKey, ProjectRefRestrictedKey), &projects)

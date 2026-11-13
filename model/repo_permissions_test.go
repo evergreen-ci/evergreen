@@ -388,11 +388,9 @@ func (m *repoPermissionScopeTestRoleManager) AddScope(ctx context.Context, scope
 	return m.RoleManager.AddScope(ctx, scope)
 }
 
-func TestRepoPermissionScopeReconciliationRespectsInheritedRestrictions(t *testing.T) {
+func TestRepoRestrictionChangesPreserveExplicitBranchOverrides(t *testing.T) {
 	ctx := t.Context()
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
-	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
-	rm := evergreen.GetEnvironment().RoleManager()
+	rm := setupRepoPermissionScopeTest(t)
 	repo := &RepoRef{ProjectRef: ProjectRef{Id: "repo", Owner: "owner", Repo: "repo", Restricted: utility.TruePtr()}}
 	require.NoError(t, repo.Add(ctx, nil))
 	projects := []ProjectRef{
@@ -404,28 +402,13 @@ func TestRepoPermissionScopeReconciliationRespectsInheritedRestrictions(t *testi
 	for _, project := range projects {
 		require.NoError(t, project.Insert(ctx))
 	}
-	// Repair the stale membership that existed before repo entitlements.
-	require.NoError(t, rm.AddResourceToScope(ctx, GetUnrestrictedBranchProjectsScope(repo.Id), "inheritsRestriction"))
-	require.NoError(t, ReconcileRepoPermissionScopes(ctx, rm, repo))
-	scope, err := rm.GetScope(ctx, GetUnrestrictedBranchProjectsScope(repo.Id))
-	require.NoError(t, err)
-	require.NotNil(t, scope)
-	assert.ElementsMatch(t, []string{"explicitlyUnrestricted"}, scope.Resources)
-	adminScope, err := rm.GetScope(ctx, GetRepoAdminScope(repo.Id))
-	require.NoError(t, err)
-	require.NotNil(t, adminScope)
-	assert.ElementsMatch(t, []string{repo.Id, "inheritsRestriction", "explicitlyRestricted", "explicitlyUnrestricted"}, adminScope.Resources)
-	settingsScope, err := rm.GetScope(ctx, GetRepoOnlyScope(repo.Id))
-	require.NoError(t, err)
-	require.NotNil(t, settingsScope)
-	assert.Equal(t, []string{repo.Id}, settingsScope.Resources)
+	require.NoError(t, rm.AddResourceToScope(ctx, GetUnrestrictedBranchProjectsScope(repo.Id), "explicitlyUnrestricted"))
 
-	// Restriction changes preserve explicit branch overrides.
 	repo.Restricted = utility.FalsePtr()
 	branches, err := FindMergedProjectRefsForRepo(ctx, repo)
 	require.NoError(t, err)
 	require.NoError(t, repo.MakeUnrestricted(ctx, branches))
-	scope, err = rm.GetScope(ctx, GetUnrestrictedBranchProjectsScope(repo.Id))
+	scope, err := rm.GetScope(ctx, GetUnrestrictedBranchProjectsScope(repo.Id))
 	require.NoError(t, err)
 	require.NotNil(t, scope)
 	assert.ElementsMatch(t, []string{"explicitlyUnrestricted", "inheritsRestriction"}, scope.Resources)
