@@ -52,6 +52,67 @@ func AppendTestLogForOutput(ctx context.Context, tsk task.Task, output task.Test
 	return sendTestLog(ctx, sender, redactionOpts, testLog)
 }
 
+// TestLogFilesOptions are options for uploading test log files on behalf of a
+// task.
+type TestLogFilesOptions struct {
+	Dir          string
+	LogPaths     []string
+	Task         task.Task
+	Output       task.TestLogOutput
+	RedactorOpts redactor.RedactionOptions
+	Logger       client.LoggerProducer
+	S3Usage      *s3usage.S3Usage
+}
+
+// UploadTestLogFilesForOutput uploads the given test log files using the
+// provided test log output.
+func UploadTestLogFilesForOutput(ctx context.Context, opts TestLogFilesOptions) error {
+	if _, err := os.Stat(opts.Dir); err != nil {
+		opts.Logger.Task().Warning(ctx, errors.Wrapf(err, "getting info for log directory '%s'; skipping upload of %d test log file(s) for task '%s'", opts.Dir, len(opts.LogPaths), opts.Task.Id))
+		return nil
+	}
+
+	h := newTestLogHandler(opts.Dir, opts.Logger, opts.RedactorOpts, opts.S3Usage, func(ctx context.Context, senderOpts task.EvergreenSenderOptions, logPath string, sequence int) (send.Sender, error) {
+		return task.NewTestLogSenderForOutput(ctx, opts.Task, opts.Output, senderOpts, logPath, sequence)
+	})
+	h.sequenceSize = defaultTestLogSequenceSize
+	if _, err := os.Stat(filepath.Join(opts.Dir, testLogSpecFilename)); err == nil {
+		h.getSpecFile(ctx)
+	}
+
+	var (
+		chunks    []testLogChunk
+		fileCount int
+	)
+	for _, logPath := range opts.LogPaths {
+		relPath := filepath.FromSlash(logPath)
+		if !filepath.IsLocal(relPath) {
+			opts.Logger.Task().Warningf(ctx, "Skipping test log '%s' because it is not a relative path within the log directory.", logPath)
+			continue
+		}
+		if filepath.Clean(relPath) == testLogSpecFilename {
+			continue
+		}
+		path := filepath.Join(opts.Dir, relPath)
+		info, err := os.Stat(path)
+		if err != nil {
+			opts.Logger.Task().Warning(ctx, errors.Wrapf(err, "getting info for test log file '%s'", logPath))
+			continue
+		}
+		if info.IsDir() {
+			opts.Logger.Task().Warningf(ctx, "Skipping test log '%s' because it is a directory.", logPath)
+			continue
+		}
+		fileCount++
+		chunks = append(chunks, h.chunkFile(path, logPath, info.Size())...)
+	}
+
+	opts.Logger.Task().Infof(ctx, "Uploading %d of %d test log file(s) for task '%s'.", fileCount, len(opts.LogPaths), opts.Task.Id)
+	h.ingestChunks(ctx, chunks)
+
+	return ctx.Err()
+}
+
 // sendTestLog redacts the test log's lines, writes them to the sender, and closes
 // the sender.
 func sendTestLog(ctx context.Context, sender send.Sender, redactionOpts redactor.RedactionOptions, testLog *testlog.TestLog) error {
@@ -75,25 +136,39 @@ type testLogDirectoryHandler struct {
 // newTestLogDirectoryHandler returns a new test log directory handler for the
 // specified task.
 func newTestLogDirectoryHandler(dir string, logger client.LoggerProducer, handlerOpts directoryHandlerOpts) directoryHandler {
+	return newTestLogHandler(dir, logger, handlerOpts.redactorOpts, handlerOpts.s3Usage, func(ctx context.Context, senderOpts task.EvergreenSenderOptions, logPath string, sequence int) (send.Sender, error) {
+		return task.NewTestLogSender(ctx, *handlerOpts.tsk, senderOpts, logPath, sequence)
+	})
+}
+
+func newTestLogHandler(dir string, logger client.LoggerProducer, redactorOpts redactor.RedactionOptions, s3Usage *s3usage.S3Usage, newSender func(ctx context.Context, senderOpts task.EvergreenSenderOptions, logPath string, sequence int) (send.Sender, error)) *testLogDirectoryHandler {
 	h := &testLogDirectoryHandler{
 		dir:    dir,
 		logger: logger,
 	}
 	// This flag exists to improve the performance of test log ingestion.
-	handlerOpts.redactorOpts.PreloadRedactions = true
+	redactorOpts.PreloadRedactions = true
 	h.createSender = func(ctx context.Context, logPath string, sequence int) (send.Sender, error) {
-		evgSender, err := task.NewTestLogSender(ctx, *handlerOpts.tsk, task.EvergreenSenderOptions{
+		evgSender, err := newSender(ctx, task.EvergreenSenderOptions{
 			Local:   logger.Task().GetSender(),
 			Parse:   h.spec.getParser(),
-			S3Usage: handlerOpts.s3Usage,
+			S3Usage: s3Usage,
 		}, logPath, sequence)
 		if err != nil {
 			return nil, errors.Wrap(err, "making test log sender")
 		}
-		return redactor.NewRedactingSender(evgSender, handlerOpts.redactorOpts), nil
+		return redactor.NewRedactingSender(evgSender, redactorOpts), nil
 	}
 
 	return h
+}
+
+type testLogChunk struct {
+	path     string
+	logPath  string
+	sequence int
+	offset   int64
+	limit    int64
 }
 
 func (h *testLogDirectoryHandler) run(ctx context.Context) error {
@@ -106,13 +181,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 
 	h.getSpecFile(ctx)
 
-	type fileChunk struct {
-		path     string
-		sequence int
-		offset   int64
-		limit    int64
-	}
-	var fileChunks []fileChunk
+	var fileChunks []testLogChunk
 	ignore := filepath.Join(h.dir, testLogSpecFilename)
 	fileSizes := []int64{}
 	filesOverTenMB := 0
@@ -151,34 +220,62 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 			fileInfo = targetInfo
 		}
 
+		logPath, err := filepath.Rel(h.dir, path)
+		if err != nil {
+			h.logger.Task().Error(ctx, errors.Wrapf(err, "getting relative path for test log file '%s'", path))
+			return nil
+		}
+
 		h.logFileCount++
+		h.logger.Task().Infof(ctx, "new test log file '%s' found, initiating automated ingestion", path)
+		h.logger.Task().Infof(ctx, "storing test log file '%s' as '%s'", path, filepath.ToSlash(logPath))
 
 		fileSize := fileInfo.Size()
 		fileSizes = append(fileSizes, fileSize)
 		if fileSize > 10e6 {
 			filesOverTenMB++
 		}
-		var (
-			currentByte int64
-			sequence    int
-		)
-		for currentByte < fileSize {
-			fileChunks = append(fileChunks, fileChunk{
-				path:     path,
-				sequence: sequence,
-				offset:   currentByte,
-				limit:    currentByte + h.sequenceSize,
-			})
-
-			currentByte += h.sequenceSize
-			sequence++
-		}
+		fileChunks = append(fileChunks, h.chunkFile(path, filepath.ToSlash(logPath), fileSize)...)
 
 		return nil
 	})
 
-	work := make(chan fileChunk, len(fileChunks))
-	for _, chunk := range fileChunks {
+	h.ingestChunks(ctx, fileChunks)
+
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_count", Value: attribute.IntValue(h.logFileCount)})
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_chunks_count", Value: attribute.IntValue(len(fileChunks))})
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_sizes", Value: attribute.Int64SliceValue(fileSizes)})
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_files_over_ten_mb", Value: attribute.IntValue(filesOverTenMB)})
+	return err
+}
+
+// chunkFile splits the file at path into chunks of at most the handler's
+// sequence size, each to be persisted as a sequence of the test log logPath.
+func (h *testLogDirectoryHandler) chunkFile(path, logPath string, fileSize int64) []testLogChunk {
+	var (
+		chunks      []testLogChunk
+		currentByte int64
+		sequence    int
+	)
+	for currentByte < fileSize {
+		chunks = append(chunks, testLogChunk{
+			path:     path,
+			logPath:  logPath,
+			sequence: sequence,
+			offset:   currentByte,
+			limit:    currentByte + h.sequenceSize,
+		})
+
+		currentByte += h.sequenceSize
+		sequence++
+	}
+	return chunks
+}
+
+// ingestChunks ingests the given test log chunks in parallel.
+func (h *testLogDirectoryHandler) ingestChunks(ctx context.Context, chunks []testLogChunk) {
+	work := make(chan testLogChunk, len(chunks))
+	for _, chunk := range chunks {
 		work <- chunk
 	}
 	close(work)
@@ -200,7 +297,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 					return
 				}
 
-				h.ingest(ctx, chunk.path, chunk.sequence, chunk.offset, chunk.limit)
+				h.ingest(ctx, chunk)
 
 				// In some intense-workflows, log uploading can starve other goroutines, so yield routinely
 				// to allow other goroutines to run.
@@ -209,12 +306,6 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		}()
 	}
 	wg.Wait()
-
-	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_count", Value: attribute.IntValue(h.logFileCount)})
-	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_chunks_count", Value: attribute.IntValue(len(fileChunks))})
-	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_sizes", Value: attribute.Int64SliceValue(fileSizes)})
-	span.SetAttributes(attribute.KeyValue{Key: "test_log_files_over_ten_mb", Value: attribute.IntValue(filesOverTenMB)})
-	return err
 }
 
 // getSpecFile looks for the test log specification file in the top level of
@@ -239,18 +330,8 @@ func (h *testLogDirectoryHandler) getSpecFile(ctx context.Context) {
 }
 
 // ingest reads and ships a test log file.
-func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, sequence int, offset, limit int64) {
-	h.logger.Task().Infof(ctx, "new test log file '%s' found, initiating automated ingestion", path)
-
-	// The persisted log path should be relative to the reserved directory
-	// and contain only slash ('/') separators.
-	logPath, err := filepath.Rel(h.dir, path)
-	if err != nil {
-		h.logger.Task().Error(ctx, errors.Wrapf(err, "getting relative path for test log file '%s'", path))
-		return
-	}
-	logPath = filepath.ToSlash(logPath)
-	h.logger.Task().Infof(ctx, "storing test log file '%s' as '%s'", path, logPath)
+func (h *testLogDirectoryHandler) ingest(ctx context.Context, chunk testLogChunk) {
+	path, logPath, sequence, offset, limit := chunk.path, chunk.logPath, chunk.sequence, chunk.offset, chunk.limit
 
 	f, err := os.Open(path)
 	if err != nil {

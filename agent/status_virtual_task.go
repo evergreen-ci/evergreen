@@ -138,8 +138,7 @@ func (tc *taskContext) uploadEntryTestResults(ctx context.Context, prep apimodel
 		return result
 	}
 
-	testResultsCreatedAt := task.TestResults.GetCreatedAt()
-	stats, err := command.ProcessVirtualTaskTestResultFiles(ctx, tc.taskConfig, tc.logger, *prep.TestResultsInfo, prep.TaskCreateTime, testResultsCreatedAt, task.TestResults.Files)
+	stats, err := command.ProcessVirtualTaskTestResultFiles(ctx, tc.taskConfig, tc.logger, *prep.TestResultsInfo, prep.TaskCreateTime, task.TestResults)
 	if err != nil {
 		result.Error = err.Error()
 		return result

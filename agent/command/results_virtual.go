@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -33,13 +34,13 @@ func parseOptionsForVirtualTask(conf *internal.TaskConfig, info testresult.TestR
 	}
 }
 
-// ProcessVirtualTaskTestResultFiles parses the given test result file groups,
-// uploads the test logs and test results to S3 on behalf of the virtual task
-// identified by info, and returns the test result metadata.
-func ProcessVirtualTaskTestResultFiles(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, info testresult.TestResultsInfo, taskCreatedAt, testResultsCreatedAt time.Time, groups []VirtualTaskTestResultFileGroup) (*apimodels.VirtualTaskTestResults, error) {
+// ProcessVirtualTaskTestResultFiles parses the given test result files, uploads
+// the test logs and test results to S3 on behalf of the virtual task identified
+// by info, and returns the test result metadata.
+func ProcessVirtualTaskTestResultFiles(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, info testresult.TestResultsInfo, taskCreatedAt time.Time, input VirtualTaskTestResultsInput) (*apimodels.VirtualTaskTestResults, error) {
 	parseOpts := parseOptionsForVirtualTask(conf, info)
 
-	logs, results, err := parseVirtualTaskTestResultFileGroups(ctx, parseOpts, logger, groups)
+	logs, results, err := parseVirtualTaskTestResultFileGroups(ctx, parseOpts, logger, input.Files)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing test result files")
 	}
@@ -47,11 +48,11 @@ func ProcessVirtualTaskTestResultFiles(ctx context.Context, conf *internal.TaskC
 		return nil, errors.New("no test results found in files")
 	}
 
-	if err = uploadVirtualTaskTestLogs(ctx, conf, logger, info, logs); err != nil {
+	if err = uploadVirtualTaskTestLogs(ctx, conf, logger, info, input.LogDir, logs, results); err != nil {
 		return nil, errors.Wrap(err, "uploading test logs")
 	}
 
-	return uploadVirtualTaskTestResults(ctx, conf, info, taskCreatedAt, testResultsCreatedAt, results)
+	return uploadVirtualTaskTestResults(ctx, conf, info, taskCreatedAt, input.GetCreatedAt(), results)
 }
 
 // parseVirtualTaskTestResultFileGroups parses all test result file group into test logs and results.
@@ -127,10 +128,16 @@ func parseVirtualTaskTestResultFileGroup(ctx context.Context, opts testResultPar
 	}
 }
 
-// uploadVirtualTaskTestLogs uploads the given test logs on behalf of the virtual
+// uploadVirtualTaskTestLogs uploads the given parsed test logs, as well as the
+// test log files in logDir referenced by the results, on behalf of the virtual
 // task identified by info.
-func uploadVirtualTaskTestLogs(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, info testresult.TestResultsInfo, logs []testlog.TestLog) error {
-	if len(logs) == 0 {
+func uploadVirtualTaskTestLogs(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, info testresult.TestResultsInfo, logDir string, logs []testlog.TestLog, results []testresult.TestResult) error {
+	logPaths := referencedTestLogPaths(logs, results)
+	if len(logPaths) > 0 && logDir == "" {
+		logger.Task().Warningf(ctx, "Test results for virtual task '%s' reference %d test log file(s), but no log directory was specified, so they will not be uploaded.", info.TaskID, len(logPaths))
+		logPaths = nil
+	}
+	if len(logs) == 0 && len(logPaths) == 0 {
 		return nil
 	}
 	output := conf.Task.TaskOutputInfo
@@ -149,17 +156,57 @@ func uploadVirtualTaskTestLogs(ctx context.Context, conf *internal.TaskConfig, l
 		InternalRedactions: conf.InternalRedactions,
 	}
 
-	succeeded, err := agentutil.ParallelWorkerExec(ctx, "sending test log", logs, logger.Task(),
-		func(log *testlog.TestLog) error {
-			return errors.Wrapf(taskoutput.AppendTestLogForOutput(ctx, vTask, output.TestLogs, opts, log, conf.S3Usage), "uploading test log for virtual task '%s'", vTask.Id)
-		},
-	)
-	if err != nil {
-		return err
+	if len(logs) > 0 {
+		succeeded, err := agentutil.ParallelWorkerExec(ctx, "sending test log", logs, logger.Task(),
+			func(log *testlog.TestLog) error {
+				return errors.Wrapf(taskoutput.AppendTestLogForOutput(ctx, vTask, output.TestLogs, opts, log, conf.S3Usage), "uploading test log for virtual task '%s'", vTask.Id)
+			},
+		)
+		if err != nil {
+			return err
+		}
+		logger.Task().Infof(ctx, "Posting test logs succeeded for %d of %d logs.", succeeded, len(logs))
 	}
 
-	logger.Task().Infof(ctx, "Posting test logs succeeded for %d of %d logs.", succeeded, len(logs))
+	if len(logPaths) > 0 {
+		return taskoutput.UploadTestLogFilesForOutput(ctx, taskoutput.TestLogFilesOptions{
+			Dir:          resolveWorkingDirectory(conf.WorkDir, logDir),
+			LogPaths:     logPaths,
+			Task:         vTask,
+			Output:       output.TestLogs,
+			RedactorOpts: opts,
+			Logger:       logger,
+			S3Usage:      conf.S3Usage,
+		})
+	}
 	return nil
+}
+
+// referencedTestLogPaths returns the unique test log paths referenced by the
+// results' log info, excluding parsed test logs that are uploaded directly.
+func referencedTestLogPaths(logs []testlog.TestLog, results []testresult.TestResult) []string {
+	seen := make(map[string]bool, len(logs))
+	for _, log := range logs {
+		seen[log.Name] = true
+	}
+	var logPaths []string
+	addPath := func(logPath string) {
+		if logPath == "" || seen[logPath] {
+			return
+		}
+		seen[logPath] = true
+		logPaths = append(logPaths, logPath)
+	}
+	for _, r := range results {
+		if r.LogInfo == nil {
+			continue
+		}
+		addPath(r.LogInfo.LogName)
+		for _, logPath := range r.LogInfo.LogsToMerge {
+			addPath(utility.FromStringPtr(logPath))
+		}
+	}
+	return logPaths
 }
 
 // uploadVirtualTaskTestResults uploads the test results in parquet format on
