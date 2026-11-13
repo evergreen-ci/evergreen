@@ -3529,3 +3529,27 @@ func TestResolveGitHubPRAuthor(t *testing.T) {
 		assert.Equal(t, "github-user", resolvedUser.GetLogin())
 	})
 }
+
+func TestResolveCliPatchBaseRevision(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	testutil.ConfigureIntegrationTest(t, env.Settings())
+
+	const tagCommit = "da7cb3cbbce495e7bb66602d2c4cd79ae64ce668"
+	projectRef := &model.ProjectRef{Id: "evergreen", Owner: "evergreen-ci", Repo: "evergreen"}
+
+	t.Run("TagShouldResolveToCommit", func(t *testing.T) {
+		sha, err := resolveCliPatchBaseRevision(t.Context(), projectRef, "v1")
+		require.NoError(t, err)
+		assert.Equal(t, tagCommit, sha)
+	})
+	t.Run("ShortSHAShouldFallBackToGitHubAPI", func(t *testing.T) {
+		sha, err := resolveCliPatchBaseRevision(t.Context(), projectRef, tagCommit[:7])
+		require.NoError(t, err)
+		assert.Equal(t, tagCommit, sha)
+	})
+	t.Run("NonexistentRefShouldError", func(t *testing.T) {
+		_, err := resolveCliPatchBaseRevision(t.Context(), projectRef, "nonexistent-ref")
+		assert.Error(t, err)
+	})
+}
