@@ -33,6 +33,9 @@ type APITest struct {
 	ExitCode int `json:"-"`
 	// Whether this test is currently manually quarantined in the test selection service.
 	IsManuallyQuarantined bool `json:"is_manually_quarantined"`
+	// Whether test selection checked this test during its task run, which is
+	// required for quarantining it to have an effect.
+	CanQuarantine bool `json:"can_quarantine"`
 }
 
 // TestLogs is a struct for storing the information about logs that will be
@@ -84,6 +87,7 @@ func (at *APITest) BuildFromService(st any, args *APITestArgs) error {
 		at.EndTime = utility.ToTimePtr(v.TestEndTime)
 		at.Duration = v.Duration().Seconds()
 		at.IsManuallyQuarantined = v.IsManuallyQuarantined
+		at.CanQuarantine = v.CanQuarantine
 
 		at.TestFile = utility.ToStringPtr(v.GetDisplayTestName())
 		at.Logs = TestLogs{

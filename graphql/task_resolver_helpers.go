@@ -10,7 +10,10 @@ func shouldDecorateTestQuarantineStatus(ctx context.Context) bool {
 	if !gqlgen.HasOperationContext(ctx) {
 		return true
 	}
-	return collectedFieldPathContains(gqlgen.GetOperationContext(ctx), gqlgen.CollectFieldsCtx(ctx, nil), []string{"testResults", "isManuallyQuarantined"})
+	opCtx := gqlgen.GetOperationContext(ctx)
+	fields := gqlgen.CollectFieldsCtx(ctx, nil)
+	return collectedFieldPathContains(opCtx, fields, []string{"testResults", "isManuallyQuarantined"}) ||
+		collectedFieldPathContains(opCtx, fields, []string{"testResults", "canQuarantine"})
 }
 
 func collectedFieldPathContains(opCtx *gqlgen.OperationContext, fields []gqlgen.CollectedField, path []string) bool {
