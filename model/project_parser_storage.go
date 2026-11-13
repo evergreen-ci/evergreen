@@ -43,7 +43,7 @@ func GetParserProjectStorage(ctx context.Context, settings *evergreen.Settings, 
 	case evergreen.ProjectStorageMethodS3:
 		settingsFromDB, err := evergreen.GetConfig(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("Error getting Evergreen admin settings: '%s'", err.Error())
+			return nil, fmt.Errorf("Error getting Evergreen admin settings from GetParserProjectStorage")
 		}
 		if settingsFromDB.ServiceFlags.LargeParserProjectsDisabled {
 			return nil, errors.New("large parser projects are disabled")
