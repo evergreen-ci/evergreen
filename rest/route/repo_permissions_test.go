@@ -182,6 +182,112 @@ func TestRepoGrantsDoNotReuseBroaderRolesOrMatchingProjectScopes(t *testing.T) {
 	assert.False(t, model.IsRepoPermissionScope(projectRole.Scope))
 }
 
+func TestRepoUsersIncludeEachCapabilityAndExcludeProjectGrants(t *testing.T) {
+	ctx := t.Context()
+	env := testutil.NewEnvironment(ctx, t)
+	rm := env.RoleManager()
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection, user.Collection, evergreen.RoleCollection, evergreen.ScopeCollection))
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+	repo := &model.RepoRef{ProjectRef: model.ProjectRef{Id: "repo"}}
+	require.NoError(t, repo.Add(ctx, nil))
+	require.NoError(t, (&model.ProjectRef{Id: "branch", RepoRefId: repo.Id}).Insert(ctx))
+	require.NoError(t, rm.AddResourceToScope(ctx, model.GetUnrestrictedBranchProjectsScope(repo.Id), "branch"))
+	require.NoError(t, rm.AddResourceToScope(ctx, model.GetRepoAdminScope(repo.Id), "branch"))
+	for _, tc := range []struct {
+		id          string
+		scope       model.RepoPermissionScope
+		permissions gimlet.Permissions
+	}{
+		{"settings", model.RepoOnlyScope, gimlet.Permissions{evergreen.PermissionProjectSettings: 20}},
+		{"editor", model.RepoUnrestrictedScope, gimlet.Permissions{evergreen.PermissionTasks: 20, evergreen.PermissionPatches: 10, evergreen.PermissionLogs: 10}},
+		{"admin", model.RepoAndProjectsScope, gimlet.Permissions{evergreen.PermissionProjectSettings: 20, evergreen.PermissionTasks: 30, evergreen.PermissionPatches: 10, evergreen.PermissionLogs: 10}},
+	} {
+		role, err := makeRepoPermissionRole(ctx, rm, RequestedPermissions{ResourceType: repoResourceType, Resources: []string{repo.Id}, RepoScope: tc.scope, Permissions: tc.permissions})
+		require.NoError(t, err)
+		require.NoError(t, (&user.DBUser{Id: tc.id, SystemRoles: []string{role.ID}}).Insert(ctx))
+	}
+	require.NoError(t, (&user.DBUser{Id: "native", SystemRoles: []string{model.GetRepoAdminRole(repo.Id)}}).Insert(ctx))
+	require.NoError(t, (&user.DBUser{Id: "bot", OnlyAPI: true, SystemRoles: []string{model.GetRepoAdminRole(repo.Id)}}).Insert(ctx))
+	require.NoError(t, rm.AddScope(ctx, gimlet.Scope{ID: "project_branch", Type: evergreen.ProjectResourceType, Resources: []string{"branch"}}))
+	require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{ID: model.GetProjectAdminRole("branch"), Scope: "project_branch", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
+	require.NoError(t, (&user.DBUser{Id: "projectAdmin", SystemRoles: []string{model.GetProjectAdminRole("branch")}}).Insert(ctx))
+	legacyRole := gimlet.Role{ID: "legacyProjectRole", Scope: model.GetUnrestrictedBranchProjectsScope(repo.Id), Permissions: gimlet.Permissions{evergreen.PermissionTasks: 20}}
+	require.NoError(t, rm.UpdateRole(ctx, legacyRole))
+	require.NoError(t, (&user.DBUser{Id: "legacy", SystemRoles: []string{legacyRole.ID}}).Insert(ctx))
+	editor, err := user.FindOneById(ctx, "editor")
+	require.NoError(t, err)
+	require.NotNil(t, editor)
+	require.NoError(t, editor.AddRole(ctx, legacyRole.ID))
+	role, err := makeProjectPermissionRole(ctx, rm, RequestedPermissions{ResourceType: evergreen.ProjectResourceType, Resources: []string{"branch"}, Permissions: gimlet.Permissions{evergreen.PermissionTasks: 30}})
+	require.NoError(t, err)
+	require.NoError(t, (&user.DBUser{Id: "projectOnly", SystemRoles: []string{role.ID}}).Insert(ctx))
+	req, err := http.NewRequest(http.MethodGet, "/repos/repo/permissions/users", nil)
+	require.NoError(t, err)
+	handler := makeGetRepoUsersPermissions(rm).Factory()
+	require.NoError(t, handler.Parse(ctx, gimlet.SetURLVars(req, map[string]string{"repo_id": repo.Id})))
+	response := handler.Run(ctx)
+	require.Equal(t, http.StatusOK, response.Status())
+	result := response.Data().(RepoUserPermissions)
+	assert.Len(t, result, 4)
+	assert.Contains(t, result["settings"], model.RepoOnlyScope)
+	assert.Contains(t, result["editor"], model.RepoUnrestrictedScope)
+	assert.Contains(t, result["admin"], model.RepoAndProjectsScope)
+	assert.Contains(t, result["native"], model.RepoAndProjectsScope)
+	assert.NotContains(t, result, "projectOnly")
+	assert.NotContains(t, result, "bot")
+	assert.NotContains(t, result, "legacy")
+	projectResult := (&allUsersPermissionsGetHandler{rm: rm, input: UsersPermissionsInput{
+		ResourceType: evergreen.ProjectResourceType, ResourceId: "branch", ExcludeRepoGrants: true,
+	}}).Run(ctx)
+	require.Equal(t, http.StatusOK, projectResult.Status())
+	// Repo grants and native repo admins are excluded, while native project admins remain.
+	assert.Equal(t, UsersPermissionsResult{
+		"projectOnly":  {evergreen.PermissionTasks: 30},
+		"legacy":       {evergreen.PermissionTasks: 20},
+		"editor":       {evergreen.PermissionTasks: 20},
+		"projectAdmin": {evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
+	}, projectResult.Data())
+}
+
+func TestRepoDiscoveryReturnsOnlyResourceMetadata(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.RepoRefCollection))
+	repo := &model.RepoRef{ProjectRef: model.ProjectRef{Id: "repo", Owner: "owner", Repo: "name", Admins: []string{"admin"}, RemotePath: "evergreen.yml"}}
+	require.NoError(t, repo.Replace(t.Context()))
+	response := (&reposGetHandler{}).Run(t.Context())
+	require.Equal(t, http.StatusOK, response.Status())
+	encoded, err := json.Marshal(response.Data())
+	require.NoError(t, err)
+	assert.JSONEq(t, `[{"id":"repo","name":"owner/name","admins":["admin"]}]`, string(encoded))
+}
+
+func TestRepoDiscoveryReturnsEmptyAdminsForRepoWithoutAdmins(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.RepoRefCollection))
+	repo := &model.RepoRef{ProjectRef: model.ProjectRef{Id: "repo", Owner: "owner", Repo: "name"}}
+	require.NoError(t, repo.Replace(t.Context()))
+	response := (&reposGetHandler{}).Run(t.Context())
+	require.Equal(t, http.StatusOK, response.Status())
+	encoded, err := json.Marshal(response.Data())
+	require.NoError(t, err)
+	assert.JSONEq(t, `[{"id":"repo","name":"owner/name","admins":[]}]`, string(encoded))
+}
+
+func TestRepoUsersPermissionsForNonexistentRepoShouldReturnNotFound(t *testing.T) {
+	ctx := t.Context()
+	rm := testutil.NewEnvironment(ctx, t).RoleManager()
+	require.NoError(t, db.ClearCollections(model.RepoRefCollection))
+	req, err := http.NewRequest(http.MethodGet, "/repos/nonexistent/permissions/users", nil)
+	require.NoError(t, err)
+	handler := makeGetRepoUsersPermissions(rm).Factory()
+	require.NoError(t, handler.Parse(ctx, gimlet.SetURLVars(req, map[string]string{"repo_id": "nonexistent"})))
+	assert.Equal(t, http.StatusNotFound, handler.Run(ctx).Status())
+}
+
+func TestAllUsersPermissionsWithRepoResourceTypeShouldError(t *testing.T) {
+	req, err := http.NewRequest(http.MethodGet, "/permissions/users", bytes.NewBufferString(`{"resource_type":"repo","resource_id":"repo"}`))
+	require.NoError(t, err)
+	assert.Error(t, makeGetAllUsersPermissions(nil).Parse(t.Context(), req))
+}
+
 func TestRepoPermissionRequestsRejectInvalidCapabilities(t *testing.T) {
 	rm := testutil.NewEnvironment(t.Context(), t).RoleManager()
 	for _, tc := range []struct {
