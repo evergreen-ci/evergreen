@@ -44,6 +44,32 @@ func TestMarkGitHubStatusResync(t *testing.T) {
 	assert.True(t, created.DirtySince.Equal(created.LastFailedAt))
 }
 
+func TestFindDueGitHubStatusResyncs(t *testing.T) {
+	require.NoError(t, db.ClearCollections(GitHubStatusResyncCollection))
+	now := time.Now()
+	for _, resync := range []GitHubStatusResync{
+		{PatchID: "old-pr", DirtySince: now.Add(-3 * time.Hour), LastFailedAt: now.Add(-time.Minute)},
+		{PatchID: "new-pr", DirtySince: now.Add(-time.Hour), LastFailedAt: now.Add(-time.Minute)},
+		{PatchID: "merge-queue", IsMergeQueue: true, DirtySince: now.Add(-time.Minute), LastFailedAt: now.Add(-time.Minute)},
+		{PatchID: "expired", DirtySince: now.Add(-8 * time.Hour), LastFailedAt: now.Add(-7 * time.Hour)},
+	} {
+		require.NoError(t, db.Insert(t.Context(), GitHubStatusResyncCollection, resync))
+	}
+
+	resyncs, err := FindDueGitHubStatusResyncs(t.Context(), 10)
+	require.NoError(t, err)
+	require.Len(t, resyncs, 3)
+	assert.Equal(t, "merge-queue", resyncs[0].PatchID)
+	assert.Equal(t, "old-pr", resyncs[1].PatchID)
+	assert.Equal(t, "new-pr", resyncs[2].PatchID)
+
+	resyncs, err = FindDueGitHubStatusResyncs(t.Context(), 2)
+	require.NoError(t, err)
+	require.Len(t, resyncs, 2)
+	assert.Equal(t, "merge-queue", resyncs[0].PatchID)
+	assert.Equal(t, "old-pr", resyncs[1].PatchID)
+}
+
 func TestClearGitHubStatusResync(t *testing.T) {
 	require.NoError(t, db.ClearCollections(GitHubStatusResyncCollection))
 	jobStart := time.Now().Truncate(time.Millisecond)
