@@ -1040,10 +1040,11 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 
 // resolveCliPatchBaseRevision resolves a base revision that isn't a full commit
 // hash using git so that it doesn't depend on the GitHub API being available.
-// Like git, tags take precedence over branches with the same name. It falls
-// back to the GitHub API for revisions git can't resolve, such as short hashes.
+// Like the GitHub API, branches take precedence over tags with the same name.
+// It falls back to the GitHub API for revisions git can't resolve, such as
+// short hashes.
 func resolveCliPatchBaseRevision(ctx context.Context, projectRef *model.ProjectRef, revision string) (string, error) {
-	sha, gitErr := thirdparty.GitLsRemote(ctx, projectRef.Owner, projectRef.Repo, "refs/tags/"+revision, "refs/heads/"+revision)
+	sha, gitErr := thirdparty.GitLsRemote(ctx, projectRef.Owner, projectRef.Repo, "refs/heads/"+revision, "refs/tags/"+revision)
 	if gitErr == nil {
 		return sha, nil
 	}
