@@ -555,6 +555,8 @@ tasks:
 	v, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
 	require.NoError(t, err)
 	require.NotNil(t, v)
+	_, err = v.GetBuildVariants(ctx)
+	require.NoError(t, err)
 	assert.Len(t, v.BuildVariants, 3)
 	assert.False(t, v.BuildVariants[0].Activated)
 	assert.False(t, v.BuildVariants[1].Activated)

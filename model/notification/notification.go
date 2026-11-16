@@ -62,6 +62,9 @@ type NotificationMetadata struct {
 	TaskID        string `bson:"task_id,omitempty"`
 	TaskExecution int    `bson:"task_execution,omitempty"`
 	CreatedBy     string `bson:"created_by,omitempty"`
+	// PatchID is the patch whose GitHub statuses a GitHub status notification
+	// reports on.
+	PatchID string `bson:"patch_id,omitempty"`
 }
 
 // SenderKey returns an evergreen.SenderKey to get a grip sender for this

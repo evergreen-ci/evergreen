@@ -1162,7 +1162,7 @@ func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo str
 
 	job := units.NewGithubStatusRefreshJob(p)
 	job.Run(ctx)
-	return nil
+	return errors.Wrapf(job.Error(), "refreshing GitHub statuses for patch '%s'", p.Id.Hex())
 }
 
 // AddIntentForPR processes a PR and decides whether to create a patch for it or not. It does this by checking a

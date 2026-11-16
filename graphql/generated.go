@@ -93334,8 +93334,11 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 	if _, present := asMap["limit"]; !present {
 		asMap["limit"] = 5
 	}
+	if _, present := asMap["maxVersions"]; !present {
+		asMap["maxVersions"] = 300
+	}
 
-	fieldsInOrder := [...]string{"date", "includeAllBuildsAndTasks", "limit", "minOrder", "maxOrder", "omitInactiveBuilds", "projectIdentifier", "requesters", "revision", "statuses", "tasks", "taskTags", "taskCaseSensitive", "variants", "variantTags", "variantCaseSensitive"}
+	fieldsInOrder := [...]string{"date", "includeAllBuildsAndTasks", "limit", "maxVersions", "minOrder", "maxOrder", "omitInactiveBuilds", "projectIdentifier", "requesters", "revision", "statuses", "tasks", "taskTags", "taskCaseSensitive", "variants", "variantTags", "variantCaseSensitive"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -93363,6 +93366,13 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 				return it, err
 			}
 			it.Limit = data
+		case "maxVersions":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxVersions"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxVersions = data
 		case "minOrder":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("minOrder"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)

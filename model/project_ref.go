@@ -822,6 +822,15 @@ func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 	// Ensure that any new project is originally explicitly disabled and set to private.
 	p.Enabled = false
 
+	// Authorize the repo attachment before writing anything
+	var repoRef *RepoRef
+	if p.UseRepoSettings() {
+		var err error
+		if repoRef, err = p.findRepoRefForAttachment(ctx, creator); err != nil {
+			return err
+		}
+	}
+
 	// if a hidden project exists for this configuration, use that ID
 	if p.Owner != "" && p.Repo != "" && p.Branch != "" {
 		hidden, err := FindHiddenProjectRefByOwnerRepoAndBranch(ctx, p.Owner, p.Repo, p.Branch)
@@ -830,14 +839,6 @@ func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 		}
 		if hidden != nil {
 			p.Id = hidden.Id
-			var repoRef *RepoRef
-			if p.UseRepoSettings() {
-				// Preserve existing copy permissions when promoting a hidden project.
-				repoRef, err = FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
-				if err != nil {
-					return errors.Wrap(err, "finding repo for replacement project")
-				}
-			}
 			err := p.Replace(ctx)
 			if err != nil {
 				return errors.Wrapf(err, "upserting project ref '%s'", hidden.Id)

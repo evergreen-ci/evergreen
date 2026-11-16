@@ -1,0 +1,12 @@
+{
+  waterfall(options: { projectIdentifier: "sandbox", limit: 1, maxVersions: 2 }) {
+    versions { id order }
+    pagination {
+      activeVersionIds
+      nextPageOrder
+      prevPageOrder
+      hasNextPage
+      hasPrevPage
+    }
+  }
+}

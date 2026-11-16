@@ -1,0 +1,16 @@
+{
+  waterfall(options: { projectIdentifier: "evergreen", minOrder: 1, limit: 2, maxVersions: 3, taskTags: ["no-matching-task-tag"] }) {
+    versions {
+      id
+      order
+    }
+    pagination {
+      activeVersionIds
+      nextPageOrder
+      prevPageOrder
+      mostRecentVersionOrder
+      hasNextPage
+      hasPrevPage
+    }
+  }
+}
