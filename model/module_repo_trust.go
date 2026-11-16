@@ -232,44 +232,15 @@ func (c *patchModuleRepoChecker) loadSiblings(ctx context.Context) error {
 // addCommittedModuleRepos adds the module repos declared by the project's
 // recent versions whose config is committed to the tracked branch.
 func addCommittedModuleRepos(ctx context.Context, repos map[string]bool, projectID string) error {
-	manifests, err := committedManifests(ctx, projectID)
-	if err != nil {
-		return err
-	}
-	for _, m := range manifests {
-		addManifestModuleRepos(repos, m)
-	}
-	return nil
-}
-
-// CommittedModuleRepos returns the modules declared by the project's recent mainline versions.
-// Patch authors can't change that config, so it's safe to grant access to these repos.
-func CommittedModuleRepos(ctx context.Context, projectID string) ([]manifest.Module, error) {
-	manifests, err := committedManifests(ctx, projectID)
-	if err != nil {
-		return nil, err
-	}
-	var modules []manifest.Module
-	for _, m := range manifests {
-		for _, mod := range m.Modules {
-			if mod != nil {
-				modules = append(modules, *mod)
-			}
-		}
-	}
-	return modules, nil
-}
-
-func committedManifests(ctx context.Context, projectID string) ([]manifest.Manifest, error) {
 	versions, err := VersionFind(ctx, db.Query(bson.M{
 		VersionIdentifierKey: projectID,
 		VersionRequesterKey:  bson.M{"$in": committedConfigRequesters},
 	}).WithFields(VersionIdKey).Sort([]string{"-" + VersionRevisionOrderNumberKey}).Limit(committedManifestLookback))
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding recent mainline versions for project '%s'", projectID)
+		return errors.Wrapf(err, "finding recent mainline versions for project '%s'", projectID)
 	}
 	if len(versions) == 0 {
-		return nil, nil
+		return nil
 	}
 	ids := make([]string, 0, len(versions))
 	for _, v := range versions {
@@ -277,9 +248,12 @@ func committedManifests(ctx context.Context, projectID string) ([]manifest.Manif
 	}
 	manifests, err := manifest.Find(ctx, manifest.ByIds(ids))
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding recent mainline manifests for project '%s'", projectID)
+		return errors.Wrapf(err, "finding recent mainline manifests for project '%s'", projectID)
 	}
-	return manifests, nil
+	for _, m := range manifests {
+		addManifestModuleRepos(repos, m)
+	}
+	return nil
 }
 
 func addManifestModuleRepos(repos map[string]bool, m manifest.Manifest) {
