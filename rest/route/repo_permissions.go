@@ -29,7 +29,7 @@ func isRepoPermissionRole(role gimlet.Role) bool {
 // isNativeRepoAdminRole identifies the admin role maintained by a repo's admin
 // list, which shares its ID with the repo admin scope.
 func isNativeRepoAdminRole(role gimlet.Role) bool {
-	return role.ID == role.Scope && role.ID == model.GetRepoAdminRole(strings.TrimPrefix(role.ID, "admin_repo_"))
+	return role.ID == role.Scope && strings.HasPrefix(role.ID, "admin_repo_")
 }
 
 func validateRepoPermissions(scope model.RepoPermissionScope, permissions gimlet.Permissions) error {
