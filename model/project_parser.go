@@ -2538,22 +2538,24 @@ func (pp *ParserProject) RedactSecrets(secrets map[string]string) error {
 	// Replace longer values first so that a secret that contains another
 	// secret is not partially revealed.
 	slices.SortFunc(names, func(a, b string) int { return len(secrets[b]) - len(secrets[a]) })
-	oldNew := make([]string, 0, 2*len(names))
-	for _, name := range names {
-		oldNew = append(oldNew, secrets[name], fmt.Sprintf("<REDACTED:%s>", name))
+	redact := func(s string) string {
+		for _, name := range names {
+			s = strings.ReplaceAll(s, secrets[name], fmt.Sprintf("<REDACTED:%s>", name))
+		}
+		return s
 	}
-	return redactStrings(reflect.ValueOf(pp).Elem(), strings.NewReplacer(oldNew...))
+	return redactStrings(reflect.ValueOf(pp).Elem(), redact)
 }
 
-// redactStrings replaces secrets in every exported string reachable from v,
-// which must be settable.
-func redactStrings(v reflect.Value, replacer *strings.Replacer) error {
+// redactStrings redacts every exported string reachable from v, which must be
+// settable.
+func redactStrings(v reflect.Value, redact func(string) string) error {
 	switch v.Kind() {
 	case reflect.String:
-		v.SetString(replacer.Replace(v.String()))
+		v.SetString(redact(v.String()))
 	case reflect.Pointer:
 		if !v.IsNil() {
-			return redactStrings(v.Elem(), replacer)
+			return redactStrings(v.Elem(), redact)
 		}
 	case reflect.Interface:
 		if v.IsNil() {
@@ -2561,13 +2563,13 @@ func redactStrings(v reflect.Value, replacer *strings.Replacer) error {
 		}
 		elem := reflect.New(v.Elem().Type()).Elem()
 		elem.Set(v.Elem())
-		if err := redactStrings(elem, replacer); err != nil {
+		if err := redactStrings(elem, redact); err != nil {
 			return err
 		}
 		v.Set(elem)
 	case reflect.Slice, reflect.Array:
 		for i := range v.Len() {
-			if err := redactStrings(v.Index(i), replacer); err != nil {
+			if err := redactStrings(v.Index(i), redact); err != nil {
 				return err
 			}
 		}
@@ -2576,31 +2578,63 @@ func redactStrings(v reflect.Value, replacer *strings.Replacer) error {
 		for iter.Next() {
 			elem := reflect.New(v.Type().Elem()).Elem()
 			elem.Set(iter.Value())
-			if err := redactStrings(elem, replacer); err != nil {
+			if err := redactStrings(elem, redact); err != nil {
 				return err
 			}
 			v.SetMapIndex(iter.Key(), elem)
 		}
 	case reflect.Struct:
-		cmd, isCmd := v.Addr().Interface().(*PluginCommandConf)
-		if isCmd {
-			// Redact the decoded params and regenerate params_yaml from them,
-			// since a secret may be quoted or escaped in the YAML text.
-			if err := cmd.resolveParams(); err != nil {
-				return errors.Wrap(err, "resolving params")
+		if cmd, ok := v.Addr().Interface().(*PluginCommandConf); ok {
+			if err := cmd.redactParams(redact); err != nil {
+				return errors.Wrapf(err, "redacting params for command '%s'", cmd.GetDisplayName())
 			}
-			cmd.ParamsYAML = ""
 		}
 		for i := range v.NumField() {
 			if v.Type().Field(i).IsExported() {
-				if err := redactStrings(v.Field(i), replacer); err != nil {
+				if err := redactStrings(v.Field(i), redact); err != nil {
 					return err
 				}
 			}
 		}
-		if isCmd {
-			return errors.Wrap(cmd.unmarshalParams(), "regenerating params YAML")
-		}
 	}
 	return nil
+}
+
+// redactParams redacts the command's params in their YAML form, where scalars
+// keep their original text. This matches secrets that are quoted or escaped
+// in the YAML or that decode as numbers, booleans, or timestamps.
+func (c *PluginCommandConf) redactParams(redact func(string) string) error {
+	if c.ParamsYAML == "" {
+		if err := c.unmarshalParams(); err != nil {
+			return err
+		}
+	}
+	var root yaml.Node
+	if err := yaml.Unmarshal([]byte(c.ParamsYAML), &root); err != nil {
+		return errors.Wrap(err, "unmarshalling params YAML")
+	}
+	if !redactYAMLScalars(&root, redact) {
+		return nil
+	}
+	out, err := yaml.Marshal(&root)
+	if err != nil {
+		return errors.Wrap(err, "marshalling redacted params YAML")
+	}
+	c.ParamsYAML = string(out)
+	return c.unmarshalParams()
+}
+
+func redactYAMLScalars(n *yaml.Node, redact func(string) string) bool {
+	changed := false
+	if n.Kind == yaml.ScalarNode {
+		if redacted := redact(n.Value); redacted != n.Value {
+			n.Value = redacted
+			n.Tag = "!!str"
+			changed = true
+		}
+	}
+	for _, child := range n.Content {
+		changed = redactYAMLScalars(child, redact) || changed
+	}
+	return changed
 }

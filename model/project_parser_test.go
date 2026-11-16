@@ -5214,10 +5214,12 @@ tasks:
         params:
           binary: deploy
           args: ["--token", "short_secret", "--key", "line one\nline \"two\""]
+          port: 123456
 buildvariants:
   - name: bv
     expansions:
       api_key: short_secret
+      overlapping: abcdefgh
     tasks:
       - name: generated
 `
@@ -5226,6 +5228,9 @@ buildvariants:
 			"short":  "short_secret",
 			"long":   "short_secret_but_longer",
 			"ssh":    "line one\nline \"two\"",
+			"pin":    "123456",
+			"front":  "abcd",
+			"back":   "cdefgh",
 			"unused": "not_in_project",
 		}))
 
@@ -5236,18 +5241,21 @@ buildvariants:
 		for _, serialized := range []string{string(raw), string(out)} {
 			assert.NotContains(t, serialized, "short_secret")
 			assert.NotContains(t, serialized, "line one")
+			assert.NotContains(t, serialized, "123456")
 		}
 
 		require.Len(t, pp.Tasks, 1)
 		require.Len(t, pp.Tasks[0].Commands, 1)
 		cmd := pp.Tasks[0].Commands[0]
 		assert.Equal(t, []any{"--token", "<REDACTED:short>", "--key", "<REDACTED:ssh>"}, cmd.Params["args"])
+		assert.Equal(t, "<REDACTED:pin>", cmd.Params["port"])
 		assert.Contains(t, cmd.ParamsYAML, "<REDACTED:ssh>")
 		require.NotNil(t, pp.Functions["login"])
 		require.NotNil(t, pp.Functions["login"].SingleCommand)
 		assert.Contains(t, pp.Functions["login"].SingleCommand.Params["script"], `echo "<REDACTED:long>" | login`)
 		require.Len(t, pp.BuildVariants, 1)
 		assert.Equal(t, "<REDACTED:short>", pp.BuildVariants[0].Expansions["api_key"])
+		assert.Equal(t, "ab<REDACTED:back>", pp.BuildVariants[0].Expansions["overlapping"])
 	})
 
 	t.Run("ProjectWithoutSecretsIsUnchanged", func(t *testing.T) {
