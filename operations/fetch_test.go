@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -233,6 +234,10 @@ func TestDownloadUrls(t *testing.T) {
 
 func TestResolveModuleDir(t *testing.T) {
 	cloneDir := filepath.Join(os.TempDir(), "source-project")
+	absolutePrefix := "/etc"
+	if runtime.GOOS == "windows" {
+		absolutePrefix = `C:\etc`
+	}
 
 	for testName, testCase := range map[string]struct {
 		modulePrefix string
@@ -260,7 +265,7 @@ func TestResolveModuleDir(t *testing.T) {
 			expectError:  true,
 		},
 		"AbsolutePrefixIsRejected": {
-			modulePrefix: "/etc",
+			modulePrefix: absolutePrefix,
 			expectError:  true,
 		},
 	} {
