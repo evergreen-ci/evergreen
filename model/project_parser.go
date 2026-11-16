@@ -2532,9 +2532,10 @@ func (pp *ParserProject) forEachCommand(fn func(*PluginCommandConf) error) error
 // RedactSecrets replaces every occurrence of the given secret values with
 // <REDACTED:name>, matching how task logs are redacted. secrets maps variable
 // names to their values. Only values that generate.tasks can fill in are
-// redacted (command params, vars, and display names, and variant expansions and
-// display names), so that names and references used by the CLI stay intact. The
-// parser project is modified in place, so it must not be saved afterwards.
+// redacted (command params, vars, and display names, task ps commands, and
+// variant expansions, display names, and task ps commands), so that names and
+// references used by the CLI stay intact. The parser project is modified in
+// place, so it must not be saved afterwards.
 func (pp *ParserProject) RedactSecrets(secrets map[string]string) error {
 	if len(secrets) == 0 {
 		return nil
@@ -2555,6 +2556,16 @@ func (pp *ParserProject) RedactSecrets(secrets map[string]string) error {
 		bv.DisplayName = redact(bv.DisplayName)
 		for k, v := range bv.Expansions {
 			bv.Expansions[k] = redact(v)
+		}
+		for j := range bv.Tasks {
+			if bv.Tasks[j].PS != nil {
+				bv.Tasks[j].PS = utility.ToStringPtr(redact(*bv.Tasks[j].PS))
+			}
+		}
+	}
+	for i := range pp.Tasks {
+		if pp.Tasks[i].Ps != nil {
+			pp.Tasks[i].Ps = utility.ToStringPtr(redact(*pp.Tasks[i].Ps))
 		}
 	}
 	return pp.forEachCommand(func(cmd *PluginCommandConf) error {

@@ -5209,6 +5209,7 @@ functions:
         echo "short_secret_but_longer" | login
 tasks:
   - name: generated
+    ps: diagnostics --token short_secret
     commands:
       - command: subprocess.exec
         params:
@@ -5222,6 +5223,7 @@ buildvariants:
       overlapping: abcdefgh
     tasks:
       - name: generated
+        ps: diagnostics --key short_secret_but_longer
 `
 		pp := loadStored(t, []byte(yml))
 		require.NoError(t, pp.RedactSecrets(map[string]string{
@@ -5256,6 +5258,11 @@ buildvariants:
 		require.Len(t, pp.BuildVariants, 1)
 		assert.Equal(t, "<REDACTED:short>", pp.BuildVariants[0].Expansions["api_key"])
 		assert.Equal(t, "ab<REDACTED:back>", pp.BuildVariants[0].Expansions["overlapping"])
+		require.NotNil(t, pp.Tasks[0].Ps)
+		assert.Equal(t, "diagnostics --token <REDACTED:short>", *pp.Tasks[0].Ps)
+		require.Len(t, pp.BuildVariants[0].Tasks, 1)
+		require.NotNil(t, pp.BuildVariants[0].Tasks[0].PS)
+		assert.Equal(t, "diagnostics --key <REDACTED:long>", *pp.BuildVariants[0].Tasks[0].PS)
 	})
 
 	t.Run("NamesAndReferencesAreNotRedacted", func(t *testing.T) {
