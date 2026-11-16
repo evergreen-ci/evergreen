@@ -65,7 +65,7 @@ type HostAPIEventData struct {
 func (el *TaskEventData) BuildFromService(ctx context.Context, v *event.TaskEventData) error {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return fmt.Errorf("Error getting Evergreen admin settings from TaskEventData.BuildFromService")
+		return fmt.Errorf("Error getting Evergreen admin settings from TaskEventData.BuildFromService: %v", err)
 	}
 	jiraHost := settings.Jira.GetHostURL()
 	jiraLink := ""

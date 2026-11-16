@@ -266,7 +266,7 @@ func lastContainerFinishTimeJobs(ctx context.Context, _ evergreen.Environment, t
 func parentDecommissionJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting Evergreen admin settings from parentDecommissionJobs")
+		return nil, fmt.Errorf("Error getting Evergreen admin settings from parentDecommissionJobs: %v", err)
 	}
 	containerPools := settings.ContainerPools.Pools
 
@@ -339,7 +339,7 @@ func hostAllocatorJobs(ctx context.Context, env evergreen.Environment, ts time.T
 func schedulerJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting Evergreen admin settings from schedulerJobs")
+		return nil, fmt.Errorf("Error getting Evergreen admin settings from schedulerJobs: %v", err)
 	}
 
 	if config.ServiceFlags.SchedulerDisabled {
@@ -370,7 +370,7 @@ func schedulerJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) (
 func aliasSchedulerJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting Evergreen admin settings from aliasSchedulerJobs")
+		return nil, fmt.Errorf("Error getting Evergreen admin settings from aliasSchedulerJobs: %v", err)
 	}
 
 	if config.ServiceFlags.SchedulerDisabled {
@@ -434,7 +434,7 @@ func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
 
 		config, err := evergreen.GetConfig(ctx)
 		if err != nil {
-			return fmt.Errorf("Error getting Evergreen admin settings from PopulateCheckUnmarkedBlockedTasks")
+			return fmt.Errorf("Error getting Evergreen admin settings from PopulateCheckUnmarkedBlockedTasks: %v", err)
 		}
 
 		catcher := grip.NewBasicCatcher()

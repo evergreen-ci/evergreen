@@ -241,7 +241,7 @@ func (j *sleepSchedulerJob) logExceededNextStopTimeout(ctx context.Context, h ho
 func (j *sleepSchedulerJob) syncPermanentlyExemptHosts(ctx context.Context) error {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return fmt.Errorf("Error getting Evergreen admin settings from syncPermanentlyExemptHosts")
+		return fmt.Errorf("Error getting Evergreen admin settings from syncPermanentlyExemptHosts: %v", err)
 	}
 	return host.SyncPermanentExemptions(ctx, settings.SleepSchedule.PermanentlyExemptHosts)
 }

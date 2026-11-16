@@ -37,7 +37,7 @@ func (h *adminGetHandler) Run(ctx context.Context) gimlet.Responder {
 		settings, err = evergreen.GetConfig(ctx)
 	}
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(fmt.Errorf("Error getting Evergreen admin settings from adminGetHandler.Run"))
+		return gimlet.MakeJSONInternalErrorResponder(fmt.Errorf("Error getting Evergreen admin settings from adminGetHandler.Run: %v", err))
 	}
 	settingsModel := model.NewConfigModel()
 
@@ -66,7 +66,7 @@ func (h *uiV2URLGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *uiV2URLGetHandler) Run(ctx context.Context) gimlet.Responder {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(fmt.Errorf("Error getting Evergreen admin settings from uiV2URLGetHandler.Run"))
+		return gimlet.MakeJSONInternalErrorResponder(fmt.Errorf("Error getting Evergreen admin settings from uiV2URLGetHandler.Run: %v", err))
 	}
 
 	return gimlet.NewJSONResponse(&model.APIUiV2URL{
@@ -99,7 +99,7 @@ func (h *taskLimitsGetHandler) Parse(ctx context.Context, r *http.Request) error
 func (h *taskLimitsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(fmt.Errorf("Error getting Evergreen admin settings from taskLimitsGetHandler.Run"))
+		return gimlet.MakeJSONInternalErrorResponder(fmt.Errorf("Error getting Evergreen admin settings from taskLimitsGetHandler.Run: %v", err))
 	}
 	taskLimits := &model.APITaskLimitsConfig{}
 	if err = taskLimits.BuildFromService(settings.TaskLimits); err != nil {
