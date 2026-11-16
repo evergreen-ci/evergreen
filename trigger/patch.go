@@ -351,7 +351,18 @@ func (t *patchTriggers) generate(ctx context.Context, sub *event.Subscription) (
 	if payload == nil {
 		return nil, nil
 	}
-	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
+	n, err := notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
+	if err != nil {
+		return nil, err
+	}
+	if isGitHubStatusSubscriber(sub.Subscriber.Type) {
+		// Child patch statuses are reported on the parent patch's PR or merge group.
+		n.Metadata.PatchID = t.patch.Id.Hex()
+		if t.patch.IsChild() {
+			n.Metadata.PatchID = t.patch.Triggers.ParentPatch
+		}
+	}
+	return n, nil
 }
 
 func (t *patchTriggers) getGithubContext(ctx context.Context, projectIdentifier string) (string, error) {
