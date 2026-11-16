@@ -3549,11 +3549,15 @@ func TestResolveCliPatchBaseRevision(t *testing.T) {
 		assert.Equal(t, tagCommit, sha)
 	})
 	t.Run("BranchShouldTakePrecedenceOverTagLikeGitHubAPI", func(t *testing.T) {
-		// mongodb/mongo has both a branch and a tag named r4.2.0.
-		mongoRef := &model.ProjectRef{Id: "mongo", Owner: "mongodb", Repo: "mongo"}
-		sha, err := resolveCliPatchBaseRevision(t.Context(), mongoRef, "r4.2.0")
+		// commit-queue-sandbox has both a branch and a tag named demo that
+		// point to different commits.
+		sandboxRef := &model.ProjectRef{Id: "commit-queue-sandbox", Owner: "evergreen-ci", Repo: "commit-queue-sandbox"}
+		sha, err := resolveCliPatchBaseRevision(t.Context(), sandboxRef, "demo")
 		require.NoError(t, err)
-		assert.Equal(t, "cc18a6c1b7c833879557ed110bc300b95e1e9292", sha)
+
+		commit, err := thirdparty.GetCommitEvent(t.Context(), sandboxRef.Owner, sandboxRef.Repo, "demo")
+		require.NoError(t, err)
+		assert.Equal(t, commit.GetSHA(), sha)
 	})
 	t.Run("NonexistentRefShouldError", func(t *testing.T) {
 		_, err := resolveCliPatchBaseRevision(t.Context(), projectRef, "nonexistent-ref")

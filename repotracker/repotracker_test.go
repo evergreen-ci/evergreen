@@ -1969,6 +1969,7 @@ func TestCreateManifest(t *testing.T) {
 		},
 	}
 	manifest, err = model.CreateManifest(t.Context(), &patchVersion, proj.Modules, projRef)
+	require.NoError(t, err)
 	require.NotNil(t, manifest)
 	assert.Equal(patchVersion.Id, manifest.Id)
 	assert.Len(manifest.Modules, 1)
