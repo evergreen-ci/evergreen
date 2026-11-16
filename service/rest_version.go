@@ -288,13 +288,18 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: "version not found"})
 		return
 	}
-	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-
 	settings := restapi.GetSettings()
 	pp, err := model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Version.ProjectStorageMethod, projCtx.Version.Id)
 	if err != nil {
 		gimlet.WriteJSONResponse(r.Context(), w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
+		return
+	}
+	if pp == nil {
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: fmt.Sprintf("parser project '%s' not found", projCtx.Version.Id)})
+		return
+	}
+	if err = redactProjectSecrets(r.Context(), &settings, projCtx.Version.Identifier, pp); err != nil {
+		restapi.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	var config []byte
@@ -303,6 +308,8 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 		gimlet.WriteJSONResponse(r.Context(), w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
 		return
 	}
+	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(config)
 	grip.Warning(r.Context(), message.WrapError(err, message.Fields{
 		"message":    "could not write parser project to response",
@@ -328,6 +335,10 @@ func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request)
 	}
 	if pp == nil {
 		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: fmt.Sprintf("parser project '%s' not found", projCtx.Version.Id)})
+		return
+	}
+	if err = redactProjectSecrets(r.Context(), env.Settings(), projCtx.Version.Identifier, pp); err != nil {
+		restapi.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -610,4 +621,17 @@ func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 	}
 
 	gimlet.WriteJSON(r.Context(), w, version)
+}
+
+// redactProjectSecrets hides the values of the project's secret variables in
+// the parser project before it's returned to a user.
+func redactProjectSecrets(ctx context.Context, settings *evergreen.Settings, projectID string, pp *model.ParserProject) error {
+	projectVars, err := model.FindMergedProjectVars(ctx, projectID)
+	if err != nil {
+		return errors.Wrapf(err, "finding variables for project '%s'", projectID)
+	}
+	if projectVars == nil {
+		return nil
+	}
+	return errors.Wrapf(pp.RedactSecrets(projectVars.SecretVars(settings.LoggerConfig.RedactKeys)), "redacting secrets from parser project '%s'", pp.Id)
 }

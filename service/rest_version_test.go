@@ -882,3 +882,58 @@ func validateVersionInfo(v *model.Version, response *httptest.ResponseRecorder) 
 		So(jsonBody["requester"], ShouldEqual, v.Requester)
 	})
 }
+
+func TestGetVersionConfigRedactsSecrets(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection, evergreen.RoleCollection, evergreen.ScopeCollection))
+	})
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	env.SetUserManager(serviceutil.MockUserManager{})
+	router, err := newTestUIRouter(ctx, env)
+	require.NoError(t, err)
+	usr := addViewTasksPermission(t, "p1")
+
+	require.NoError(t, (&model.ProjectRef{Id: "p1", Identifier: "p1"}).Insert(ctx))
+	require.NoError(t, (&model.ProjectVars{
+		Id:          "p1",
+		Vars:        map[string]string{"private": "private_value", "public": "public_value"},
+		PrivateVars: map[string]bool{"private": true},
+	}).Insert(ctx))
+	v := &model.Version{Id: "v1", Identifier: "p1", ProjectStorageMethod: evergreen.ProjectStorageMethodDB}
+	require.NoError(t, v.Insert(ctx))
+	pp := &model.ParserProject{Id: v.Id}
+	pp.AddTask("generated", []model.PluginCommandConf{{
+		Command:    "shell.exec",
+		ParamsYAML: "script: deploy --token private_value --name public_value\n",
+	}})
+	require.NoError(t, pp.Insert(ctx))
+
+	for route, assertRedacted := range map[string]func(t *testing.T, body []byte){
+		"config": func(t *testing.T, body []byte) {
+			assert.NotContains(t, string(body), "private_value")
+			assert.Contains(t, string(body), "deploy --token <REDACTED:private> --name public_value")
+		},
+		"parser_project": func(t *testing.T, body []byte) {
+			project, err := model.GetProjectFromBSON(body)
+			require.NoError(t, err)
+			require.Len(t, project.Tasks, 1)
+			require.Len(t, project.Tasks[0].Commands, 1)
+			assert.Equal(t, "deploy --token <REDACTED:private> --name public_value", project.Tasks[0].Commands[0].Params["script"])
+			assert.NotContains(t, string(body), "private_value")
+		},
+	} {
+		t.Run(route, func(t *testing.T) {
+			request, err := http.NewRequest(http.MethodGet, "/rest/v1/versions/v1/"+route, nil)
+			require.NoError(t, err)
+			request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+
+			require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+			assertRedacted(t, response.Body.Bytes())
+		})
+	}
+}
