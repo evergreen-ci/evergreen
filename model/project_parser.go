@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -2523,4 +2524,83 @@ func clearCommandSetParamsYAML(cs *YAMLCommandSet) error {
 		cs.MultiCommand[i].ParamsYAML = ""
 	}
 	return catcher.Resolve()
+}
+
+// RedactSecrets replaces every occurrence of the given secret values in the
+// parser project's strings with <REDACTED:name>, matching how task logs are
+// redacted. secrets maps variable names to their values. The parser project is
+// modified in place, so it must not be saved afterwards.
+func (pp *ParserProject) RedactSecrets(secrets map[string]string) error {
+	if len(secrets) == 0 {
+		return nil
+	}
+	names := slices.Collect(maps.Keys(secrets))
+	// Replace longer values first so that a secret that contains another
+	// secret is not partially revealed.
+	slices.SortFunc(names, func(a, b string) int { return len(secrets[b]) - len(secrets[a]) })
+	oldNew := make([]string, 0, 2*len(names))
+	for _, name := range names {
+		oldNew = append(oldNew, secrets[name], fmt.Sprintf("<REDACTED:%s>", name))
+	}
+	return redactStrings(reflect.ValueOf(pp).Elem(), strings.NewReplacer(oldNew...))
+}
+
+// redactStrings replaces secrets in every exported string reachable from v,
+// which must be settable.
+func redactStrings(v reflect.Value, replacer *strings.Replacer) error {
+	switch v.Kind() {
+	case reflect.String:
+		v.SetString(replacer.Replace(v.String()))
+	case reflect.Pointer:
+		if !v.IsNil() {
+			return redactStrings(v.Elem(), replacer)
+		}
+	case reflect.Interface:
+		if v.IsNil() {
+			return nil
+		}
+		elem := reflect.New(v.Elem().Type()).Elem()
+		elem.Set(v.Elem())
+		if err := redactStrings(elem, replacer); err != nil {
+			return err
+		}
+		v.Set(elem)
+	case reflect.Slice, reflect.Array:
+		for i := range v.Len() {
+			if err := redactStrings(v.Index(i), replacer); err != nil {
+				return err
+			}
+		}
+	case reflect.Map:
+		iter := v.MapRange()
+		for iter.Next() {
+			elem := reflect.New(v.Type().Elem()).Elem()
+			elem.Set(iter.Value())
+			if err := redactStrings(elem, replacer); err != nil {
+				return err
+			}
+			v.SetMapIndex(iter.Key(), elem)
+		}
+	case reflect.Struct:
+		cmd, isCmd := v.Addr().Interface().(*PluginCommandConf)
+		if isCmd {
+			// Redact the decoded params and regenerate params_yaml from them,
+			// since a secret may be quoted or escaped in the YAML text.
+			if err := cmd.resolveParams(); err != nil {
+				return errors.Wrap(err, "resolving params")
+			}
+			cmd.ParamsYAML = ""
+		}
+		for i := range v.NumField() {
+			if v.Type().Field(i).IsExported() {
+				if err := redactStrings(v.Field(i), replacer); err != nil {
+					return err
+				}
+			}
+		}
+		if isCmd {
+			return errors.Wrap(cmd.unmarshalParams(), "regenerating params YAML")
+		}
+	}
+	return nil
 }
