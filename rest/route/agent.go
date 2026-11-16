@@ -2259,7 +2259,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	if githubAppAuth == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("github app auth not found for project '%s'", t.Project),
+			Message:    fmt.Sprintf("project '%s' does not have a GitHub App defined; a GitHub App must be configured in the project or repo's GitHub App Settings", p.Identifier),
 		})
 	}
 
