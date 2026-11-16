@@ -22,17 +22,18 @@ import (
 
 type reposGetHandler struct{}
 
-func (h *reposGetHandler) Factory() gimlet.RouteHandler { return &reposGetHandler{} }
-
-func (h *reposGetHandler) Parse(context.Context, *http.Request) error { return nil }
-
-// Run lists the metadata required to discover repo resources, without settings or secrets.
+// Factory creates an instance of the handler.
 //
 //	@Summary	List repo resources
 //	@Tags		repos
 //	@Router		/repos [get]
 //	@Security	Api-User || Api-Key
 //	@Success	200	{array}	model.APIRepo
+func (h *reposGetHandler) Factory() gimlet.RouteHandler { return &reposGetHandler{} }
+
+func (h *reposGetHandler) Parse(context.Context, *http.Request) error { return nil }
+
+// Run lists the metadata required to discover repo resources, without settings or secrets.
 func (h *reposGetHandler) Run(ctx context.Context) gimlet.Responder {
 	repos := []dbModel.RepoRef{}
 	if err := db.FindAllQ(ctx, dbModel.RepoRefCollection, db.Query(bson.M{}).WithFields(dbModel.RepoRefIdKey, dbModel.RepoRefOwnerKey, dbModel.RepoRefRepoKey, dbModel.RepoRefAdminsKey), &repos); err != nil {
