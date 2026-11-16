@@ -644,7 +644,10 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 			break
 		}
 		// Probe before the tag refresh so the fetch's own topology is what is measured.
-		c.recordPRFetchIsland(ctx, logger, conf, restoreKey.Revision)
+		// Without the PR checkout no head fetch ran, so probing would report a false island.
+		if runPRCheckout {
+			c.recordPRFetchIsland(ctx, logger, conf, restoreKey.Revision)
+		}
 		// A tag-triggered build cannot describe itself without the tag, so only it falls back to a clone.
 		if err := c.refreshTagsOnRestoredSource(ctx, logger, conf, restoreKey); err != nil {
 			fallbackReason = err.Error()
