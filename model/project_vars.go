@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"slices"
 	"sort"
 	"strings"
 
@@ -816,9 +815,7 @@ func (projectVars *ProjectVars) SecretVars(redactKeys []string) map[string]strin
 		if v == "" {
 			continue
 		}
-		if projectVars.PrivateVars[k] || slices.ContainsFunc(redactKeys, func(pattern string) bool {
-			return strings.Contains(strings.ToLower(k), pattern)
-		}) {
+		if projectVars.PrivateVars[k] || evergreen.MatchesRedactKeys(k, redactKeys) {
 			secrets[k] = v
 		}
 	}
