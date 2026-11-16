@@ -351,10 +351,11 @@ func (h *completeVirtualTasksHandler) setSignedArtifactFields(file *artifact.Fil
 
 	awsKeyVarNameSet := a.AWSKeyVarName != ""
 	awsSecretVarNameSet := a.AWSSecretVarName != ""
-	catcher.NewWhen(a.Bucket == "" || a.FileKey == "", "must specify bucket")
+	catcher.NewWhen(a.Bucket == "", "must specify bucket")
 	catcher.NewWhen(a.FileKey == "", "must specify file_key")
 	catcher.NewWhen(awsKeyVarNameSet != awsSecretVarNameSet, "must specify aws_key_var_name and aws_secret_var_name together")
 	catcher.NewWhen(a.AWSRoleARN != "" && awsKeyVarNameSet, "cannot combine aws_role_arn with aws_key_var_name/aws_secret_var_name")
+	catcher.NewWhen(a.AWSRoleARN == "" && !awsKeyVarNameSet, "must specify either aws_role_arn or aws_key_var_name/aws_secret_var_name")
 
 	var presignDuration time.Duration
 	if a.PresignDuration != "" {
