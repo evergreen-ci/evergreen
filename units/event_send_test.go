@@ -80,17 +80,6 @@ func (s *eventSendCaptureSender) SendWithError(_ context.Context, m message.Comp
 	return nil
 }
 
-func findGitHubStatusResync(ctx context.Context, patchID string) (*patch.GitHubStatusResync, error) {
-	resyncs := []patch.GitHubStatusResync{}
-	if err := db.FindAllQ(ctx, patch.GitHubStatusResyncCollection, db.Query(bson.M{"_id": patchID}), &resyncs); err != nil {
-		return nil, err
-	}
-	if len(resyncs) == 0 {
-		return nil, nil
-	}
-	return &resyncs[0], nil
-}
-
 func TestEventNotificationJob(t *testing.T) {
 	suite.Run(t, &eventNotificationSuite{})
 }
@@ -521,7 +510,7 @@ func (s *eventNotificationSuite) TestGitHubStatusSendMarksPatchForResync() {
 			job.flags = &evergreen.ServiceFlags{GithubStatusAPIDisabled: tCase.degraded}
 			job.Run(s.ctx)
 
-			resync, err := findGitHubStatusResync(s.ctx, "patch-id")
+			resync, err := patch.FindGitHubStatusResync(s.ctx, "patch-id")
 			s.Require().NoError(err)
 			if !tCase.shouldMark {
 				s.Nil(resync)

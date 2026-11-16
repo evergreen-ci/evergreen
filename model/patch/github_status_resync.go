@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -43,6 +44,20 @@ func MarkGitHubStatusResync(ctx context.Context, patchID string, isMergeQueue bo
 		},
 	})
 	return errors.Wrapf(err, "marking GitHub statuses for patch '%s' to be resent", patchID)
+}
+
+// FindGitHubStatusResync returns the patch's resync record, or nil if the
+// patch is not marked.
+func FindGitHubStatusResync(ctx context.Context, patchID string) (*GitHubStatusResync, error) {
+	resync := &GitHubStatusResync{}
+	err := db.FindOneQ(ctx, GitHubStatusResyncCollection, db.Query(bson.M{gitHubStatusResyncPatchIDKey: patchID}), resync)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding GitHub status resync for patch '%s'", patchID)
+	}
+	return resync, nil
 }
 
 // ClearGitHubStatusResync removes the patch's mark unless a send failed at or

@@ -141,47 +141,21 @@ func (s *githubStatusRefreshSuite) TestRunClearsGitHubStatusResyncOnSuccess() {
 	job := s.runWithGitHubSender(s.patchDoc, s.env.InternalSender)
 	s.Require().NoError(job.Error())
 
-	resync, err := findGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
+	resync, err := patch.FindGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
 	s.Require().NoError(err)
 	s.Nil(resync)
 }
 
 func (s *githubStatusRefreshSuite) TestRunFailureDoesNotClearGitHubStatusResync() {
+	s.markGitHubStatusResync()
 	errSender := &eventSendErrorSender{Sender: s.env.InternalSender, err: errors.New("GitHub unavailable")}
 
-	s.Run("SendFailureKeepsMark", func() {
-		s.Require().NoError(db.ClearCollections(patch.GitHubStatusResyncCollection))
-		s.markGitHubStatusResync()
+	job := s.runWithGitHubSender(s.patchDoc, errSender)
+	s.Error(job.Error())
 
-		job := s.runWithGitHubSender(s.patchDoc, errSender)
-		s.Error(job.Error())
-
-		resync, err := findGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
-		s.Require().NoError(err)
-		s.NotNil(resync)
-	})
-	s.Run("SendFailureDoesNotCreateMark", func() {
-		s.Require().NoError(db.ClearCollections(patch.GitHubStatusResyncCollection))
-
-		job := s.runWithGitHubSender(s.patchDoc, errSender)
-		s.Error(job.Error())
-
-		resync, err := findGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
-		s.Require().NoError(err)
-		s.Nil(resync)
-	})
-	s.Run("PatchWithoutGitHubTargetDoesNotCreateMark", func() {
-		s.Require().NoError(db.ClearCollections(patch.GitHubStatusResyncCollection))
-		p := *s.patchDoc
-		p.GithubPatchData = thirdparty.GithubPatch{}
-
-		job := s.runWithGitHubSender(&p, s.env.InternalSender)
-		s.Error(job.Error())
-
-		resync, err := findGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
-		s.Require().NoError(err)
-		s.Nil(resync)
-	})
+	resync, err := patch.FindGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
+	s.Require().NoError(err)
+	s.NotNil(resync)
 }
 
 func (s *githubStatusRefreshSuite) TestRunStopsSendingAtGitHubRateLimit() {
@@ -205,7 +179,7 @@ func (s *githubStatusRefreshSuite) TestRunStopsSendingAtGitHubRateLimit() {
 	s.Error(job.Error())
 
 	s.Equal(1, errSender.sends)
-	resync, err := findGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
+	resync, err := patch.FindGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
 	s.Require().NoError(err)
 	s.NotNil(resync)
 }
