@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -24,10 +25,11 @@ import (
 )
 
 const (
-	daemonDir      = ".evergreen-local"
-	daemonPortFile = "daemon.port"
-	daemonPIDFile  = "daemon.pid"
-	daemonLogFile  = "daemon.log"
+	daemonDir       = ".evergreen-local"
+	daemonPortFile  = "daemon.port"
+	daemonPIDFile   = "daemon.pid"
+	daemonTokenFile = "daemon.token"
+	daemonLogFile   = "daemon.log"
 
 	daemonEnvVar = "_EVERGREEN_DAEMON_CHILD"
 
@@ -56,6 +58,19 @@ func getDaemonDir() (string, error) {
 	return filepath.Join(homeDir, daemonDir), nil
 }
 
+// daemonTokenPrefix returns the running daemon's per-instance token.
+func daemonTokenPrefix() string {
+	dir, err := getDaemonDir()
+	if err != nil {
+		return ""
+	}
+	data, err := os.ReadFile(filepath.Join(dir, daemonTokenFile))
+	if err != nil {
+		return ""
+	}
+	return "/" + strings.TrimSpace(string(data))
+}
+
 // getDaemonURL retrieves the URL of a running daemon process.
 // It expects a daemon to be running and reads the port from ~/.evergreen-local/daemon.port.
 // The daemon writes this file when it starts to allow clients to discover its port.
@@ -80,14 +95,39 @@ func getDaemonURL() (string, error) {
 		return "", errors.Wrap(err, "invalid port in daemon.port file")
 	}
 
-	url := fmt.Sprintf("http://localhost:%d", port)
+	url := fmt.Sprintf("http://localhost:%d%s", port, daemonTokenPrefix())
 	resp, err := http.Get(url + "/health")
 	if err != nil {
 		return "", errors.New("daemon not responding (may have crashed)")
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.Errorf("daemon health check returned status %d (the daemon token may be stale; restart the daemon)", resp.StatusCode)
+	}
+
 	return url, nil
+}
+
+// daemonProcessAlive reports whether a live process matches the daemon's PID file.
+func daemonProcessAlive() bool {
+	dir, err := getDaemonDir()
+	if err != nil {
+		return false
+	}
+	data, err := os.ReadFile(filepath.Join(dir, daemonPIDFile))
+	if err != nil {
+		return false
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		return false
+	}
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	return process.Signal(syscall.Signal(0)) == nil
 }
 
 // Debug returns the "debug" command for running Evergreen tasks locally.
@@ -299,6 +339,9 @@ func startDebugDaemonCmd(c *cli.Context) error {
 	if _, err := getDaemonURL(); err == nil {
 		return errors.New("daemon is already running")
 	}
+	if daemonProcessAlive() {
+		return errors.New("daemon process is running but not responding; run 'evergreen debug daemon stop' and try again")
+	}
 
 	if os.Getenv(daemonEnvVar) == "1" {
 		return runDaemonServer(c, port)
@@ -384,13 +427,15 @@ func forkDaemon(c *cli.Context, port int) error {
 // waitForDaemon polls the daemon's /health endpoint until it responds
 // successfully or the timeout is reached.
 func waitForDaemon(port int) error {
-	healthURL := fmt.Sprintf("http://localhost:%d/health", port)
 	client := &http.Client{Timeout: time.Second}
 
 	const maxAttempts = 30
 	const pollInterval = 200 * time.Millisecond
 
 	for range maxAttempts {
+		// The forked daemon only writes its token file once it starts, which happens
+		// after this process begins polling, so re-read the token on every attempt.
+		healthURL := fmt.Sprintf("http://localhost:%d%s/health", port, daemonTokenPrefix())
 		resp, err := client.Get(healthURL)
 		if err == nil {
 			resp.Body.Close()
@@ -418,9 +463,10 @@ func stopDebugDaemonCmd(c *cli.Context) error {
 	pidFile := filepath.Join(dir, daemonPIDFile)
 	portFile := filepath.Join(dir, daemonPortFile)
 	logFile := filepath.Join(dir, daemonLogFile)
+	tokenFile := filepath.Join(dir, daemonTokenFile)
 
 	defer func() {
-		for _, f := range []string{pidFile, portFile, logFile} {
+		for _, f := range []string{pidFile, portFile, logFile, tokenFile} {
 			if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
 				grip.Warning(ctx, errors.Wrapf(err, "removing '%s'", f))
 			}
