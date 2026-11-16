@@ -72,6 +72,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 			}
 			if signalBeat == evergreen.TaskFailed {
 				tc.logger.Task().Error(ctx, "Heartbeat received signal to abort task.")
+				tc.aborted.Store(true)
 				preAndMainCancel()
 				hasSentAbort = true
 				continue

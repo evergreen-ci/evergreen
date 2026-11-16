@@ -141,12 +141,14 @@ type userPermissionsPostHandler struct {
 }
 
 type RequestedPermissions struct {
-	// resource_type - the type of resources for which permission is granted. Must be one of "project", "distro", or "superuser"
+	// resource_type - the type of resources for which permission is granted. Must be one of "project", "repo", "distro", or "superuser".
 	ResourceType string `json:"resource_type"`
 	// resources - an array of strings representing what resources the access is for. For a resource_type of project, this will be a list of projects. For a resource_type of distro, this will be a list of distros.
 	Resources []string `json:"resources"`
 	// permissions - an object whose keys are the permission keys returned by the /permissions endpoint above, and whose values are the levels of access to grant for that permission (also returned by the /permissions endpoint)
 	Permissions gimlet.Permissions `json:"permissions"`
+	// RepoScope selects a maintained scope when resource_type is "repo".
+	RepoScope serviceModel.RepoPermissionScope `json:"repo_scope,omitempty"`
 }
 
 // Factory creates an instance of the handler.
@@ -181,11 +183,24 @@ func (h *userPermissionsPostHandler) Parse(ctx context.Context, r *http.Request)
 	if err := utility.ReadJSON(r.Body, &permissions); err != nil {
 		return errors.Wrap(err, "reading permissions from JSON request body")
 	}
-	if !utility.StringSliceContains(evergreen.ValidResourceTypes, permissions.ResourceType) {
+	if !utility.StringSliceContains(evergreen.ValidResourceTypes, permissions.ResourceType) && permissions.ResourceType != repoResourceType {
 		return errors.Errorf("invalid resource type '%s'", permissions.ResourceType)
 	}
 	if len(permissions.Resources) == 0 {
 		return errors.New("resources cannot be empty")
+	}
+	if permissions.ResourceType == repoResourceType {
+		if len(permissions.Resources) != 1 {
+			return errors.New("repo grants require exactly one repo ID")
+		}
+		if err := h.rm.IsValidPermissions(permissions.Permissions); err != nil {
+			return errors.Wrap(err, "validating repo grant permissions")
+		}
+		if err := validateRepoPermissions(permissions.RepoScope, permissions.Permissions); err != nil {
+			return err
+		}
+	} else if permissions.RepoScope != "" {
+		return errors.New("repo_scope is only valid for repo grants")
 	}
 	h.permissions = permissions
 
@@ -204,8 +219,19 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	newRole, err := rolemanager.MakeRoleWithPermissions(ctx, h.rm, h.permissions.ResourceType, h.permissions.Resources, h.permissions.Permissions)
+	var newRole *gimlet.Role
+	if h.permissions.ResourceType == repoResourceType {
+		newRole, err = makeRepoPermissionRole(ctx, h.rm, h.permissions)
+	} else {
+		newRole, err = makeProjectPermissionRole(ctx, h.rm, h.permissions)
+	}
 	if err != nil {
+		if h.permissions.ResourceType == repoResourceType {
+			var response gimlet.ErrorResponse
+			if errors.As(err, &response) {
+				return gimlet.MakeJSONErrorResponder(response)
+			}
+		}
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
 	if err = u.AddRole(ctx, newRole.ID); err != nil {
@@ -217,7 +243,7 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 type deletePermissionsRequest struct {
 	//   resource_type - the type of resources for which to delete permissions. Must
-	//   be one of "project", "distro", "superuser", or "all". "all" will revoke all
+	//   be one of "project", "repo", "distro", "superuser", or "all". "all" will revoke all
 	//   permissions for the user.
 	ResourceType string `json:"resource_type"`
 	//   resource_id - the resource ID for which to delete permissions.
@@ -268,7 +294,7 @@ func (h *userPermissionsDeleteHandler) Parse(ctx context.Context, r *http.Reques
 	}
 	h.resourceType = request.ResourceType
 	h.resourceId = request.ResourceId
-	if !utility.StringSliceContains(evergreen.ValidResourceTypes, h.resourceType) && h.resourceType != allResourceType {
+	if !utility.StringSliceContains(evergreen.ValidResourceTypes, h.resourceType) && h.resourceType != allResourceType && h.resourceType != repoResourceType {
 		return errors.Errorf("invalid resource type '%s'", h.resourceType)
 	}
 	if h.resourceType != allResourceType && h.resourceId == "" {
@@ -315,6 +341,22 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 			// maintained.
 			continue
 		}
+		if isRepoPermissionRole(r) {
+			if h.resourceType != repoResourceType {
+				continue
+			}
+			for _, scopeID := range serviceModel.RepoPermissionScopes(h.resourceId) {
+				if r.Scope != scopeID {
+					continue
+				}
+				rolesToCheck = append(rolesToCheck, r)
+				break
+			}
+			continue
+		}
+		if h.resourceType == repoResourceType {
+			continue
+		}
 
 		rolesToCheck = append(rolesToCheck, r)
 	}
@@ -322,9 +364,12 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
-	rolesForResource, err := h.rm.FilterForResource(ctx, rolesToCheck, h.resourceId, h.resourceType)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "filtering user roles for resource '%s'", h.resourceId))
+	rolesForResource := rolesToCheck
+	if h.resourceType != repoResourceType {
+		rolesForResource, err = h.rm.FilterForResource(ctx, rolesToCheck, h.resourceId, h.resourceType)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "filtering user roles for resource '%s'", h.resourceId))
+		}
 	}
 	rolesToRemove := []string{}
 	for _, r := range rolesForResource {

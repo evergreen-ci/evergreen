@@ -212,6 +212,114 @@ func TestGetVersionsWithTaskOptions(t *testing.T) {
 	assert.Equal(t, "t1", versions[1].Builds[0].Tasks[0].Id)
 }
 
+func TestGetVersionsWithOptionsScanLimit(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
+	p := ProjectRef{
+		Id:         "my_project",
+		Identifier: "my_ident",
+	}
+	require.NoError(t, p.Insert(t.Context()))
+
+	numVersions := MaxVersionsScannedWithBuilds + 10
+	versions := make([]any, 0, numVersions)
+	for i := 1; i <= numVersions; i++ {
+		versions = append(versions, Version{
+			Id:                  fmt.Sprintf("v%d", i),
+			Identifier:          "my_project",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: i,
+		})
+	}
+	require.NoError(t, db.InsertMany(t.Context(), VersionCollection, versions...))
+	for _, versionID := range []string{"v1", fmt.Sprintf("v%d", numVersions)} {
+		b := build.Build{
+			Id:           "b_" + versionID,
+			BuildVariant: "my_bv",
+			Version:      versionID,
+			Activated:    true,
+		}
+		require.NoError(t, b.Insert(t.Context()))
+		tsk := task.Task{
+			Id:          "t_" + versionID,
+			DisplayName: "my_task",
+			BuildId:     b.Id,
+			Version:     versionID,
+			Activated:   true,
+		}
+		require.NoError(t, tsk.Insert(t.Context()))
+	}
+	baseOpts := GetVersionsOptions{
+		Requesters:    []string{evergreen.RepotrackerVersionRequester},
+		IncludeBuilds: true,
+		IncludeTasks:  true,
+		ByTask:        "my_task",
+	}
+
+	t.Run("FullPageWithinLimitSucceeds", func(t *testing.T) {
+		opts := baseOpts
+		opts.Limit = 1
+		res, err := GetVersionsWithOptions(t.Context(), "my_ident", opts)
+		require.NoError(t, err)
+		require.Len(t, res, 1)
+		assert.Equal(t, fmt.Sprintf("v%d", numVersions), res[0].Id)
+	})
+	t.Run("ShortPageWithOlderVersionsReturnsScanLimitError", func(t *testing.T) {
+		opts := baseOpts
+		opts.Limit = 2
+		_, err := GetVersionsWithOptions(t.Context(), "my_ident", opts)
+		assert.ErrorIs(t, err, ErrVersionScanLimitExceeded)
+	})
+	t.Run("ShortPageAtEndOfHistorySucceeds", func(t *testing.T) {
+		opts := baseOpts
+		opts.Limit = 2
+		opts.Start = MaxVersionsScannedWithBuilds + 1
+		res, err := GetVersionsWithOptions(t.Context(), "my_ident", opts)
+		require.NoError(t, err)
+		require.Len(t, res, 1)
+		assert.Equal(t, "v1", res[0].Id)
+	})
+}
+
+func TestGetVersionsWithOptionsSkipWithBuildsPastScanLimit(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
+	p := ProjectRef{
+		Id:         "my_project",
+		Identifier: "my_ident",
+	}
+	require.NoError(t, p.Insert(t.Context()))
+
+	numVersions := MaxVersionsScannedWithBuilds + 50
+	versions := make([]any, 0, numVersions)
+	builds := make([]any, 0, numVersions)
+	for i := 1; i <= numVersions; i++ {
+		versions = append(versions, Version{
+			Id:                  fmt.Sprintf("v%d", i),
+			Identifier:          "my_project",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: i,
+		})
+		builds = append(builds, build.Build{
+			Id:           fmt.Sprintf("b%d", i),
+			BuildVariant: "my_bv",
+			Version:      fmt.Sprintf("v%d", i),
+			Activated:    true,
+		})
+	}
+	require.NoError(t, db.InsertMany(t.Context(), VersionCollection, versions...))
+	require.NoError(t, db.InsertMany(t.Context(), build.Collection, builds...))
+
+	opts := GetVersionsOptions{
+		Requesters:    []string{evergreen.RepotrackerVersionRequester},
+		IncludeBuilds: true,
+		Skip:          MaxVersionsScannedWithBuilds - 10,
+		Limit:         100,
+	}
+	res, err := GetVersionsWithOptions(t.Context(), "my_ident", opts)
+	require.NoError(t, err)
+	require.Len(t, res, 60)
+	assert.Equal(t, "v60", res[0].Id)
+}
+
 func TestGetVersionsWithOptions(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	start := time.Now()
@@ -1118,4 +1226,137 @@ func TestConstructManifestRecordsSelectionRulesAndChangedModules(t *testing.T) {
 		assert.Equal(t, v2.Id, m.PreviousVersionID)
 		assert.Empty(t, m.ChangedModules)
 	})
+}
+
+func TestVersionFindBaseVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(VersionCollection))
+
+	patch0 := Version{
+		Id:                  "v0",
+		Identifier:          "project1",
+		Requester:           evergreen.PatchVersionRequester,
+		Revision:            "ghi",
+		RevisionOrderNumber: 1,
+	}
+	patch1 := Version{
+		Id:                  "v1",
+		Identifier:          "project1",
+		Requester:           evergreen.PatchVersionRequester,
+		Revision:            "abc",
+		RevisionOrderNumber: 2,
+	}
+	mainlineCommit1 := Version{
+		Id:                  "project1_v1",
+		Identifier:          "project1",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Revision:            "abc",
+		RevisionOrderNumber: 1,
+	}
+	mainlineCommit2 := Version{
+		Id:                  "project1_v2",
+		Identifier:          "project1",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Revision:            "def",
+		RevisionOrderNumber: 2,
+	}
+	triggerVersion := Version{
+		Id:                  "project1_v3_trigger",
+		Identifier:          "project1",
+		Requester:           evergreen.TriggerRequester,
+		Revision:            "abc",
+		RevisionOrderNumber: 3,
+	}
+	periodicBuild := Version{
+		Id:                  "project1_v4_periodic",
+		Identifier:          "project1",
+		Requester:           evergreen.AdHocRequester,
+		Revision:            "def",
+		RevisionOrderNumber: 4,
+	}
+	triggerVersionWithoutRepotrackerVersion := Version{
+		Id:                  "project1_v5_trigger",
+		Identifier:          "project1",
+		Requester:           evergreen.TriggerRequester,
+		Revision:            "jkl",
+		RevisionOrderNumber: 5,
+	}
+
+	for _, v := range []Version{patch0, patch1, mainlineCommit1, mainlineCommit2, triggerVersion, periodicBuild, triggerVersionWithoutRepotrackerVersion} {
+		require.NoError(t, v.Insert(t.Context()))
+	}
+
+	type testCase struct {
+		versionID  string
+		expectedID string
+	}
+	for groupName, group := range map[string]struct {
+		repotrackerOnly bool
+		testCases       map[string]testCase
+	}{
+		"RepotrackerOnlyFalse": {
+			repotrackerOnly: false,
+			testCases: map[string]testCase{
+				"PatchReturnsMainlineCommitAtBaseRevision": {
+					versionID:  "v1",
+					expectedID: "project1_v1",
+				},
+				"PatchWithoutMainlineCommitAtBaseRevisionReturnsNil": {
+					versionID: "v0",
+				},
+				"MainlineCommitReturnsPreviousMainlineCommit": {
+					versionID:  "project1_v2",
+					expectedID: "project1_v1",
+				},
+				"FirstMainlineCommitReturnsNil": {
+					versionID: "project1_v1",
+				},
+				"TriggerVersionReturnsPreviousVersionByOrder": {
+					versionID:  "project1_v3_trigger",
+					expectedID: "project1_v2",
+				},
+			},
+		},
+		"RepotrackerOnlyTrue": {
+			repotrackerOnly: true,
+			testCases: map[string]testCase{
+				"PatchReturnsRepotrackerCommitAtBaseRevision": {
+					versionID:  "v1",
+					expectedID: "project1_v1",
+				},
+				"RepotrackerCommitReturnsItself": {
+					versionID:  "project1_v2",
+					expectedID: "project1_v2",
+				},
+				"TriggerVersionReturnsRepotrackerCommitAtSameRevision": {
+					versionID:  "project1_v3_trigger",
+					expectedID: "project1_v1",
+				},
+				"PeriodicBuildReturnsRepotrackerCommitAtSameRevision": {
+					versionID:  "project1_v4_periodic",
+					expectedID: "project1_v2",
+				},
+				"TriggerVersionWithNoRepotrackerCommitAtSameRevisionReturnsNil": {
+					versionID: "project1_v5_trigger",
+				},
+			},
+		},
+	} {
+		t.Run(groupName, func(t *testing.T) {
+			for testName, tc := range group.testCases {
+				t.Run(testName, func(t *testing.T) {
+					v, err := VersionFindOneId(t.Context(), tc.versionID)
+					require.NoError(t, err)
+					require.NotNil(t, v)
+					version, err := v.FindBaseVersion(t.Context(), group.repotrackerOnly)
+					require.NoError(t, err)
+					if tc.expectedID == "" {
+						assert.Nil(t, version)
+						return
+					}
+					require.NotNil(t, version)
+					assert.Equal(t, tc.expectedID, version.Id)
+				})
+			}
+		})
+	}
 }

@@ -68,3 +68,8 @@ func FindIntent(ctx context.Context, id, intentType string) (Intent, error) {
 
 	return intent, nil
 }
+
+// RemoveIntent deletes the intent with the given ID from the database.
+func RemoveIntent(ctx context.Context, id string) error {
+	return db.Remove(ctx, IntentCollection, bson.M{"_id": id})
+}

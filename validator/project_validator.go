@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"regexp"
 	"runtime/debug"
 	"slices"
@@ -141,6 +142,7 @@ var projectErrorValidators = []projectValidator{
 	validateDuplicateBVTasks,
 	validateGenerateTasks,
 	validateModuleCloneDepths,
+	checkModulePrefixes,
 }
 
 // Functions used to validate the syntax of project configs representing properties found on the project page.
@@ -652,16 +654,11 @@ func aliasMatchesTaskGroupTask(p *model.Project, alias model.ProjectAlias, tgNam
 
 func validateProjectConfigPlugins(ctx context.Context, pc *model.ProjectConfig) ValidationErrors {
 	errs := ValidationErrors{}
-	annotationSettings := pc.TaskAnnotationSettings
-	var webhook *evergreen.WebHook
-	if annotationSettings != nil {
-		webhook = &annotationSettings.FileTicketWebhook
-	}
 	// skip validation if no build baron configuration exists
 	if pc.BuildBaronSettings == nil {
 		return ValidationErrors{}
 	}
-	err := model.ValidateBbProject(ctx, pc.Project, *pc.BuildBaronSettings, webhook)
+	err := model.ValidateBbProject(ctx, pc.Project, *pc.BuildBaronSettings, nil)
 	if err != nil {
 		errs = append(errs,
 			ValidationError{
@@ -1124,11 +1121,23 @@ func validateIncludeLimits(_ context.Context, settings *evergreen.Settings, proj
 }
 
 func validateProjectLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
-	bvTasks := project.FindAllBuildVariantTasks()
+	// Virtual tasks start inactive, so they don't count toward the limit.
+	virtualTasks := map[string]bool{}
+	for _, t := range project.Tasks {
+		if t.Virtual {
+			virtualTasks[t.Name] = true
+		}
+	}
+	numTasks := 0
+	for _, bvt := range project.FindAllBuildVariantTasks() {
+		if !virtualTasks[bvt.Name] {
+			numTasks++
+		}
+	}
 	errs := ValidationErrors{}
-	if settings.TaskLimits.MaxTasksPerVersion > 0 && len(bvTasks) > settings.TaskLimits.MaxTasksPerVersion {
+	if settings.TaskLimits.MaxTasksPerVersion > 0 && numTasks > settings.TaskLimits.MaxTasksPerVersion {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("project's total number of tasks (%d) exceeds maximum limit (%d)", len(bvTasks), settings.TaskLimits.MaxTasksPerVersion),
+			Message: fmt.Sprintf("project's total number of non-virtual tasks (%d) exceeds maximum limit (%d)", numTasks, settings.TaskLimits.MaxTasksPerVersion),
 			Level:   Error,
 		})
 	}
@@ -1254,10 +1263,37 @@ func checkModules(project *model.Project) ValidationErrors {
 				Message: fmt.Sprintf("module '%s' should have a set repo", module.Name),
 			})
 		}
-
 	}
 
 	return errs
+}
+
+// checkModulePrefixes rejects module prefixes that could escape the source
+// destination directory when a patch is fetched locally.
+func checkModulePrefixes(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+	for _, module := range project.Modules {
+		if hasPathTraversal(module.Prefix) {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("module '%s' prefix '%s' cannot be absolute or contain '..'", module.Name, module.Prefix),
+			})
+		}
+	}
+	return errs
+}
+
+// hasPathTraversal returns true for prefixes that are absolute paths or
+// contain a ".." component, since either could resolve outside the directory
+// a user fetches source into.
+func hasPathTraversal(prefix string) bool {
+	if filepath.IsAbs(prefix) {
+		return true
+	}
+	components := strings.FieldsFunc(prefix, func(r rune) bool {
+		return r == '/' || r == '\\'
+	})
+	return slices.Contains(components, "..")
 }
 
 // Ensures there aren't any duplicate buildvariant names specified in the given

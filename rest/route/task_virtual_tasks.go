@@ -253,6 +253,9 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 			Visibility: a.Visibility,
 		})
 	}
+	if err := artifact.ValidateFiles(files); err != nil {
+		return failed(err.Error())
+	}
 
 	vt, reason, err := validateVirtualTaskTarget(ctx, runner, completion.TaskID, completion.Execution)
 	if err != nil {

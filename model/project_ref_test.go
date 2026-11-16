@@ -60,10 +60,8 @@ func TestFindMergedProjectRef(t *testing.T) {
 	projectConfig := &ProjectConfig{
 		Id: "ident",
 		ProjectConfigFields: ProjectConfigFields{
-			TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-				FileTicketWebhook: evergreen.WebHook{
-					Endpoint: "random2",
-				},
+			BuildBaronSettings: &evergreen.BuildBaronSettings{
+				TicketCreateProject: "random2",
 			},
 		},
 	}
@@ -156,7 +154,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 
 	assert.True(t, mergedProject.WorkstationConfig.ShouldGitClone())
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
-	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+	assert.Equal(t, "random2", mergedProject.BuildBaronSettings.TicketCreateProject)
 	assert.Len(t, mergedProject.ParsleyFilters, 2)
 	assert.True(t, mergedProject.IsTestSelectionMainlineDefaultEnabled())
 
@@ -188,10 +186,8 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 	projectConfig := &ProjectConfig{
 		Id: "ident",
 		ProjectConfigFields: ProjectConfigFields{
-			TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-				FileTicketWebhook: evergreen.WebHook{
-					Endpoint: "random2",
-				},
+			BuildBaronSettings: &evergreen.BuildBaronSettings{
+				TicketCreateProject: "random2",
 			},
 		},
 	}
@@ -200,10 +196,8 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 	projectConfig = &ProjectConfig{
 		Id: "ident2",
 		ProjectConfigFields: ProjectConfigFields{
-			TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-				FileTicketWebhook: evergreen.WebHook{
-					Endpoint: "random2",
-				},
+			BuildBaronSettings: &evergreen.BuildBaronSettings{
+				TicketCreateProject: "random2",
 			},
 		},
 	}
@@ -3249,6 +3243,82 @@ func TestAddPermissions(t *testing.T) {
 	assert.Contains(dbUser.Roles(), fmt.Sprintf("admin_project_%s", p.Id))
 }
 
+func TestAddWithRepoRefPermissions(t *testing.T) {
+	setup := func(t *testing.T, userRoles ...string) (ProjectRef, RepoRef, *user.DBUser) {
+		ctx := t.Context()
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, fakeparameter.Collection,
+			evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection))
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+
+		repoRef := RepoRef{ProjectRef{
+			Id:    "repoRef",
+			Owner: "mongodb",
+			Repo:  "mongo",
+		}}
+		require.NoError(t, repoRef.Replace(ctx))
+		require.NoError(t, (&ProjectVars{Id: repoRef.Id}).Insert(ctx))
+
+		pRef := ProjectRef{
+			Id:         "myProject",
+			Identifier: "myProject",
+			Owner:      repoRef.Owner,
+			Repo:       repoRef.Repo,
+			Branch:     "main",
+			RepoRefId:  repoRef.Id,
+		}
+		u := &user.DBUser{Id: "me", SystemRoles: userRoles}
+		require.NoError(t, u.Insert(ctx))
+		return pRef, repoRef, u
+	}
+
+	t.Run("NonRepoAdminShouldErrorWithoutCreatingProject", func(t *testing.T) {
+		ctx := t.Context()
+		pRef, _, u := setup(t)
+
+		err := pRef.Add(ctx, u)
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrRepoRefUnauthorized), "expected an authorization error, got '%s'", err)
+
+		pRefFromDB, err := FindBranchProjectRef(ctx, pRef.Id)
+		require.NoError(t, err)
+		assert.Nil(t, pRefFromDB)
+		vars, err := FindOneProjectVars(ctx, pRef.Id)
+		require.NoError(t, err)
+		assert.Nil(t, vars)
+		roles, err := evergreen.GetEnvironment().RoleManager().GetRoles(ctx, []string{GetProjectAdminRole(pRef.Id)})
+		require.NoError(t, err)
+		assert.Empty(t, roles)
+	})
+
+	t.Run("RepoAdminShouldSucceed", func(t *testing.T) {
+		ctx := t.Context()
+		pRef, repoRef, u := setup(t, GetRepoAdminRole("repoRef"))
+
+		rm := testutil.NewEnvironment(ctx, t).RoleManager()
+		require.NoError(t, rm.AddScope(ctx, gimlet.Scope{
+			ID:        GetRepoAdminScope(repoRef.Id),
+			Type:      evergreen.ProjectResourceType,
+			Resources: []string{repoRef.Id},
+		}))
+		require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{
+			ID:          GetRepoAdminRole(repoRef.Id),
+			Scope:       GetRepoAdminScope(repoRef.Id),
+			Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
+		}))
+
+		require.NoError(t, pRef.Add(ctx, u))
+
+		pRefFromDB, err := FindBranchProjectRef(ctx, pRef.Id)
+		require.NoError(t, err)
+		require.NotNil(t, pRefFromDB)
+		assert.Equal(t, repoRef.Id, pRefFromDB.RepoRefId)
+		scope, err := rm.GetScope(ctx, GetRepoAdminScope(repoRef.Id))
+		require.NoError(t, err)
+		require.NotNil(t, scope)
+		assert.Contains(t, scope.Resources, pRef.Id)
+	})
+}
+
 func TestUpdateAdminRoles(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
@@ -3767,11 +3837,6 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	projectConfig := &ProjectConfig{
 		Id: "version1",
 		ProjectConfigFields: ProjectConfigFields{
-			TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-				FileTicketWebhook: evergreen.WebHook{
-					Endpoint: "random2",
-				},
-			},
 			WorkstationConfig: &WorkstationConfig{
 				GitClone: utility.FalsePtr(),
 				SetupCommands: []WorkstationSetupCommand{
@@ -4477,4 +4542,85 @@ func TestSourceCacheEnabled(t *testing.T) {
 			assert.Equal(t, tCase.want, SourceCacheEnabled(tCase.mode, tCase.isPatch))
 		})
 	}
+}
+
+func TestFindLastActivatedBatchTimeTask(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
+	})
+
+	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	oldActivateAt := base
+	newActivateAt := base.Add(time.Hour)
+
+	insertOldVersion := func() {
+		require.NoError(t, db.Insert(t.Context(), VersionCollection, Version{
+			Id:                  "old",
+			Identifier:          "proj",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 1,
+			BuildVariants: []VersionBuildStatus{
+				{
+					BuildVariant: "ubuntu",
+					BatchTimeTasks: []BatchTimeTaskStatus{
+						{
+							TaskName:         "task0",
+							ActivationStatus: ActivationStatus{Activated: true, ActivateAt: oldActivateAt},
+						},
+					},
+				},
+			},
+		}))
+	}
+	insertNewVersion := func() {
+		bt := &VersionTaskBatchTimes{
+			Id:         "new",
+			Identifier: "proj",
+			Requester:  evergreen.RepotrackerVersionRequester,
+			Order:      2,
+			BuildVariants: []BuildVariantTaskBatchTime{
+				{
+					BuildVariant: "ubuntu",
+					BatchTimeTasks: []BatchTimeTaskStatus{
+						{
+							TaskName:         "task0",
+							ActivationStatus: ActivationStatus{Activated: true, ActivateAt: newActivateAt},
+						},
+					},
+				},
+			},
+		}
+		require.NoError(t, bt.Upsert(t.Context()))
+	}
+
+	t.Run("MoreRecentVersionInCollectionWins", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
+		insertOldVersion()
+		insertNewVersion()
+
+		status, err := findLastActivatedTaskBatchTime(t.Context(), "proj", "ubuntu", "task0")
+		require.NoError(t, err)
+		require.NotNil(t, status)
+		assert.True(t, status.ActivateAt.Equal(newActivateAt))
+	})
+
+	t.Run("FallsBackToVersionDocument", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
+		insertOldVersion()
+
+		status, err := findLastActivatedTaskBatchTime(t.Context(), "proj", "ubuntu", "task0")
+		require.NoError(t, err)
+		require.NotNil(t, status)
+		assert.True(t, status.ActivateAt.Equal(oldActivateAt))
+	})
+
+	t.Run("NoMatch", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(VersionCollection, VersionTaskBatchTimeCollection))
+		insertOldVersion()
+
+		status, err := findLastActivatedTaskBatchTime(t.Context(), "proj", "ubuntu", "nonexistent")
+		require.NoError(t, err)
+		assert.Nil(t, status)
+	})
 }

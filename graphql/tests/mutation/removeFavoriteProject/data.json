@@ -1,9 +1,7 @@
 {
     "project_ref": [
         {
-            "_id": {
-                "$oid": "5ca4dad4bedb55a6ed6e1321"
-            },
+            "_id": "spruce",
             "owner_name": "annie.black",
             "repo_name": "buildhost-configuration",
             "branch_name": "main",
@@ -30,6 +28,25 @@
             "disabled_stats_cache": false,
             "files_ignored_from_cache": [],
             "triggers": []
+        },
+        {
+            "_id": "restricted_secret_project_id",
+            "identifier": "restricted-secret-project",
+            "restricted": true
+        }
+    ],
+    "users": [
+        {
+            "_id": "favorite_user",
+            "apikey": "favorite_user_api_key",
+            "only_api": true,
+            "roles": [
+                "basic_project_access"
+            ],
+            "favorite_projects": [
+                "buildhost-test",
+                "restricted-secret-project"
+            ]
         }
     ]
 }

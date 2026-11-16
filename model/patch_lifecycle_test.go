@@ -332,12 +332,28 @@ func TestFinalizePatch(t *testing.T) {
 			translatedProject, _, err := FindAndTranslateProjectForPatch(ctx, patchTestConfig, p)
 			require.NoError(t, err)
 			require.NotNil(t, translatedProject)
+			foundVariant := false
+			for i := range translatedProject.BuildVariants {
+				if translatedProject.BuildVariants[i].Name == "linux-64-duroff" {
+					translatedProject.BuildVariants[i].Tags = []string{"variant-tag"}
+					foundVariant = true
+					break
+				}
+			}
+			require.True(t, foundVariant)
 
 			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, translatedProject)
 			require.NoError(t, err)
 			require.NotNil(t, version)
 			assert.Len(t, version.Parameters, 1)
 			assert.Equal(t, ppStorageMethod, version.ProjectStorageMethod)
+			require.Len(t, version.BuildVariants, 1)
+			assert.Equal(t, []string{"variant-tag"}, version.BuildVariants[0].Tags)
+			dbVersion, err := VersionFindOneIdWithBuildVariants(ctx, version.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbVersion)
+			require.Len(t, dbVersion.BuildVariants, 1)
+			assert.Equal(t, []string{"variant-tag"}, dbVersion.BuildVariants[0].Tags)
 
 			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
 			require.NoError(t, err)
@@ -352,6 +368,9 @@ func TestFinalizePatch(t *testing.T) {
 			tasks, err := task.Find(ctx, bson.M{})
 			require.NoError(t, err)
 			assert.Len(t, tasks, 2)
+			for _, task := range tasks {
+				assert.Equal(t, []string{"variant-tag"}, task.BuildVariantTags)
+			}
 		},
 		"VersionCreationWithAutoUpdateModules": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
 			modules := ModuleList{
@@ -1060,6 +1079,7 @@ func TestAddNewPatch(t *testing.T) {
 			{
 				Name:        "variant",
 				DisplayName: "My Variant Display",
+				Tags:        []string{"variant-tag"},
 				Tasks: []BuildVariantTaskUnit{
 					{Name: "task1", Variant: "variant"}, {Name: "task2", Variant: "variant"}, {Name: "task3", Variant: "variant"},
 				},
@@ -1111,6 +1131,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.Len(dbVersion.BuildVariants, 1)
 	assert.Equal("variant", dbVersion.BuildVariants[0].BuildVariant)
 	assert.Equal("My Variant Display", dbVersion.BuildVariants[0].DisplayName)
+	assert.Equal([]string{"variant-tag"}, dbVersion.BuildVariants[0].Tags)
 
 	_, _, err = addNewTasksToExistingBuilds(t.Context(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)

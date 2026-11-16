@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -50,6 +49,7 @@ var (
 	VersionRemoteURLKey                         = bsonutil.MustHaveTag(Version{}, "RemotePath")
 	VersionTriggerIDKey                         = bsonutil.MustHaveTag(Version{}, "TriggerID")
 	VersionTriggerTypeKey                       = bsonutil.MustHaveTag(Version{}, "TriggerType")
+	VersionTriggerSHAKey                        = bsonutil.MustHaveTag(Version{}, "TriggerSHA")
 	VersionSatisfiedTriggersKey                 = bsonutil.MustHaveTag(Version{}, "SatisfiedTriggers")
 	VersionPeriodicBuildIDKey                   = bsonutil.MustHaveTag(Version{}, "PeriodicBuildID")
 	VersionActivatedKey                         = bsonutil.MustHaveTag(Version{}, "Activated")
@@ -136,14 +136,21 @@ func BaseVersionByProjectIdAndRevision(projectId, revision string) db.Q {
 		})
 }
 
+// VersionByProjectIdAndRevisionPrefix finds a system-requested version for the given project whose
+// git hash starts with revisionPrefix. A version matches on its revision or, for trigger versions, on its
+// trigger SHA.
 func VersionByProjectIdAndRevisionPrefix(projectId, revisionPrefix string) db.Q {
 	lengthHash := 40 - len(revisionPrefix)
+	hashRegex := bson.M{"$regex": fmt.Sprintf("^%s[0-9a-f]{%d}$", revisionPrefix, lengthHash)}
 	return db.Query(
 		bson.M{
 			VersionIdentifierKey: projectId,
-			VersionRevisionKey:   bson.M{"$regex": fmt.Sprintf("^%s[0-9a-f]{%d}$", revisionPrefix, lengthHash)},
 			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
+			},
+			"$or": []bson.M{
+				{VersionRevisionKey: hashRegex},
+				{VersionTriggerSHAKey: hashRegex},
 			},
 		})
 }
@@ -520,29 +527,4 @@ func FindProjectForVersion(ctx context.Context, versionID string) (string, error
 		return "", errors.New("version not found")
 	}
 	return v.Identifier, nil
-}
-
-// FindBaseVersionForVersion finds the base version  for a given version ID. If the version is a patch, it will
-// return the base version. If the version is a mainline commit, it will return the previously run mainline commit.
-func FindBaseVersionForVersion(ctx context.Context, versionID string) (*Version, error) {
-	v, err := VersionFindOne(ctx, VersionById(versionID))
-	if err != nil {
-		return nil, err
-	}
-	if v == nil {
-		return nil, errors.New("version not found")
-	}
-	if evergreen.IsPatchRequester(v.Requester) {
-		baseVersion, err := VersionFindOne(ctx, BaseVersionByProjectIdAndRevision(v.Identifier, v.Revision))
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
-		}
-		return baseVersion, nil
-	} else {
-		previousVersion, err := VersionFindOne(ctx, VersionByProjectIdAndOrder(utility.FromStringPtr(&v.Identifier), v.RevisionOrderNumber-1))
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
-		}
-		return previousVersion, nil
-	}
 }

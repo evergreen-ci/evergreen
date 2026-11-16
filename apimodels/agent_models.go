@@ -166,6 +166,10 @@ type TaskEndDetail struct {
 	ExecutionPlatform    string                  `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
 	// ExternalExecutionMetadata is only set for push-completed virtual tasks.
 	ExternalExecutionMetadata *ExternalExecutionMetadata `bson:"external_execution_metadata,omitempty" json:"external_execution_metadata,omitempty"`
+	// SystemFailureReason is a human-readable explanation of why the task's
+	// host or agent was lost. It is only set by the app server for system
+	// failures.
+	SystemFailureReason string `bson:"system_failure_reason,omitempty" json:"system_failure_reason,omitempty"`
 }
 
 // ExternalExecutionMetadata identifies the external execution that produced a

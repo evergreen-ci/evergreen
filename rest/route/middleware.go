@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -52,7 +51,8 @@ const (
 )
 
 // hostCommunicationWriteInterval is the minimum time between writes to a host's last
-// communication time.
+// communication time. It should be kept in sync with hostCommunicationSlack in
+// the model package.
 const hostCommunicationWriteInterval = time.Minute
 
 type projCtxMiddleware struct{}
@@ -680,20 +680,8 @@ func (m *sendNotificationMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.R
 }
 
 func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
-	var err error
 	vars := gimlet.GetVars(r)
 	query := r.URL.Query()
-
-	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
-	if resourceType != "" {
-		switch resourceType {
-		case event.EventResourceTypeProject:
-			vars["project_id"] = vars["resource_id"]
-		case event.ResourceTypeTask:
-			vars["task_id"] = vars["resource_id"]
-		}
-	}
-	destProjectID := util.CoalesceString(query["dest_project"]...)
 
 	paramsMap := data.BuildProjectParameterMapForLegacy(query, vars)
 	projectId, statusCode, err := data.GetProjectIdFromParams(r.Context(), paramsMap)
@@ -701,12 +689,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		return nil, statusCode, err
 	}
 
-	res := []string{projectId}
-	if destProjectID != "" {
-		res = append(res, destProjectID)
-	}
-
-	return res, http.StatusOK, nil
+	return []string{projectId}, http.StatusOK, nil
 }
 
 // urlVarsToDistroScopes returns the distro being requested for access and the

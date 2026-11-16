@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -248,10 +249,19 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	s.Equal("cannot enable commit queue without a commit queue patch definition", errResp.Message)
 }
 
+func (s *ProjectPatchByIDSuite) clearFileTicketWebhook(ctx context.Context) {
+	pRef, err := serviceModel.FindBranchProjectRef(ctx, "dimoxinil")
+	s.Require().NoError(err)
+	s.Require().NotNil(pRef)
+	pRef.TaskAnnotationSettings = evergreen.AnnotationsSettings{}
+	s.Require().NoError(pRef.Replace(ctx))
+}
+
 func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	s.clearFileTicketWebhook(ctx)
 	jsonBody := []byte(`{"enabled": true, "build_baron_settings": {"ticket_create_project": "EVG", "ticket_search_projects": ["EVG"]}}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
@@ -269,9 +279,8 @@ func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
 }
 
 func (s *ProjectPatchByIDSuite) TestRunWithInvalidBbConfig() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	ctx := gimlet.AttachUser(s.T().Context(), &user.DBUser{Id: "Test1"})
+	s.clearFileTicketWebhook(ctx)
 	jsonBody := []byte(`{"enabled": true, "build_baron_settings": {"ticket_create_project": "EVG"}}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
@@ -288,9 +297,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithInvalidBbConfig() {
 }
 
 func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	ctx := gimlet.AttachUser(s.T().Context(), &user.DBUser{Id: "Test1"})
 	jsonBody := []byte(`{"enabled": true, "git_tag_versions_enabled": true, "aliases": [{"alias": "__git_tag", "git_tag": "my_git_tag", "variant": ".*", "task": ".*", "tag": ".*"}]}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
@@ -1145,6 +1152,38 @@ func TestGetProjectVersions(t *testing.T) {
 	assert.Contains(string(respJson), `"version_id":"v1"`)
 }
 
+func TestGetProjectVersionsScanLimitExceededReturnsBadRequest(t *testing.T) {
+	require.NoError(t, db.ClearCollections(serviceModel.VersionCollection, serviceModel.ProjectRefCollection, build.Collection, task.Collection))
+	project := serviceModel.ProjectRef{
+		Id:         "proj",
+		Identifier: "proj_ident",
+	}
+	require.NoError(t, project.Insert(t.Context()))
+	versions := []any{}
+	for i := 1; i <= 1001; i++ {
+		versions = append(versions, serviceModel.Version{
+			Id:                  fmt.Sprintf("v%d", i),
+			Identifier:          "proj",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: i,
+		})
+	}
+	require.NoError(t, db.InsertMany(t.Context(), serviceModel.VersionCollection, versions...))
+
+	h := &getProjectVersionsHandler{}
+	body := []byte(`{"include_builds": true, "include_tasks": true, "by_task": "nonexistent"}`)
+	req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj_ident/versions", bytes.NewReader(body))
+	require.NoError(t, err)
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj_ident"})
+	require.NoError(t, h.Parse(t.Context(), req))
+
+	resp := h.Run(t.Context())
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+	errResp, ok := resp.Data().(gimlet.ErrorResponse)
+	require.True(t, ok)
+	assert.Contains(t, errResp.Message, "narrow the search with start or revision_end")
+}
+
 func TestGetProjectVersionsParseRequesters(t *testing.T) {
 	ctx := t.Context()
 
@@ -1205,6 +1244,50 @@ func TestGetProjectVersionsParseRequesters(t *testing.T) {
 			tCase(t)
 		})
 	}
+}
+
+func TestGetProjectVersionsParseSkip(t *testing.T) {
+	parse := func(t *testing.T, body string) error {
+		h := &getProjectVersionsHandler{}
+		req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", strings.NewReader(body))
+		require.NoError(t, err)
+		req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+		return h.Parse(t.Context(), req)
+	}
+
+	t.Run("SkipAboveMaxWithBuildsShouldError", func(t *testing.T) {
+		body := fmt.Sprintf(`{"include_builds": true, "skip": %d}`, serviceModel.MaxVersionsScannedWithBuilds+1)
+		assert.ErrorContains(t, parse(t, body), "skip cannot exceed")
+	})
+	t.Run("SkipAtMaxWithBuildsShouldSucceed", func(t *testing.T) {
+		body := fmt.Sprintf(`{"include_builds": true, "skip": %d}`, serviceModel.MaxVersionsScannedWithBuilds)
+		assert.NoError(t, parse(t, body))
+	})
+	t.Run("SkipAboveMaxWithoutBuildsShouldSucceed", func(t *testing.T) {
+		body := fmt.Sprintf(`{"skip": %d}`, serviceModel.MaxVersionsScannedWithBuilds+1)
+		assert.NoError(t, parse(t, body))
+	})
+}
+
+func TestGetProjectVersionsParseBodySize(t *testing.T) {
+	makeBody := func(size int) []byte {
+		prefix, suffix := `{"requesters": ["`, `"]}`
+		return []byte(prefix + strings.Repeat("a", size-len(prefix)-len(suffix)) + suffix)
+	}
+	parse := func(t *testing.T, body []byte) error {
+		h := &getProjectVersionsHandler{}
+		req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", bytes.NewReader(body))
+		require.NoError(t, err)
+		req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+		return h.Parse(t.Context(), req)
+	}
+
+	t.Run("BodyAtMaxSizeShouldSucceed", func(t *testing.T) {
+		assert.NoError(t, parse(t, makeBody(maxVersionsBodySize)))
+	})
+	t.Run("BodyOverMaxSizeShouldError", func(t *testing.T) {
+		assert.ErrorContains(t, parse(t, makeBody(maxVersionsBodySize+1)), "request body cannot exceed")
+	})
 }
 
 func TestGetProjectVersionsParseLimit(t *testing.T) {

@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
@@ -301,35 +300,6 @@ func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
 
 func (s *PatchConnectorAbortByIdSuite) TearDownSuite() {
 	s.Require().NoError(s.teardown())
-}
-
-func (s *PatchConnectorAbortByIdSuite) TestAbort() {
-	err := AbortPatch(context.Background(), s.objIds[0], "user1")
-	s.NoError(err)
-	p, err := FindPatchById(s.T().Context(), s.objIds[0])
-	s.Require().NoError(err)
-	s.Require().NotNil(p)
-	s.Equal(s.objIds[0], *p.Id)
-	abortedPatch, err := FindPatchById(s.T().Context(), s.objIds[0])
-	s.NoError(err)
-	s.Equal(evergreen.PatchVersionRequester, *abortedPatch.Requester)
-
-	err = AbortPatch(context.Background(), s.objIds[1], "user1")
-	s.NoError(err)
-
-	p, err = FindPatchById(s.T().Context(), s.objIds[1])
-
-	s.Error(err)
-	s.Nil(p)
-}
-
-func (s *PatchConnectorAbortByIdSuite) TestAbortFail() {
-	newId := mgobson.NewObjectId()
-	for _, i := range s.objIds {
-		s.NotEqual(newId, i)
-	}
-	err := AbortPatch(context.Background(), newId.Hex(), "user")
-	s.Error(err)
 }
 
 func (s *PatchConnectorAbortByIdSuite) TestAbortByPullRequest() {

@@ -2,12 +2,12 @@ package model
 
 import (
 	"context"
-	"net/url"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -64,19 +64,23 @@ func GetBuildBaronSettings(ctx context.Context, projectId string, version string
 
 func ValidateBbProject(ctx context.Context, projName string, proj evergreen.BuildBaronSettings, webhook *evergreen.WebHook) error {
 	catcher := grip.NewBasicCatcher()
-	var err error
-	var webhookConfigured bool
 	if webhook == nil {
 		pRefWebHook, _, err := IsWebhookConfigured(ctx, projName, "")
 		if err != nil {
 			return errors.Wrapf(err, "retrieving webhook config for project '%s'", projName)
 		}
 		webhook = &pRefWebHook
-		webhookConfigured = webhook != nil && webhook.Endpoint != ""
+	}
+	webhookConfigured := webhook.Endpoint != ""
+
+	if !webhookConfigured && len(webhook.Secret) > 0 {
+		// A secret is going to always be tied to the specific endpoint it's meant
+		// to hit, so any secret must come with an intended endpoint.
+		catcher.New("must provide webhook endpoint if webhook secret is provided")
 	}
 
 	if !webhookConfigured && proj.TicketCreateProject == "" && len(proj.TicketSearchProjects) == 0 {
-		return nil
+		return catcher.Resolve()
 	}
 	if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
 		catcher.New("Must provide projects to search")
@@ -89,8 +93,8 @@ func ValidateBbProject(ctx context.Context, projName string, proj evergreen.Buil
 		if len(proj.TicketCreateProject) != 0 {
 			catcher.Errorf("The custom file ticket webhook and the build baron should not both be configured")
 		}
-		if _, err = url.Parse(webhook.Endpoint); err != nil {
-			catcher.Errorf("Failed to parse webhook endpoint for project")
+		if err := util.ValidateWebhookURL(webhook.Endpoint); err != nil {
+			catcher.Wrapf(err, "validating webhook endpoint for project '%s'", projName)
 		}
 	}
 	return catcher.Resolve()

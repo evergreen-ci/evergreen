@@ -307,6 +307,127 @@ func TestReportGitHubProcessingError(t *testing.T) {
 	})
 }
 
+const (
+	mergeGroupTestProjectID = "mq-project"
+	mergeGroupTestOrg       = "evergreen-ci"
+	mergeGroupTestRepo      = "commit-queue-sandbox"
+	mergeGroupTestHeadSHA   = "d2a90288ad96adca4a7d0122d8d4fd1deb24db11"
+)
+
+// setupMergeGroupDedupeTest sets up a merge queue project and returns a mock environment that's also set as the
+// global environment, since GitHub statuses are sent through the global environment.
+func setupMergeGroupDedupeTest(t *testing.T) *mock.Environment {
+	ctx := t.Context()
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	require.NoError(t, (&evergreen.UIConfig{Url: "https://example.com"}).Set(ctx))
+
+	originalEnv := evergreen.GetEnvironment()
+	evergreen.SetEnvironment(env)
+	collections := []string{model.ProjectRefCollection, patch.Collection, patch.IntentCollection,
+		patch.GitHubIntentInfoCollection, event.SubscriptionsCollection, user.Collection}
+	require.NoError(t, db.ClearCollections(collections...))
+	t.Cleanup(func() {
+		evergreen.SetEnvironment(originalEnv)
+		assert.NoError(t, db.ClearCollections(collections...))
+	})
+
+	require.NoError(t, (&model.ProjectRef{
+		Id:          mergeGroupTestProjectID,
+		Enabled:     true,
+		Owner:       mergeGroupTestOrg,
+		Repo:        mergeGroupTestRepo,
+		Branch:      "main",
+		CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
+	}).Replace(ctx))
+	return env
+}
+
+func insertMergeGroupTestIntent(t *testing.T, msgID string) patch.Intent {
+	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
+	baseSHA := "7a45fe6ea28f5969d885bc913e551b8b3c4f09d1"
+	mge := github.MergeGroupEvent{
+		MergeGroup: &github.MergeGroup{
+			HeadSHA: utility.ToStringPtr(mergeGroupTestHeadSHA),
+			HeadRef: &headRef,
+			BaseSHA: &baseSHA,
+		},
+		Org:  &github.Organization{Login: utility.ToStringPtr(mergeGroupTestOrg)},
+		Repo: &github.Repository{Name: utility.ToStringPtr(mergeGroupTestRepo)},
+	}
+	intent, err := patch.NewGithubMergeIntent(t.Context(), msgID, patch.AutomatedCaller, &mge)
+	require.NoError(t, err)
+	require.NoError(t, intent.Insert(t.Context()))
+	return intent
+}
+
+func insertMergeGroupTestPatch(t *testing.T, id mgobson.ObjectId) patch.Patch {
+	p := patch.Patch{
+		Id:         id,
+		Project:    mergeGroupTestProjectID,
+		Alias:      evergreen.CommitQueueAlias,
+		Version:    id.Hex(),
+		Status:     evergreen.VersionStarted,
+		CreateTime: time.Now(),
+		GithubMergeData: thirdparty.GithubMergeGroup{
+			Org:     mergeGroupTestOrg,
+			Repo:    mergeGroupTestRepo,
+			HeadSHA: mergeGroupTestHeadSHA,
+		},
+	}
+	require.NoError(t, p.Insert(t.Context()))
+	return p
+}
+
+func TestBuildGithubMergeDocWithExistingPatchForSameHeadSHASkipsPatchWithoutGitHubStatus(t *testing.T) {
+	ctx := testutil.TestSpan(t.Context(), t)
+	env := setupMergeGroupDedupeTest(t)
+	existingPatch := insertMergeGroupTestPatch(t, mgobson.NewObjectId())
+
+	intent := insertMergeGroupTestIntent(t, "merge-queue-patch-recovery-duplicate")
+	j, ok := NewGitHubPatchIntentProcessor(env, mgobson.NewObjectId(), intent, mergeGroupTestProjectID).(*patchIntentProcessor)
+	require.True(t, ok)
+	j.Run(ctx)
+	require.NoError(t, j.Error())
+	assert.Empty(t, j.gitHubError)
+
+	patches, err := patch.Find(ctx, db.Query(bson.M{}))
+	require.NoError(t, err)
+	require.Len(t, patches, 1)
+	assert.Equal(t, existingPatch.Id, patches[0].Id)
+
+	dbIntent, err := patch.FindIntent(ctx, intent.ID(), patch.GithubMergeIntentType)
+	require.NoError(t, err)
+	require.NotNil(t, dbIntent)
+	assert.True(t, dbIntent.IsProcessed())
+
+	var intentInfos []patch.GitHubIntentInfo
+	require.NoError(t, db.FindAllQ(ctx, patch.GitHubIntentInfoCollection, db.Query(nil), &intentInfos))
+	assert.Empty(t, intentInfos)
+	var subscriptions []event.Subscription
+	require.NoError(t, db.FindAllQ(ctx, event.SubscriptionsCollection, db.Query(nil), &subscriptions))
+	assert.Empty(t, subscriptions)
+	assert.False(t, env.InternalSender.HasMessage(), "should not send a GitHub status")
+}
+
+func TestBuildGithubMergeDocOnRetryWithOwnPatchAlreadyInsertedDoesNotSkip(t *testing.T) {
+	ctx, cancel := context.WithTimeout(testutil.TestSpan(t.Context(), t), 30*time.Second)
+	defer cancel()
+	env := setupMergeGroupDedupeTest(t)
+
+	intent := insertMergeGroupTestIntent(t, "merge-group-webhook")
+	j, ok := NewGitHubPatchIntentProcessor(env, mgobson.NewObjectId(), intent, mergeGroupTestProjectID).(*patchIntentProcessor)
+	require.True(t, ok)
+	insertMergeGroupTestPatch(t, j.PatchID)
+
+	patchDoc := intent.NewPatch()
+	// Getting the changed files calls GitHub, which may fail locally, so only check that the job got past the
+	// duplicate check.
+	_, _ = j.buildGithubMergeDoc(ctx, patchDoc)
+	assert.Equal(t, evergreen.GithubMergeUser, patchDoc.Author)
+	assert.Equal(t, mergeGroupTestProjectID, patchDoc.Project)
+}
+
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	resp, err := http.Get(s.diffURL)
 	s.Require().NoError(err)
@@ -2981,6 +3102,57 @@ func TestGitHubStatusRuleTarget(t *testing.T) {
 		assert.Equal(t, "project-repo", repo)
 		assert.Equal(t, "project-branch", branch)
 	})
+}
+
+func TestCreateGitHubMergeSubscriptionTargetsMergeGroupForChildPatches(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(event.SubscriptionsCollection, evergreen.ConfigCollection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, evergreen.ConfigCollection))
+	})
+	require.NoError(t, evergreen.SetServiceFlags(ctx, evergreen.ServiceFlags{GithubStatusAPIDisabled: true}))
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	patchID := mgobson.NewObjectId()
+	childIDs := []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+	p := &patch.Patch{
+		Id: patchID,
+		GithubMergeData: thirdparty.GithubMergeGroup{
+			Org:        "merge-owner",
+			Repo:       "merge-repo",
+			BaseBranch: "main",
+			HeadSHA:    "merge-head-sha",
+		},
+		Triggers: patch.TriggerInfo{ChildPatches: childIDs},
+	}
+	j := &patchIntentProcessor{PatchID: patchID, env: env}
+
+	require.NoError(t, j.createGitHubMergeSubscription(ctx, p))
+
+	subs := []event.Subscription{}
+	require.NoError(t, db.FindAllQ(ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &subs))
+	// The parent has a patch and a build subscription, plus one per child.
+	require.Len(t, subs, 2+len(childIDs))
+
+	var foundChildIDs []string
+	for _, sub := range subs {
+		require.Equal(t, event.GithubMergeSubscriberType, sub.Subscriber.Type)
+		target, ok := sub.Subscriber.Target.(*event.GithubMergeSubscriber)
+		require.True(t, ok)
+		assert.Equal(t, "merge-owner", target.Owner)
+		assert.Equal(t, "merge-repo", target.Repo)
+		assert.Equal(t, "merge-head-sha", target.Ref)
+		if target.ChildId == "" {
+			continue
+		}
+		foundChildIDs = append(foundChildIDs, target.ChildId)
+		assert.Equal(t, target.ChildId, sub.Filter.ID)
+		assert.Equal(t, event.ResourceTypePatch, sub.ResourceType)
+		assert.Equal(t, event.TriggerOutcome, sub.Trigger)
+	}
+	assert.ElementsMatch(t, childIDs, foundChildIDs)
 }
 
 func TestIsUserAuthorized(t *testing.T) {

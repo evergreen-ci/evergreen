@@ -306,6 +306,7 @@ type Project {
   spawnHostScriptPath: String!
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
+  stepbackPushTriggers: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
   taskOwnership: TaskOwnershipSettings
   testSelection: TestSelectionSettings
@@ -416,5 +417,6 @@ type ProjectLite {
   spawnHostScriptPath: String!
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
+  stepbackPushTriggers: Boolean
   versionControlEnabled: Boolean
 }

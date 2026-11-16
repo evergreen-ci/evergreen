@@ -346,6 +346,7 @@ Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
 - `evergreen.merge_queue.head_sha` - The SHA of the merge queue head
 - `evergreen.merge_queue.msg_id` - The GitHub webhook message ID (available in intent_created spans)
 - `evergreen.merge_queue.github_head_pr_url` - The GitHub PR URL for the HEAD PR of the merge queue entry. When concurrency is enabled (the default), a merge queue entry may contain multiple PRs tested together, but this URL only points to the HEAD PR of that merge group.
+- `evergreen.merge_queue.duplicate_of_patch_id` - Set when Evergreen skipped creating a patch because a patch already exists for the same merge group. This is the ID of the existing patch.
 
 #### Task-Level Metrics
 

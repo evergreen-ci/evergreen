@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/utility"
 )
 
 type APIEventStats struct {
@@ -32,4 +33,22 @@ func (n *apiNotificationStats) BuildFromService(data notification.NotificationSt
 	n.EvergreenWebhook = data.EvergreenWebhook
 	n.Email = data.Email
 	n.Slack = data.Slack
+}
+
+// APIFailedWebhook is a webhook notification that failed to deliver.
+type APIFailedWebhook struct {
+	NotificationID *string    `json:"notification_id" extensions:"!x-nullable"`
+	Project        *string    `json:"project,omitempty"`
+	Error          *string    `json:"error" extensions:"!x-nullable"`
+	FailedAt       *time.Time `json:"failed_at" extensions:"!x-nullable"`
+}
+
+// BuildFromService fills the API model from a failed webhook delivery.
+func (m *APIFailedWebhook) BuildFromService(f notification.FailedWebhook) {
+	m.NotificationID = utility.ToStringPtr(f.NotificationID)
+	if f.Project != "" {
+		m.Project = utility.ToStringPtr(f.Project)
+	}
+	m.Error = utility.ToStringPtr(f.Error)
+	m.FailedAt = &f.FailedAt
 }

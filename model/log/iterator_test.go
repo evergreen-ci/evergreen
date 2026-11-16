@@ -593,6 +593,41 @@ func TestChunkIteratorDownloadTimeoutErrorsInsteadOfHanging(t *testing.T) {
 	assert.Error(t, it.Err())
 }
 
+func TestChunkIteratorSlowConsumerReadsAllChunksAfterWorkerExhausts(t *testing.T) {
+	ctx := t.Context()
+
+	bucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: t.TempDir()})
+	require.NoError(t, err)
+
+	const numChunks = 4
+	chunks, lines, parser, err := generateTestLog(ctx, bucket, numChunks*10, 10)
+	require.NoError(t, err)
+	require.Len(t, chunks, numChunks)
+
+	it := newChunkIterator(ctx, chunkIteratorOptions{
+		bucket: bucket,
+		chunks: chunks,
+		parser: parser,
+		// The download timeout is far shorter than the time the consumer
+		// takes to read each chunk, so this test fails if the timeout or the
+		// worker's exit can cut off a chunk the consumer is still reading.
+		downloadTimeout: 50 * time.Millisecond,
+	})
+	t.Cleanup(func() { _ = it.Close() })
+
+	var actualLines []LogLine
+	for it.Next() {
+		actualLines = append(actualLines, it.Item())
+		// Read slower than the worker downloads, so the consumer is still
+		// reading well after the worker has fetched the last chunk.
+		time.Sleep(30 * time.Millisecond)
+	}
+
+	require.NoError(t, it.Err())
+	assert.True(t, it.Exhausted())
+	assert.Equal(t, lines, actualLines)
+}
+
 // generateTestLog is a convenience function to generate random logs with 100
 // character long lines of the given size and chunk size in the given bucket.
 func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize int) ([]chunkInfo, []LogLine, LineParser, error) {

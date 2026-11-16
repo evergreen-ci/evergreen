@@ -49,6 +49,31 @@ func TestCompleteVirtualTasks(t *testing.T) {
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment){
+		"UnsafeArtifactShouldFailBeforeClaimingOrWritingResults": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
+			completion := successfulCompletion()
+			completion.Artifacts = []apimodels.VirtualTaskArtifact{
+				{Name: "SafeReport", URL: "https://example.com/report.html"},
+				{Name: "UnsafeReport", URL: "JaVaScRiPt:alert(document.domain)//%2F"},
+			}
+			completion.TestResults = &apimodels.VirtualTaskTestResults{Stats: testresult.TaskTestResultsStats{TotalCount: 1}}
+			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{completion}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeFailed, results[0].Outcome)
+			assert.Contains(t, results[0].Reason, "validating link for artifact 'UnsafeReport'")
+			vt, err := task.FindOneId(ctx, virtualTaskID)
+			require.NoError(t, err)
+			require.NotNil(t, vt)
+			assert.Equal(t, evergreen.TaskUndispatched, vt.Status)
+			assert.Empty(t, vt.CompletedBy)
+			assert.Nil(t, vt.TaskOutputInfo)
+			entry, err := artifact.FindOne(ctx, artifact.ByTaskIdAndExecution(virtualTaskID, 0))
+			require.NoError(t, err)
+			assert.Nil(t, entry)
+			count, err := env.CedarDB().Collection(testresult.Collection).CountDocuments(ctx, bson.M{})
+			require.NoError(t, err)
+			assert.Zero(t, count)
+		},
 		"PushCompletesVirtualTaskWithResultsAndArtifacts": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
 			createdAt := time.Now().UTC().Round(time.Millisecond)
 			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{

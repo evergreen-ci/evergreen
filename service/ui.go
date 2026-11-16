@@ -10,6 +10,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/PuerkitoBio/rehttp"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -21,8 +22,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 // UIServer provides a web interface for Evergreen.
@@ -88,13 +87,16 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UI
 	}
 
 	if settings.AuthConfig.Kanopy != nil {
+		var expectedEmailDomains []string
+		if settings.AuthConfig.Okta != nil {
+			expectedEmailDomains = settings.AuthConfig.Okta.ExpectedEmailDomains
+		}
 		uis.umconf.OIDCConfigs = append(uis.umconf.OIDCConfigs, &gimlet.OIDCConfig{
-			KeysetURL:  settings.AuthConfig.Kanopy.KeysetURL,
-			Issuer:     settings.AuthConfig.Kanopy.Issuer,
-			HeaderName: settings.AuthConfig.Kanopy.HeaderName,
-			DisplayNameFromID: func(id string) string {
-				return cases.Title(language.English).String(strings.Join(strings.Split(id, "."), " "))
-			},
+			KeysetURL:         settings.AuthConfig.Kanopy.KeysetURL,
+			Issuer:            settings.AuthConfig.Kanopy.Issuer,
+			HeaderName:        settings.AuthConfig.Kanopy.HeaderName,
+			DisplayNameFromID: auth.KanopyDisplayName,
+			UsernameFromEmail: auth.NewKanopyUsernameFromEmail(expectedEmailDomains),
 		})
 	}
 

@@ -47,9 +47,11 @@ func New(eventID, trigger string, subscriber *event.Subscriber, payload any) (*N
 }
 
 type Notification struct {
-	ID         string           `bson:"_id"`
-	Subscriber event.Subscriber `bson:"subscriber"`
-	Payload    any              `bson:"payload"`
+	ID             string           `bson:"_id"`
+	Subscriber     event.Subscriber `bson:"subscriber"`
+	Payload        any              `bson:"payload"`
+	Project        string           `bson:"project,omitempty"`
+	SubscriptionID string           `bson:"subscription_id,omitempty"`
 
 	SentAt   time.Time            `bson:"sent_at,omitempty"`
 	Error    string               `bson:"error,omitempty"`
@@ -223,6 +225,7 @@ func (n *Notification) Composer(ctx context.Context) (message.Composer, error) {
 	}
 }
 
+// MarkSent marks the notification as sent and clears any previous delivery error.
 func (n *Notification) MarkSent(ctx context.Context) error {
 	if len(n.ID) == 0 {
 		return errors.New("notification has no ID")
@@ -234,15 +237,18 @@ func (n *Notification) MarkSent(ctx context.Context) error {
 		"$set": bson.M{
 			sentAtKey: n.SentAt,
 		},
+		"$unset": bson.M{errorKey: ""},
 	}
 
 	if err := db.UpdateId(ctx, Collection, n.ID, update); err != nil {
 		return errors.Wrap(err, "marking notification as sent")
 	}
+	n.Error = ""
 
 	return nil
 }
 
+// MarkError marks the notification as sent with the given error.
 func (n *Notification) MarkError(ctx context.Context, sendErr error) error {
 	if sendErr == nil {
 		return nil
@@ -269,7 +275,7 @@ func (n *Notification) MarkError(ctx context.Context, sendErr error) error {
 		return errors.Wrap(err, "setting error for notification")
 	}
 
-	return nil
+	return InsertFailedWebhook(ctx, n, sendErr)
 }
 
 func (n *Notification) SetTaskMetadata(ID string, execution int, createdBy string) {
