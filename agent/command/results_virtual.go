@@ -48,7 +48,12 @@ func ProcessVirtualTaskTestResultFiles(ctx context.Context, conf *internal.TaskC
 		return nil, errors.New("no test results found in files")
 	}
 
-	if err = uploadVirtualTaskTestLogs(ctx, conf, logger, info, input.LogDir, logs, results); err != nil {
+	logPaths := referencedTestLogPaths(logs, results)
+	if len(logPaths) > 0 && input.LogDir == "" {
+		return nil, errors.Errorf("test results reference %d test log file(s) in log_info, but log_dir is not set", len(logPaths))
+	}
+
+	if err = uploadVirtualTaskTestLogs(ctx, conf, logger, info, input.LogDir, logPaths, logs); err != nil {
 		return nil, errors.Wrap(err, "uploading test logs")
 	}
 
@@ -128,16 +133,11 @@ func parseVirtualTaskTestResultFileGroup(ctx context.Context, opts testResultPar
 	}
 }
 
-// uploadVirtualTaskTestLogs uploads the given parsed test logs, as well as the
-// test log files in logDir referenced by the results, on behalf of the virtual
-// task identified by info.
-func uploadVirtualTaskTestLogs(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, info testresult.TestResultsInfo, logDir string, logs []testlog.TestLog, results []testresult.TestResult) error {
-	logPaths := referencedTestLogPaths(logs, results)
-	if len(logPaths) > 0 && logDir == "" {
-		logger.Task().Warningf(ctx, "Test results for virtual task '%s' reference %d test log file(s), but no log directory was specified, so they will not be uploaded.", info.TaskID, len(logPaths))
-		logPaths = nil
-	}
-	if len(logs) == 0 && len(logPaths) == 0 {
+// uploadVirtualTaskTestLogs uploads the test log files at logPaths in logDir,
+// as well as the given parsed test logs, on behalf of the virtual task
+// identified by info.
+func uploadVirtualTaskTestLogs(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, info testresult.TestResultsInfo, logDir string, logPaths []string, logs []testlog.TestLog) error {
+	if len(logPaths) == 0 && len(logs) == 0 {
 		return nil
 	}
 	output := conf.Task.TaskOutputInfo
@@ -156,6 +156,20 @@ func uploadVirtualTaskTestLogs(ctx context.Context, conf *internal.TaskConfig, l
 		InternalRedactions: conf.InternalRedactions,
 	}
 
+	if len(logPaths) > 0 {
+		if err := taskoutput.UploadTestLogFilesForOutput(ctx, taskoutput.TestLogFilesOptions{
+			Dir:          resolveWorkingDirectory(conf.WorkDir, logDir),
+			LogPaths:     logPaths,
+			Task:         vTask,
+			Output:       output.TestLogs,
+			RedactorOpts: opts,
+			Logger:       logger,
+			S3Usage:      conf.S3Usage,
+		}); err != nil {
+			return errors.Wrap(err, "uploading test log files")
+		}
+	}
+
 	if len(logs) > 0 {
 		succeeded, err := agentutil.ParallelWorkerExec(ctx, "sending test log", logs, logger.Task(),
 			func(log *testlog.TestLog) error {
@@ -168,17 +182,6 @@ func uploadVirtualTaskTestLogs(ctx context.Context, conf *internal.TaskConfig, l
 		logger.Task().Infof(ctx, "Posting test logs succeeded for %d of %d logs.", succeeded, len(logs))
 	}
 
-	if len(logPaths) > 0 {
-		return taskoutput.UploadTestLogFilesForOutput(ctx, taskoutput.TestLogFilesOptions{
-			Dir:          resolveWorkingDirectory(conf.WorkDir, logDir),
-			LogPaths:     logPaths,
-			Task:         vTask,
-			Output:       output.TestLogs,
-			RedactorOpts: opts,
-			Logger:       logger,
-			S3Usage:      conf.S3Usage,
-		})
-	}
 	return nil
 }
 

@@ -39,7 +39,7 @@ type VirtualTaskTestResultsInput struct {
 	Files     []VirtualTaskTestResultFileGroup `json:"files"`
 	CreatedAt time.Time                        `json:"created_at,omitzero"`
 	// LogDir is the dir containing the test log files referenced by
-	// native test results' log_info.
+	// native test results' log_info. It must be set if any are referenced.
 	LogDir string `json:"log_dir,omitempty"`
 }
 
