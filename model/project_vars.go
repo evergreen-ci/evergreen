@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -804,6 +805,24 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	}
 
 	return res
+}
+
+// SecretVars returns the non-empty variables that are hidden in task logs: the
+// private variables and the variables whose lowercased names contain any of
+// the redact key patterns.
+func (projectVars *ProjectVars) SecretVars(redactKeys []string) map[string]string {
+	secrets := map[string]string{}
+	for k, v := range projectVars.Vars {
+		if v == "" {
+			continue
+		}
+		if projectVars.PrivateVars[k] || slices.ContainsFunc(redactKeys, func(pattern string) bool {
+			return strings.Contains(strings.ToLower(k), pattern)
+		}) {
+			secrets[k] = v
+		}
+	}
+	return secrets
 }
 
 // MergeWithRepoVars merges the project and repo variables
