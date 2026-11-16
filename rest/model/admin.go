@@ -2070,6 +2070,7 @@ type APISchedulerConfig struct {
 	GenerateTaskFactor               int64   `json:"generate_task_factor"`
 	NumDependentsFactor              float64 `json:"num_dependents_factor"`
 	StepbackTaskFactor               int64   `json:"stepback_task_factor"`
+	GitTagFactor                     int64   `json:"git_tag_factor"`
 	TranslateProjectConcurrencyLimit int     `json:"translate_project_concurrency_limit"`
 	TranslateProjectCacheBytesLimit  int64   `json:"translate_project_cache_bytes_limit"`
 	TranslateProjectCacheTTLSeconds  int64   `json:"translate_project_cache_ttl_seconds"`
@@ -2097,6 +2098,7 @@ func (a *APISchedulerConfig) BuildFromService(h any) error {
 		a.GenerateTaskFactor = v.GenerateTaskFactor
 		a.NumDependentsFactor = v.NumDependentsFactor
 		a.StepbackTaskFactor = v.StepbackTaskFactor
+		a.GitTagFactor = v.GitTagFactor
 		a.TranslateProjectConcurrencyLimit = v.TranslateProjectConcurrencyLimit
 		a.TranslateProjectCacheBytesLimit = v.TranslateProjectCacheBytesLimit
 		a.TranslateProjectCacheTTLSeconds = v.TranslateProjectCacheTTLSeconds
@@ -2127,6 +2129,7 @@ func (a *APISchedulerConfig) ToService() (any, error) {
 		GenerateTaskFactor:               a.GenerateTaskFactor,
 		NumDependentsFactor:              a.NumDependentsFactor,
 		StepbackTaskFactor:               a.StepbackTaskFactor,
+		GitTagFactor:                     a.GitTagFactor,
 		TranslateProjectConcurrencyLimit: a.TranslateProjectConcurrencyLimit,
 		TranslateProjectCacheBytesLimit:  a.TranslateProjectCacheBytesLimit,
 		TranslateProjectCacheTTLSeconds:  a.TranslateProjectCacheTTLSeconds,
