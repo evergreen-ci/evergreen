@@ -480,6 +480,18 @@ func TestCreateProject(t *testing.T) {
 			require.Error(t, err)
 			require.False(t, created)
 		},
+		"FailsWithDebugPrefixInProjectID": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
+			pRef.Id = "debug-mms"
+			created, err := CreateProject(ctx, env, &pRef, &u)
+			require.Error(t, err)
+			require.False(t, created)
+		},
+		"FailsWithUntrackedPrefixInProjectID": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
+			pRef.Id = "untracked-repo_ref_id"
+			created, err := CreateProject(ctx, env, &pRef, &u)
+			require.Error(t, err)
+			require.False(t, created)
+		},
 		"FailsWithInvalidCharactersInProjectIdentifier": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
 			pRef.Identifier = `^this / % is $ invalid*`
 			created, err := CreateProject(ctx, env, &pRef, &u)

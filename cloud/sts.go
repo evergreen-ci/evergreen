@@ -16,6 +16,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	debugExternalIDPrefix     = "debug-"
+	untrackedExternalIDPrefix = "untracked-"
+)
+
+// ReservedProjectIDPrefixes are prefixes that the AssumeRole external ID adds
+// before a project ID. A project whose ID starts with one of these could
+// produce the same external ID, project IDs must not use them.
+var ReservedProjectIDPrefixes = []string{debugExternalIDPrefix, untrackedExternalIDPrefix}
+
 // STSManager is an interface which handles STS operations.
 // It's main purpose is to expose a friendly API for our own API server.
 type STSManager interface {
@@ -162,14 +172,14 @@ func createExternalID(task *task.Task, projectRef *model.ProjectRef, isDebug boo
 	// assumes many roles on behalf of tasks.
 	externalID := createExternalIDHelper(task, projectRef)
 	if isDebug {
-		return fmt.Sprintf("debug-%s", externalID)
+		return debugExternalIDPrefix + externalID
 	}
 	return externalID
 }
 
 func createExternalIDHelper(task *task.Task, projectRef *model.ProjectRef) string {
 	if projectRef.IsUntracked() {
-		return fmt.Sprintf("untracked-%s-%s", projectRef.RepoRefId, task.Requester)
+		return fmt.Sprintf("%s%s-%s", untrackedExternalIDPrefix, projectRef.RepoRefId, task.Requester)
 	}
 	return fmt.Sprintf("%s-%s", task.Project, task.Requester)
 
