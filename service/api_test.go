@@ -2,9 +2,11 @@ package service
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -122,4 +124,28 @@ func TestServerEndpoints(t *testing.T) {
 			assert.Nil(t, limitedRef.DeactivatePrevious)
 		})
 	}
+}
+
+func TestListVariantsReturnsOnlyNames(t *testing.T) {
+	project := &model.Project{
+		BuildVariants: []model.BuildVariant{{
+			Name:        "bv",
+			DisplayName: "Build Variant",
+			Expansions:  map[string]string{"token": "secret_value"},
+			Tasks:       []model.BuildVariantTaskUnit{{Name: "t1", PS: utility.ToStringPtr("diagnostics --token secret_value")}},
+		}},
+	}
+	r, err := http.NewRequest(http.MethodGet, "/api/variants/p1", nil)
+	require.NoError(t, err)
+	w := httptest.NewRecorder()
+
+	(&APIServer{}).listVariants(w, setProjectContext(r, project))
+
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.NotContains(t, w.Body.String(), "secret_value")
+	var variants []model.BuildVariant
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &variants))
+	require.Len(t, variants, 1)
+	assert.Equal(t, "bv", variants[0].Name)
+	assert.Equal(t, "Build Variant", variants[0].DisplayName)
 }
