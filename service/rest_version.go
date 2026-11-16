@@ -626,6 +626,12 @@ func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 // redactProjectSecrets hides the values of the project's secret variables in
 // the parser project before it's returned to a user.
 func redactProjectSecrets(ctx context.Context, settings *evergreen.Settings, projectID string, pp *model.ParserProject) error {
+	// Secrets can only end up in the parser project through generate.tasks
+	// output. Without generated tasks, the project only has config from the
+	// repo or patch, so skip loading the variables from Parameter Store.
+	if len(pp.UpdatedByGenerators) == 0 {
+		return nil
+	}
 	projectVars, err := model.FindMergedProjectVars(ctx, projectID)
 	if err != nil {
 		return errors.Wrapf(err, "finding variables for project '%s'", projectID)

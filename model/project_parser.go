@@ -2487,49 +2487,54 @@ func preGeneratedParserProjectId(originalId string) string {
 // to a human-editable YAML file (e.g. for debug spawn hosts) so that only
 // the params map is present.
 func (pp *ParserProject) ClearParamsYAML() error {
+	return pp.forEachCommand(func(cmd *PluginCommandConf) error {
+		err := cmd.resolveParams()
+		cmd.ParamsYAML = ""
+		return err
+	})
+}
+
+// forEachCommand calls fn on every command defined in the parser project.
+func (pp *ParserProject) forEachCommand(fn func(*PluginCommandConf) error) error {
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(clearCommandSetParamsYAML(pp.Pre))
-	catcher.Add(clearCommandSetParamsYAML(pp.Post))
-	catcher.Add(clearCommandSetParamsYAML(pp.Timeout))
+	forCommandSet := func(cs *YAMLCommandSet) {
+		if cs == nil {
+			return
+		}
+		if cs.SingleCommand != nil {
+			catcher.Add(fn(cs.SingleCommand))
+		}
+		for i := range cs.MultiCommand {
+			catcher.Add(fn(&cs.MultiCommand[i]))
+		}
+	}
+	forCommandSet(pp.Pre)
+	forCommandSet(pp.Post)
+	forCommandSet(pp.Timeout)
 	for _, f := range pp.Functions {
-		catcher.Add(clearCommandSetParamsYAML(f))
+		forCommandSet(f)
 	}
 	for i := range pp.Tasks {
 		for j := range pp.Tasks[i].Commands {
-			catcher.Add(pp.Tasks[i].Commands[j].resolveParams())
-			pp.Tasks[i].Commands[j].ParamsYAML = ""
+			catcher.Add(fn(&pp.Tasks[i].Commands[j]))
 		}
 	}
 	for i := range pp.TaskGroups {
-		catcher.Add(clearCommandSetParamsYAML(pp.TaskGroups[i].SetupGroup))
-		catcher.Add(clearCommandSetParamsYAML(pp.TaskGroups[i].TeardownGroup))
-		catcher.Add(clearCommandSetParamsYAML(pp.TaskGroups[i].SetupTask))
-		catcher.Add(clearCommandSetParamsYAML(pp.TaskGroups[i].TeardownTask))
-		catcher.Add(clearCommandSetParamsYAML(pp.TaskGroups[i].Timeout))
+		forCommandSet(pp.TaskGroups[i].SetupGroup)
+		forCommandSet(pp.TaskGroups[i].TeardownGroup)
+		forCommandSet(pp.TaskGroups[i].SetupTask)
+		forCommandSet(pp.TaskGroups[i].TeardownTask)
+		forCommandSet(pp.TaskGroups[i].Timeout)
 	}
 	return catcher.Resolve()
 }
 
-func clearCommandSetParamsYAML(cs *YAMLCommandSet) error {
-	if cs == nil {
-		return nil
-	}
-	catcher := grip.NewBasicCatcher()
-	if cs.SingleCommand != nil {
-		catcher.Add(cs.SingleCommand.resolveParams())
-		cs.SingleCommand.ParamsYAML = ""
-	}
-	for i := range cs.MultiCommand {
-		catcher.Add(cs.MultiCommand[i].resolveParams())
-		cs.MultiCommand[i].ParamsYAML = ""
-	}
-	return catcher.Resolve()
-}
-
-// RedactSecrets replaces every occurrence of the given secret values in the
-// parser project's strings with <REDACTED:name>, matching how task logs are
-// redacted. secrets maps variable names to their values. The parser project is
-// modified in place, so it must not be saved afterwards.
+// RedactSecrets replaces every occurrence of the given secret values with
+// <REDACTED:name>, matching how task logs are redacted. secrets maps variable
+// names to their values. Only values that generate.tasks can fill in are
+// redacted (command params, vars, and display names, and variant expansions and
+// display names), so that names and references used by the CLI stay intact. The
+// parser project is modified in place, so it must not be saved afterwards.
 func (pp *ParserProject) RedactSecrets(secrets map[string]string) error {
 	if len(secrets) == 0 {
 		return nil
@@ -2544,65 +2549,26 @@ func (pp *ParserProject) RedactSecrets(secrets map[string]string) error {
 		}
 		return s
 	}
-	return redactStrings(reflect.ValueOf(pp).Elem(), redact)
-}
 
-// redactStrings redacts every exported string reachable from v, which must be
-// settable.
-func redactStrings(v reflect.Value, redact func(string) string) error {
-	switch v.Kind() {
-	case reflect.String:
-		v.SetString(redact(v.String()))
-	case reflect.Pointer:
-		if !v.IsNil() {
-			return redactStrings(v.Elem(), redact)
-		}
-	case reflect.Interface:
-		if v.IsNil() {
-			return nil
-		}
-		elem := reflect.New(v.Elem().Type()).Elem()
-		elem.Set(v.Elem())
-		if err := redactStrings(elem, redact); err != nil {
-			return err
-		}
-		v.Set(elem)
-	case reflect.Slice, reflect.Array:
-		for i := range v.Len() {
-			if err := redactStrings(v.Index(i), redact); err != nil {
-				return err
-			}
-		}
-	case reflect.Map:
-		iter := v.MapRange()
-		for iter.Next() {
-			elem := reflect.New(v.Type().Elem()).Elem()
-			elem.Set(iter.Value())
-			if err := redactStrings(elem, redact); err != nil {
-				return err
-			}
-			v.SetMapIndex(iter.Key(), elem)
-		}
-	case reflect.Struct:
-		if cmd, ok := v.Addr().Interface().(*PluginCommandConf); ok {
-			if err := cmd.redactParams(redact); err != nil {
-				return errors.Wrapf(err, "redacting params for command '%s'", cmd.GetDisplayName())
-			}
-		}
-		for i := range v.NumField() {
-			if v.Type().Field(i).IsExported() {
-				if err := redactStrings(v.Field(i), redact); err != nil {
-					return err
-				}
-			}
+	for i := range pp.BuildVariants {
+		bv := &pp.BuildVariants[i]
+		bv.DisplayName = redact(bv.DisplayName)
+		for k, v := range bv.Expansions {
+			bv.Expansions[k] = redact(v)
 		}
 	}
-	return nil
+	return pp.forEachCommand(func(cmd *PluginCommandConf) error {
+		cmd.DisplayName = redact(cmd.DisplayName)
+		for k, v := range cmd.Vars {
+			cmd.Vars[k] = redact(v)
+		}
+		return errors.Wrapf(cmd.redactParams(redact), "redacting params for command '%s'", cmd.GetDisplayName())
+	})
 }
 
-// redactParams redacts the command's params in their YAML form, where scalars
-// keep their original text. This matches secrets that are quoted or escaped
-// in the YAML or that decode as numbers, booleans, or timestamps.
+// redactParams redacts the values of the command's params in their YAML form,
+// where scalars keep their original text. This matches secrets that are quoted
+// or escaped in the YAML or that decode as numbers, booleans, or timestamps.
 func (c *PluginCommandConf) redactParams(redact func(string) string) error {
 	if c.ParamsYAML == "" {
 		if err := c.unmarshalParams(); err != nil {
@@ -2613,7 +2579,7 @@ func (c *PluginCommandConf) redactParams(redact func(string) string) error {
 	if err := yaml.Unmarshal([]byte(c.ParamsYAML), &root); err != nil {
 		return errors.Wrap(err, "unmarshalling params YAML")
 	}
-	if !redactYAMLScalars(&root, redact) {
+	if !redactYAMLValues(&root, redact) {
 		return nil
 	}
 	out, err := yaml.Marshal(&root)
@@ -2624,7 +2590,9 @@ func (c *PluginCommandConf) redactParams(redact func(string) string) error {
 	return c.unmarshalParams()
 }
 
-func redactYAMLScalars(n *yaml.Node, redact func(string) string) bool {
+// redactYAMLValues redacts every scalar under n except mapping keys and reports
+// whether anything changed.
+func redactYAMLValues(n *yaml.Node, redact func(string) string) bool {
 	changed := false
 	if n.Kind == yaml.ScalarNode {
 		if redacted := redact(n.Value); redacted != n.Value {
@@ -2633,8 +2601,11 @@ func redactYAMLScalars(n *yaml.Node, redact func(string) string) bool {
 			changed = true
 		}
 	}
-	for _, child := range n.Content {
-		changed = redactYAMLScalars(child, redact) || changed
+	for i, child := range n.Content {
+		if n.Kind == yaml.MappingNode && i%2 == 0 {
+			continue
+		}
+		changed = redactYAMLValues(child, redact) || changed
 	}
 	return changed
 }

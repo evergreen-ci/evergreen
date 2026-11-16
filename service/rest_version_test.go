@@ -12,9 +12,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
@@ -883,11 +885,12 @@ func validateVersionInfo(v *model.Version, response *httptest.ResponseRecorder) 
 	})
 }
 
-func TestGetVersionConfigRedactsSecrets(t *testing.T) {
+func TestConfigRoutesRedactSecrets(t *testing.T) {
 	ctx := t.Context()
-	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection))
+	collections := []string{model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection, patch.Collection}
+	require.NoError(t, db.ClearCollections(collections...))
 	t.Cleanup(func() {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection, evergreen.RoleCollection, evergreen.ScopeCollection))
+		assert.NoError(t, db.ClearCollections(append(collections, evergreen.RoleCollection, evergreen.ScopeCollection)...))
 	})
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -902,38 +905,58 @@ func TestGetVersionConfigRedactsSecrets(t *testing.T) {
 		Vars:        map[string]string{"private": "private_value", "public": "public_value"},
 		PrivateVars: map[string]bool{"private": true},
 	}).Insert(ctx))
+
+	insertParserProject := func(t *testing.T, id string, generated bool) {
+		pp := &model.ParserProject{Id: id}
+		if generated {
+			pp.UpdatedByGenerators = []string{"generator"}
+		}
+		pp.AddTask("generated", []model.PluginCommandConf{{
+			Command:    "shell.exec",
+			ParamsYAML: "script: deploy --token private_value --name public_value\n",
+		}})
+		require.NoError(t, pp.Insert(ctx))
+	}
 	v := &model.Version{Id: "v1", Identifier: "p1", ProjectStorageMethod: evergreen.ProjectStorageMethodDB}
 	require.NoError(t, v.Insert(ctx))
-	pp := &model.ParserProject{Id: v.Id}
-	pp.AddTask("generated", []model.PluginCommandConf{{
-		Command:    "shell.exec",
-		ParamsYAML: "script: deploy --token private_value --name public_value\n",
-	}})
-	require.NoError(t, pp.Insert(ctx))
+	insertParserProject(t, v.Id, true)
+	p := &patch.Patch{Id: mgobson.NewObjectId(), Project: "p1", ProjectStorageMethod: evergreen.ProjectStorageMethodDB}
+	require.NoError(t, p.Insert(ctx))
+	insertParserProject(t, p.Id.Hex(), true)
+	ungenerated := &model.Version{Id: "v2", Identifier: "p1", ProjectStorageMethod: evergreen.ProjectStorageMethodDB}
+	require.NoError(t, ungenerated.Insert(ctx))
+	insertParserProject(t, ungenerated.Id, false)
 
-	for route, assertRedacted := range map[string]func(t *testing.T, body []byte){
-		"config": func(t *testing.T, body []byte) {
-			assert.NotContains(t, string(body), "private_value")
-			assert.Contains(t, string(body), "deploy --token <REDACTED:private> --name public_value")
-		},
-		"parser_project": func(t *testing.T, body []byte) {
-			project, err := model.GetProjectFromBSON(body)
-			require.NoError(t, err)
-			require.Len(t, project.Tasks, 1)
-			require.Len(t, project.Tasks[0].Commands, 1)
-			assert.Equal(t, "deploy --token <REDACTED:private> --name public_value", project.Tasks[0].Commands[0].Params["script"])
-			assert.NotContains(t, string(body), "private_value")
-		},
-	} {
-		t.Run(route, func(t *testing.T) {
-			request, err := http.NewRequest(http.MethodGet, "/rest/v1/versions/v1/"+route, nil)
-			require.NoError(t, err)
-			request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
-			response := httptest.NewRecorder()
-			router.ServeHTTP(response, request)
-
-			require.Equal(t, http.StatusOK, response.Code, response.Body.String())
-			assertRedacted(t, response.Body.Bytes())
-		})
+	get := func(t *testing.T, route string) []byte {
+		request, err := http.NewRequest(http.MethodGet, route, nil)
+		require.NoError(t, err)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), usr))
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+		return response.Body.Bytes()
 	}
+	assertRedactedYAML := func(t *testing.T, body []byte) {
+		assert.NotContains(t, string(body), "private_value")
+		assert.Contains(t, string(body), "deploy --token <REDACTED:private> --name public_value")
+	}
+
+	t.Run("VersionConfigIsRedacted", func(t *testing.T) {
+		assertRedactedYAML(t, get(t, "/rest/v1/versions/v1/config"))
+	})
+	t.Run("PatchConfigIsRedacted", func(t *testing.T) {
+		assertRedactedYAML(t, get(t, fmt.Sprintf("/rest/v1/patches/%s/config", p.Id.Hex())))
+	})
+	t.Run("VersionParserProjectIsRedacted", func(t *testing.T) {
+		body := get(t, "/rest/v1/versions/v1/parser_project")
+		project, err := model.GetProjectFromBSON(body)
+		require.NoError(t, err)
+		require.Len(t, project.Tasks, 1)
+		require.Len(t, project.Tasks[0].Commands, 1)
+		assert.Equal(t, "deploy --token <REDACTED:private> --name public_value", project.Tasks[0].Commands[0].Params["script"])
+		assert.NotContains(t, string(body), "private_value")
+	})
+	t.Run("ConfigWithoutGeneratedTasksIsUnchanged", func(t *testing.T) {
+		assert.Contains(t, string(get(t, "/rest/v1/versions/v2/config")), "deploy --token private_value --name public_value")
+	})
 }

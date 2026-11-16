@@ -5258,6 +5258,56 @@ buildvariants:
 		assert.Equal(t, "ab<REDACTED:back>", pp.BuildVariants[0].Expansions["overlapping"])
 	})
 
+	t.Run("NamesAndReferencesAreNotRedacted", func(t *testing.T) {
+		yml := `
+modules:
+  - name: tools
+    owner: mongodb
+    repo: mongo-tools
+    branch: master
+functions:
+  setup:
+    command: shell.exec
+    params:
+      script: echo foo
+tasks:
+  - name: compile
+    commands:
+      - func: setup
+        vars:
+          org: mongodb
+buildvariants:
+  - name: ubuntu
+    display_name: Ubuntu mongodb
+    run_on: [ubuntu2204-small]
+    modules: [tools]
+    tasks:
+      - name: compile
+`
+		pp := loadStored(t, []byte(yml))
+		require.NoError(t, pp.RedactSecrets(map[string]string{"org": "mongo", "foo": "foo", "x": "e", "key": "script"}))
+
+		require.Len(t, pp.Modules, 1)
+		assert.Equal(t, "mongodb", pp.Modules[0].Owner)
+		assert.Equal(t, "mongo-tools", pp.Modules[0].Repo)
+		assert.Equal(t, "master", pp.Modules[0].Branch)
+		require.Len(t, pp.Tasks, 1)
+		assert.Equal(t, "compile", pp.Tasks[0].Name)
+		require.Len(t, pp.Tasks[0].Commands, 1)
+		assert.Equal(t, "setup", pp.Tasks[0].Commands[0].Function)
+		assert.Equal(t, "<REDACTED:org>db", pp.Tasks[0].Commands[0].Vars["org"])
+		require.Len(t, pp.BuildVariants, 1)
+		assert.Equal(t, "ubuntu", pp.BuildVariants[0].Name)
+		assert.Equal(t, "Ubuntu <REDACTED:org>db", pp.BuildVariants[0].DisplayName)
+
+		setup := pp.Functions["setup"]
+		require.NotNil(t, setup)
+		require.NotNil(t, setup.SingleCommand)
+		assert.Equal(t, "shell.exec", setup.SingleCommand.Command)
+		assert.Equal(t, "<REDACTED:x>cho <REDACTED:foo>", setup.SingleCommand.Params["script"])
+		assert.Contains(t, setup.SingleCommand.ParamsYAML, "script:")
+	})
+
 	t.Run("ProjectWithoutSecretsIsUnchanged", func(t *testing.T) {
 		yml, err := os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "matrix_deps.yml"))
 		require.NoError(t, err)
