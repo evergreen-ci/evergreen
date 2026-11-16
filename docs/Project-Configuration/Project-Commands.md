@@ -300,6 +300,8 @@ test logs directory, which Evergreen will then link from the UI and API.
 Parameters:
 
 - `file_location`: a JSON file to parse and upload
+- `optional`: boolean, defaults to false. If set to true, the command will
+  no-op instead of failing if the file does not exist or contains no results.
 
 The JSON file format is as follows:
 
