@@ -81,6 +81,13 @@ func FindOneRepoRef(ctx context.Context, identifier string) (*RepoRef, error) {
 	}))
 }
 
+// FindRepoRefsForDiscovery returns all repos with only their IDs, owners, repo names, and admins.
+func FindRepoRefsForDiscovery(ctx context.Context) ([]RepoRef, error) {
+	repos := []RepoRef{}
+	err := db.FindAllQ(ctx, RepoRefCollection, db.Query(bson.M{}).WithFields(RepoRefIdKey, RepoRefOwnerKey, RepoRefRepoKey, RepoRefAdminsKey), &repos)
+	return repos, err
+}
+
 // FindRepoRefsByRepoAndBranch finds RepoRefs with matching repo/branch
 // that are enabled and setup for PR testing
 func FindRepoRefByOwnerAndRepo(ctx context.Context, owner, repoName string) (*RepoRef, error) {
