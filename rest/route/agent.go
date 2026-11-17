@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
@@ -33,6 +34,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -2076,17 +2078,6 @@ func (h *createGitHubDynamicAccessToken) Factory() gimlet.RouteHandler {
 	return &createGitHubDynamicAccessToken{env: h.env}
 }
 
-func defaultGitHubTokenPermissions(gitHubTokenReadOnlyEnabled bool) model.GitHubDynamicTokenPermissionGroup {
-	if gitHubTokenReadOnlyEnabled {
-		return model.GitHubDynamicTokenPermissionGroup{
-			Permissions: github.InstallationPermissions{
-				Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
-			},
-		}
-	}
-	return model.GitHubDynamicTokenPermissionGroup{AllPermissions: true}
-}
-
 func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Request) error {
 	if h.owner = gimlet.GetVars(r)["owner"]; h.owner == "" {
 		return errors.New("missing owner")
@@ -2170,7 +2161,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags"))
 		}
-		requestedPermissions = defaultGitHubTokenPermissions(flags.GitHubTokenReadOnlyEnabled)
+		requestedPermissions = h.defaultGitHubTokenPermissions(flags.GitHubTokenReadOnlyEnabled)
 	}
 	intersection, err := requesterPermissionGroup.Intersection(requestedPermissions)
 	if err != nil {
@@ -2227,10 +2218,38 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("no installation token returned for '%s'", h.owner))
 	}
 
+	if h.noPermissionsRequested {
+		lines := []log.LogLine{{
+			Priority:  level.Warning,
+			Timestamp: time.Now().UnixNano(),
+			Data:      "No permissions were specified for the GitHub token, so it uses Evergreen's default permissions.",
+		}}
+		if err := task.AppendTaskLogs(ctx, t, task.TaskLogTypeTask, lines); err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message": "appending GitHub token permissions warning to task log",
+				"task_id": t.Id,
+			}))
+		}
+	}
+
 	return gimlet.NewJSONResponse(&apimodels.Token{
 		Token:       token,
 		Permissions: permissions,
 	})
+}
+
+func (h *createGitHubDynamicAccessToken) defaultGitHubTokenPermissions(gitHubTokenReadOnlyEnabled bool) model.GitHubDynamicTokenPermissionGroup {
+	if gitHubTokenReadOnlyEnabled {
+		return model.GitHubDynamicTokenPermissionGroup{
+			Permissions: github.InstallationPermissions{
+				Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
+			},
+		}
+	}
+	return model.GitHubDynamicTokenPermissionGroup{
+		Permissions:    h.permissions,
+		AllPermissions: true,
+	}
 }
 
 // DELETE /rest/v2/task/{task_id}/github_dynamic_access_token

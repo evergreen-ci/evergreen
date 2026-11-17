@@ -1523,11 +1523,11 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 
 func TestDefaultGitHubTokenPermissions(t *testing.T) {
 	for tName, tCase := range map[string]struct {
-		flags    evergreen.ServiceFlags
-		expected model.GitHubDynamicTokenPermissionGroup
+		readOnlyEnabled bool
+		expected        model.GitHubDynamicTokenPermissionGroup
 	}{
 		"EnabledFlagShouldDefaultToContentsRead": {
-			flags: evergreen.ServiceFlags{GitHubTokenReadOnlyEnabled: true},
+			readOnlyEnabled: true,
 			expected: model.GitHubDynamicTokenPermissionGroup{
 				Permissions: github.InstallationPermissions{
 					Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
@@ -1535,12 +1535,13 @@ func TestDefaultGitHubTokenPermissions(t *testing.T) {
 			},
 		},
 		"DisabledFlagShouldDefaultToAllPermissions": {
-			flags:    evergreen.ServiceFlags{},
-			expected: model.GitHubDynamicTokenPermissionGroup{AllPermissions: true},
+			readOnlyEnabled: false,
+			expected:        model.GitHubDynamicTokenPermissionGroup{AllPermissions: true},
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			assert.Equal(t, tCase.expected, defaultGitHubTokenPermissions(&tCase.flags))
+			h := &createGitHubDynamicAccessToken{}
+			assert.Equal(t, tCase.expected, h.defaultGitHubTokenPermissions(tCase.readOnlyEnabled))
 		})
 	}
 }
