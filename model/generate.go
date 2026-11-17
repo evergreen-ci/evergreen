@@ -481,7 +481,7 @@ func validateGeneratedProjectMaxTasks(ctx context.Context, v *Version, taskID st
 	}
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return fmt.Errorf("Error getting Evergreen admin settings from validateGeneratedProjectMaxTasks: %v", err)
+		return fmt.Errorf("getting admin settings: %w", err)
 	}
 	totalTasks := numExistingTasks + tasksToBeCreated
 	if settings.TaskLimits.MaxTasksPerVersion > 0 && totalTasks > settings.TaskLimits.MaxTasksPerVersion {

@@ -71,7 +71,7 @@ func (j *eventNotifierJob) Run(ctx context.Context) {
 	var err error
 	j.flags, err = evergreen.GetServiceFlags(ctx)
 	if err != nil {
-		j.AddError(fmt.Errorf("Error getting Evergreen admin settings from eventNotifierJob.Run: %v", err))
+		j.AddError(fmt.Errorf("getting admin settings: %w", err))
 		return
 	}
 	if j.flags.EventProcessingDisabled {

@@ -83,7 +83,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		j.AddError(fmt.Errorf("Error getting Evergreen admin settings from hostAllocatorJob.Run: %v", err))
+		j.AddError(fmt.Errorf("getting admin settings: %w", err))
 		return
 	}
 

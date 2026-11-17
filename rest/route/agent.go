@@ -267,7 +267,7 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(fmt.Errorf("Error getting Evergreen admin settings from markTaskForRestartHandler.Run: %v", err))
+		return gimlet.MakeJSONInternalErrorResponder(fmt.Errorf("getting admin settings: %w", err))
 	}
 	maxDailyAutoRestarts := settings.TaskLimits.MaxDailyAutomaticRestarts
 	if err = projectRef.CheckAndUpdateAutoRestartLimit(ctx, maxDailyAutoRestarts); err != nil {
