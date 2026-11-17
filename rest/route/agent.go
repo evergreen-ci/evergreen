@@ -2061,7 +2061,7 @@ type createGitHubDynamicAccessToken struct {
 	owner  string
 	taskID string
 
-	readOnly bool
+	noPermissionsRequested bool
 
 	permissions github.InstallationPermissions
 
@@ -2076,6 +2076,17 @@ func (h *createGitHubDynamicAccessToken) Factory() gimlet.RouteHandler {
 	return &createGitHubDynamicAccessToken{env: h.env}
 }
 
+func defaultGitHubTokenPermissions(gitHubTokenReadOnlyEnabled bool) model.GitHubDynamicTokenPermissionGroup {
+	if gitHubTokenReadOnlyEnabled {
+		return model.GitHubDynamicTokenPermissionGroup{
+			Permissions: github.InstallationPermissions{
+				Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
+			},
+		}
+	}
+	return model.GitHubDynamicTokenPermissionGroup{AllPermissions: true}
+}
+
 func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Request) error {
 	if h.owner = gimlet.GetVars(r)["owner"]; h.owner == "" {
 		return errors.New("missing owner")
@@ -2088,9 +2099,8 @@ func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 	if err != nil {
 		return errors.Wrap(err, "reading body")
 	}
-	// Default to read only permissions if not specified.
 	if string(body) == "{}" || string(body) == "null" {
-		h.readOnly = true
+		h.noPermissionsRequested = true
 		return nil
 	}
 
@@ -2155,10 +2165,12 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	requestedPermissions := model.GitHubDynamicTokenPermissionGroup{
 		Permissions: h.permissions,
 	}
-	if h.readOnly {
-		requestedPermissions.Permissions = github.InstallationPermissions{
-			Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
+	if h.noPermissionsRequested {
+		flags, err := evergreen.GetServiceFlags(ctx)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags"))
 		}
+		requestedPermissions = defaultGitHubTokenPermissions(flags.GitHubTokenReadOnlyEnabled)
 	}
 	intersection, err := requesterPermissionGroup.Intersection(requestedPermissions)
 	if err != nil {
@@ -2169,6 +2181,10 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 			StatusCode: http.StatusUnauthorized,
 			Message:    "the intersection of the project setting's requester permissions and provided permissions does not have any permissions to create a token",
 		})
+	}
+	permissions := &intersection.Permissions
+	if intersection.AllPermissions {
+		permissions = nil
 	}
 
 	// The token also should use the project's GitHub app.
@@ -2187,7 +2203,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	// wouldn't be possible to revoke them without revoking tokens that other
 	// tasks could be using.
 	token, permissions, err := githubAppAuth.CreateInstallationToken(ctx, h.owner, "", &github.InstallationTokenOptions{
-		Permissions: &intersection.Permissions,
+		Permissions: permissions,
 	})
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{

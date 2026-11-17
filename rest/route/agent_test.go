@@ -31,6 +31,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
@@ -1477,7 +1478,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 			request = gimlet.SetURLVars(request, options)
 
 			require.NoError(t, handler.Parse(ctx, request))
-			require.True(t, handler.readOnly)
+			require.True(t, handler.noPermissionsRequested)
 		},
 		"ParseSucceedsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, taskID, owner)
@@ -1488,7 +1489,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 			request = gimlet.SetURLVars(request, options)
 
 			require.NoError(t, handler.Parse(ctx, request))
-			require.True(t, handler.readOnly)
+			require.True(t, handler.noPermissionsRequested)
 		},
 		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, taskID, owner)
@@ -1501,7 +1502,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 			require.NoError(t, handler.Parse(ctx, request))
 			assert.Equal(t, owner, handler.owner)
 			require.NotNil(t, handler.permissions)
-			assert.False(t, handler.readOnly)
+			assert.False(t, handler.noPermissionsRequested)
 			assert.Equal(t, "read", utility.FromStringPtr(handler.permissions.Checks))
 			assert.Equal(t, "write", utility.FromStringPtr(handler.permissions.Actions))
 		},
@@ -1516,6 +1517,30 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 			require.True(t, ok)
 
 			tCase(ctx, t, r)
+		})
+	}
+}
+
+func TestDefaultGitHubTokenPermissions(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		flags    evergreen.ServiceFlags
+		expected model.GitHubDynamicTokenPermissionGroup
+	}{
+		"EnabledFlagShouldDefaultToContentsRead": {
+			flags: evergreen.ServiceFlags{GitHubTokenReadOnlyEnabled: true},
+			expected: model.GitHubDynamicTokenPermissionGroup{
+				Permissions: github.InstallationPermissions{
+					Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
+				},
+			},
+		},
+		"DisabledFlagShouldDefaultToAllPermissions": {
+			flags:    evergreen.ServiceFlags{},
+			expected: model.GitHubDynamicTokenPermissionGroup{AllPermissions: true},
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.Equal(t, tCase.expected, defaultGitHubTokenPermissions(&tCase.flags))
 		})
 	}
 }
