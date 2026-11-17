@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -17,7 +16,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 type reposGetHandler struct{}
@@ -35,8 +33,8 @@ func (h *reposGetHandler) Parse(context.Context, *http.Request) error { return n
 
 // Run lists the metadata required to discover repo resources, without settings or secrets.
 func (h *reposGetHandler) Run(ctx context.Context) gimlet.Responder {
-	repos := []dbModel.RepoRef{}
-	if err := db.FindAllQ(ctx, dbModel.RepoRefCollection, db.Query(bson.M{}).WithFields(dbModel.RepoRefIdKey, dbModel.RepoRefOwnerKey, dbModel.RepoRefRepoKey, dbModel.RepoRefAdminsKey), &repos); err != nil {
+	repos, err := dbModel.FindRepoRefsForDiscovery(ctx)
+	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding repo resources"))
 	}
 	result := []model.APIRepo{}
