@@ -65,6 +65,7 @@ func NewConfigSections() ConfigSections {
 		&SpawnHostConfig{},
 		&TracerConfig{},
 		&GitHubCheckRunConfig{},
+		&GitHubRecoveryAppConfig{},
 	}
 
 	sectionMap := make(map[string]ConfigSection, len(sections))

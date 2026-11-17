@@ -59,6 +59,7 @@ func NewConfigModel() *APIAdminSettings {
 		Spawnhost:           &APISpawnHostConfig{},
 		Tracer:              &APITracerSettings{},
 		GitHubCheckRun:      &APIGitHubCheckRunConfig{},
+		GitHubRecoveryApp:   &APIGitHubRecoveryAppConfig{},
 		Sage:                &APISageConfig{},
 	}
 }
@@ -123,6 +124,7 @@ type APIAdminSettings struct {
 	Spawnhost               *APISpawnHostConfig           `json:"spawnhost,omitempty"`
 	Tracer                  *APITracerSettings            `json:"tracer,omitempty"`
 	GitHubCheckRun          *APIGitHubCheckRunConfig      `json:"github_check_run,omitempty"`
+	GitHubRecoveryApp       *APIGitHubRecoveryAppConfig   `json:"github_recovery_app,omitempty"`
 	ShutdownWaitSeconds     *int                          `json:"shutdown_wait_seconds,omitempty"`
 	Sage                    *APISageConfig                `json:"sage,omitempty"`
 }
@@ -3059,6 +3061,29 @@ func (c *APIGitHubCheckRunConfig) ToService() (any, error) {
 	}
 
 	return config, nil
+}
+
+type APIGitHubRecoveryAppConfig struct {
+	AppID      *int64  `json:"app_id"`
+	PrivateKey *string `json:"private_key"`
+}
+
+func (c *APIGitHubRecoveryAppConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.GitHubRecoveryAppConfig:
+		c.AppID = utility.ToInt64Ptr(v.AppID)
+		c.PrivateKey = utility.ToStringPtr(v.PrivateKey)
+	default:
+		return errors.Errorf("programmatic error: expected GitHub recovery app config but got type %T", h)
+	}
+	return nil
+}
+
+func (c *APIGitHubRecoveryAppConfig) ToService() (any, error) {
+	return evergreen.GitHubRecoveryAppConfig{
+		AppID:      utility.FromInt64Ptr(c.AppID),
+		PrivateKey: utility.FromStringPtr(c.PrivateKey),
+	}, nil
 }
 
 type APITaskLimitsConfig struct {
