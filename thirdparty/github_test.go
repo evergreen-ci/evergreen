@@ -295,6 +295,12 @@ func (s *githubSuite) TestGetGithubFile() {
 	s.IsType(FileNotFoundError{}, err)
 	s.EqualError(err, "Requested file at doesntexist.txt not found")
 
+	_, err = GetGithubFile(s.ctx, "evergreen-ci", "evergreen",
+		"self-tests.yml", "1111111111111111111111111111111111111111", nil)
+	s.Error(err)
+	s.True(IsRevisionNotFound(err))
+	s.False(IsFileNotFound(err))
+
 	file, err := GetGithubFile(s.ctx, "evergreen-ci", "evergreen",
 		"self-tests.yml", "105bbb4b34e7da59c42cb93d92954710b1f101ee", nil)
 	s.NoError(err)

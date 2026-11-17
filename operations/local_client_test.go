@@ -9,12 +9,12 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/taskexec"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/gorilla/mux"
 	"github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -90,7 +90,7 @@ func TestGetDaemonURL(t *testing.T) {
 
 	t.Run("daemon running", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/health" {
+			if r.URL.Path == "/testtoken/health" {
 				w.WriteHeader(http.StatusOK)
 			}
 		}))
@@ -104,9 +104,33 @@ func TestGetDaemonURL(t *testing.T) {
 		err = os.WriteFile(portFile, []byte(fmt.Sprintf("%d", port)), 0644)
 		require.NoError(t, err)
 
+		tokenFile := filepath.Join(daemonDir, daemonTokenFile)
+		err = os.WriteFile(tokenFile, []byte("testtoken"), 0644)
+		require.NoError(t, err)
+
 		url, err := getDaemonURL()
 		assert.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("http://localhost:%d", port), url)
+		assert.Equal(t, fmt.Sprintf("http://localhost:%d/testtoken", port), url)
+	})
+
+	t.Run("non-ok health response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		t.Cleanup(server.Close)
+
+		var port int
+		_, err := fmt.Sscanf(server.URL, "http://127.0.0.1:%d", &port)
+		require.NoError(t, err)
+
+		portFile := filepath.Join(daemonDir, daemonPortFile)
+		err = os.WriteFile(portFile, []byte(fmt.Sprintf("%d", port)), 0644)
+		require.NoError(t, err)
+
+		url, err := getDaemonURL()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "status 404")
+		assert.Empty(t, url)
 	})
 }
 
@@ -233,6 +257,47 @@ buildvariants:
 	assert.Equal(t, float64(3), response["variant_count"])
 }
 
+func TestDaemonProcessAlive(t *testing.T) {
+	tempDir := t.TempDir()
+	setHomeDir(t, tempDir)
+
+	daemonDir := filepath.Join(tempDir, ".evergreen-local")
+	require.NoError(t, os.MkdirAll(daemonDir, 0755))
+	pidFile := filepath.Join(daemonDir, daemonPIDFile)
+
+	t.Run("NoPIDFileShouldReportNotAlive", func(t *testing.T) {
+		assert.False(t, daemonProcessAlive())
+	})
+
+	t.Run("LivePIDShouldReportAlive", func(t *testing.T) {
+		require.NoError(t, os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", os.Getpid())), 0644))
+		t.Cleanup(func() {
+			require.NoError(t, os.Remove(pidFile))
+		})
+		assert.True(t, daemonProcessAlive())
+	})
+
+	t.Run("StalePIDShouldReportNotAlive", func(t *testing.T) {
+		require.NoError(t, os.WriteFile(pidFile, []byte("999999999"), 0644))
+		assert.False(t, daemonProcessAlive())
+	})
+}
+
+func TestStartFailsWhenDaemonInfoCannotBeWritten(t *testing.T) {
+	tempDir := t.TempDir()
+	setHomeDir(t, tempDir)
+
+	// A file where the daemon directory belongs makes the directory creation fail.
+	dir, err := getDaemonDir()
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(dir, []byte("not a directory"), 0644))
+
+	daemon := newLocalDaemonREST(0, &ClientSettings{})
+	err = daemon.Start(t.Context())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "writing daemon info")
+}
+
 func TestWriteDaemonInfo(t *testing.T) {
 	tempDir := t.TempDir()
 	setHomeDir(t, tempDir)
@@ -253,26 +318,142 @@ func TestWriteDaemonInfo(t *testing.T) {
 	portContent, err := os.ReadFile(portFile)
 	require.NoError(t, err)
 	assert.Equal(t, "9090", string(portContent))
+
+	tokenFile := filepath.Join(daemonDir, daemonTokenFile)
+	tokenContent, err := os.ReadFile(tokenFile)
+	require.NoError(t, err)
+	assert.Equal(t, daemon.token, string(tokenContent))
+
+	tokenInfo, err := os.Stat(tokenFile)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0600), tokenInfo.Mode().Perm())
 }
 
 func TestRouterSetup(t *testing.T) {
 	d := newLocalDaemonREST(9090, &ClientSettings{})
-	router := mux.NewRouter()
-	router.HandleFunc("/health", d.handleHealth).Methods("GET")
-	router.HandleFunc("/config/load", d.handleLoadConfig).Methods("POST")
-	router.HandleFunc("/task/select", d.handleSelectTask).Methods("POST")
-	router.HandleFunc("/step/next", d.handleStepNext).Methods("POST")
-	router.HandleFunc("/step/run-all", d.handleRunAll).Methods("POST")
-	router.HandleFunc("/step/run-until/{index}", d.handleRunUntil).Methods("POST")
-	router.HandleFunc("/step/jump/{index}", d.handleJumpTo).Methods("POST")
 
-	req, err := http.NewRequest("GET", "/health", nil)
+	req, err := http.NewRequest("GET", "/"+d.token+"/health", nil)
 	require.NoError(t, err)
+	req.Host = "localhost:9090"
 
 	recorder := httptest.NewRecorder()
-	router.ServeHTTP(recorder, req)
+	d.newRouter().ServeHTTP(recorder, req)
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
+}
+
+func TestValidateLocalRequestRejectsCrossSiteBrowserRequests(t *testing.T) {
+	d := newLocalDaemonREST(9090, &ClientSettings{})
+	router := d.newRouter()
+
+	localJSONPost := func() *http.Request {
+		req, err := http.NewRequest("POST", "/"+d.token+"/variable/set", strings.NewReader(`{"key":"task_name","value":"safe"}`))
+		require.NoError(t, err)
+		req.Host = "localhost:9090"
+		req.Header.Set("Content-Type", "application/json")
+		return req
+	}
+
+	t.Run("LocalJSONPostShouldReachHandler", func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, localJSONPost())
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		assert.Contains(t, recorder.Body.String(), "no configuration loaded")
+	})
+
+	t.Run("MissingTokenShouldNotMatchRoute", func(t *testing.T) {
+		req, err := http.NewRequest("POST", "/variable/set", strings.NewReader(`{"key":"task_name","value":"victim"}`))
+		require.NoError(t, err)
+		req.Host = "localhost:9090"
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusNotFound, recorder.Code)
+	})
+
+	t.Run("WrongTokenShouldNotMatchRoute", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/wrongtoken/health", nil)
+		require.NoError(t, err)
+		req.Host = "localhost:9090"
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusNotFound, recorder.Code)
+	})
+
+	t.Run("CrossSiteOriginShouldBeRejected", func(t *testing.T) {
+		req := localJSONPost()
+		req.Header.Set("Origin", "http://198.51.100.2:8080")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusForbidden, recorder.Code)
+	})
+
+	t.Run("SecFetchSiteCrossSiteShouldBeRejected", func(t *testing.T) {
+		req := localJSONPost()
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusForbidden, recorder.Code)
+	})
+
+	t.Run("BrowserFormPostShouldBeRejected", func(t *testing.T) {
+		req, err := http.NewRequest("POST", "/"+d.token+"/variable/set", strings.NewReader(`{"key":"task_name","value":"victim"}=`+"\r\n"))
+		require.NoError(t, err)
+		req.Host = "127.0.0.1:9090"
+		req.Header.Set("Content-Type", "text/plain")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusForbidden, recorder.Code)
+		assert.Contains(t, recorder.Body.String(), "application/json")
+	})
+
+	t.Run("NonLocalHostHeaderShouldBeRejected", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/"+d.token+"/status", nil)
+		require.NoError(t, err)
+		req.Host = "evil.example.com"
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusForbidden, recorder.Code)
+	})
+
+	t.Run("TrailingFormDataAfterJSONShouldBeRejected", func(t *testing.T) {
+		req, err := http.NewRequest("POST", "/"+d.token+"/variable/set", strings.NewReader(`{"key":"task_name","value":"victim"}=`+"\r\n"))
+		require.NoError(t, err)
+		req.Host = "localhost:9090"
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		assert.Contains(t, recorder.Body.String(), "decoding request body")
+	})
+}
+
+func TestDecodeJSONBodyRejectsOversizedBodies(t *testing.T) {
+	d := newLocalDaemonREST(9090, &ClientSettings{})
+	router := d.newRouter()
+
+	newPost := func(body string) *http.Request {
+		req, err := http.NewRequest("POST", "/"+d.token+"/variable/set", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Host = "localhost:9090"
+		req.Header.Set("Content-Type", "application/json")
+		return req
+	}
+
+	t.Run("OversizedJSONPayloadShouldReturnRequestEntityTooLarge", func(t *testing.T) {
+		body := `{"key":"task_name","value":"` + strings.Repeat("a", daemonMaxBodySize) + `"}` + "=\r\n"
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, newPost(body))
+		assert.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
+	})
+
+	t.Run("ValidJSONPlusPaddingPastSizeLimitShouldBeRejected", func(t *testing.T) {
+		body := `{"key":"task_name","value":"victim"}` + strings.Repeat(" ", daemonMaxBodySize) + "=\r\n"
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, newPost(body))
+		assert.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
+		assert.NotContains(t, recorder.Body.String(), "no configuration loaded")
+	})
 }
 
 func TestJumpToCmd(t *testing.T) {
@@ -386,12 +567,50 @@ func TestSelectTaskCmd(t *testing.T) {
 	})
 }
 
+const testDaemonToken = "testtoken"
+
 func TestWaitForDaemon(t *testing.T) {
 	t.Run("HealthyDaemonShouldSucceed", func(t *testing.T) {
+		tempDir := t.TempDir()
+		setHomeDir(t, tempDir)
+		tokenFile := filepath.Join(tempDir, daemonDir, daemonTokenFile)
+		require.NoError(t, os.MkdirAll(filepath.Dir(tokenFile), 0755))
+
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/"+testDaemonToken+"/health" {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
 			w.WriteHeader(http.StatusOK)
 		}))
-		defer server.Close()
+		t.Cleanup(server.Close)
+
+		var port int
+		_, err := fmt.Sscanf(server.URL, "http://127.0.0.1:%d", &port)
+		require.NoError(t, err)
+
+		require.NoError(t, os.WriteFile(tokenFile, []byte(testDaemonToken), 0600))
+
+		err = waitForDaemon(port)
+		assert.NoError(t, err)
+	})
+
+	t.Run("TokenWrittenAfterPollingStartsShouldSucceed", func(t *testing.T) {
+		tempDir := t.TempDir()
+		setHomeDir(t, tempDir)
+		tokenFile := filepath.Join(tempDir, daemonDir, daemonTokenFile)
+		require.NoError(t, os.MkdirAll(filepath.Dir(tokenFile), 0755))
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Mimic the forked daemon, which writes its token after polling starts.
+			assert.NoError(t, os.WriteFile(tokenFile, []byte(testDaemonToken), 0600))
+			if r.URL.Path != "/"+testDaemonToken+"/health" {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		t.Cleanup(server.Close)
 
 		var port int
 		_, err := fmt.Sscanf(server.URL, "http://127.0.0.1:%d", &port)

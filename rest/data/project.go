@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -66,6 +68,9 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		projectRef.Id = mgobson.NewObjectId().Hex()
 	}
 	if err := ValidateProjectName(ctx, projectRef.Id); err != nil {
+		return false, err
+	}
+	if err := validateProjectIDPrefix(projectRef.Id); err != nil {
 		return false, err
 	}
 	// Always warn because created projects are never enabled.
@@ -132,6 +137,21 @@ func ValidateProjectName(ctx context.Context, name string) error {
 		}
 	}
 
+	return nil
+}
+
+// validateProjectIDPrefix checks that a project ID does not start with a prefix
+// reserved for AssumeRole external IDs.
+func validateProjectIDPrefix(id string) error {
+	lowerID := strings.ToLower(id)
+	for _, prefix := range cloud.ReservedProjectIDPrefixes {
+		if strings.HasPrefix(lowerID, prefix) {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("project ID '%s' cannot start with reserved prefix '%s'", id, prefix),
+			}
+		}
+	}
 	return nil
 }
 

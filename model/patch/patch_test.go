@@ -2,6 +2,7 @@ package patch
 
 import (
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -436,6 +438,93 @@ func TestGetCollectiveStatusFromPatchStatuses(t *testing.T) {
 
 	created := []string{evergreen.VersionCreated}
 	assert.Equal(t, evergreen.VersionCreated, GetCollectiveStatusFromPatchStatuses(t.Context(), created))
+}
+
+func TestGetGitHubStateAndDescription(t *testing.T) {
+	startTime := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	finishTime := startTime.Add(10 * time.Minute)
+
+	t.Run("SucceededReturnsSuccessWithDuration", func(t *testing.T) {
+		state, description := GetGitHubStateAndDescription(evergreen.VersionSucceeded, startTime, finishTime)
+		assert.Equal(t, message.GithubStateSuccess, state)
+		assert.Equal(t, "patch finished in 10m0s", description)
+	})
+	t.Run("FailedReturnsFailureWithDuration", func(t *testing.T) {
+		state, description := GetGitHubStateAndDescription(evergreen.VersionFailed, startTime, finishTime)
+		assert.Equal(t, message.GithubStateFailure, state)
+		assert.Equal(t, "patch finished in 10m0s", description)
+	})
+	for name, status := range map[string]string{
+		"StartedReturnsPending": evergreen.VersionStarted,
+		"CreatedReturnsPending": evergreen.VersionCreated,
+		"AbortedReturnsPending": evergreen.VersionAborted,
+	} {
+		t.Run(name, func(t *testing.T) {
+			state, description := GetGitHubStateAndDescription(status, startTime, finishTime)
+			assert.Equal(t, message.GithubStatePending, state)
+			assert.Equal(t, evergreen.PRTasksRunningDescription, description)
+		})
+	}
+	t.Run("ZeroFinishTimeUsesCurrentTime", func(t *testing.T) {
+		recentStart := time.Now().Add(-time.Minute)
+		state, description := GetGitHubStateAndDescription(evergreen.VersionSucceeded, recentStart, time.Time{})
+		assert.Equal(t, message.GithubStateSuccess, state)
+		require.True(t, strings.HasPrefix(description, "patch finished in "))
+		duration, err := time.ParseDuration(strings.TrimPrefix(description, "patch finished in "))
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, duration, time.Minute)
+	})
+}
+
+func TestGetCollectiveGitHubStatus(t *testing.T) {
+	startTime := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	makePatches := func(parentStatus, childStatus string) (*Patch, []Patch) {
+		child := Patch{
+			Id:         bson.NewObjectId(),
+			Status:     childStatus,
+			StartTime:  startTime.Add(-time.Minute),
+			FinishTime: startTime.Add(20 * time.Minute),
+		}
+		parent := &Patch{
+			Id:         bson.NewObjectId(),
+			Status:     parentStatus,
+			StartTime:  startTime,
+			FinishTime: startTime.Add(10 * time.Minute),
+			Triggers:   TriggerInfo{ChildPatches: []string{child.Id.Hex()}},
+		}
+		return parent, []Patch{child}
+	}
+
+	t.Run("AllSucceededReturnsSuccessWithCollectiveDuration", func(t *testing.T) {
+		parent, children := makePatches(evergreen.VersionSucceeded, evergreen.VersionSucceeded)
+		collective, err := GetCollectiveGitHubStatus(t.Context(), parent, children)
+		require.NoError(t, err)
+		assert.Equal(t, evergreen.VersionSucceeded, collective.Status)
+		assert.Equal(t, message.GithubStateSuccess, collective.State)
+		assert.Equal(t, "patch finished in 21m0s", collective.Description)
+	})
+	t.Run("FailedChildReturnsFailure", func(t *testing.T) {
+		parent, children := makePatches(evergreen.VersionSucceeded, evergreen.VersionFailed)
+		collective, err := GetCollectiveGitHubStatus(t.Context(), parent, children)
+		require.NoError(t, err)
+		assert.Equal(t, evergreen.VersionFailed, collective.Status)
+		assert.Equal(t, message.GithubStateFailure, collective.State)
+		assert.Equal(t, "patch finished in 21m0s", collective.Description)
+	})
+	t.Run("RunningChildReturnsPending", func(t *testing.T) {
+		parent, children := makePatches(evergreen.VersionSucceeded, evergreen.VersionStarted)
+		collective, err := GetCollectiveGitHubStatus(t.Context(), parent, children)
+		require.NoError(t, err)
+		assert.Equal(t, evergreen.VersionStarted, collective.Status)
+		assert.Equal(t, message.GithubStatePending, collective.State)
+		assert.Equal(t, evergreen.PRTasksRunningDescription, collective.Description)
+	})
+	t.Run("MissingChildErrors", func(t *testing.T) {
+		parent, _ := makePatches(evergreen.VersionSucceeded, evergreen.VersionSucceeded)
+		collective, err := GetCollectiveGitHubStatus(t.Context(), parent, nil)
+		assert.Error(t, err)
+		assert.Nil(t, collective)
+	})
 }
 
 func TestGetRequester(t *testing.T) {
