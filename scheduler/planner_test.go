@@ -248,7 +248,7 @@ func TestPlanner(t *testing.T) {
 					assert.EqualValues(t, 178, unit.sortingValueBreakdown(ctx).TotalValue)
 					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
-				t.Run("GitTag", func(t *testing.T) {
+				t.Run("GitTagWithoutFactor", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.GitTagRequester})
 					unit.SetDistro(&distro.Distro{})
 					assert.EqualValues(t, 181, unit.sortingValueBreakdown(ctx).TotalValue)
