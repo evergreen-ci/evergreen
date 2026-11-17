@@ -467,8 +467,8 @@ func linkOktaIDToUser(ctx context.Context, env evergreen.Environment, oktaID, us
 }
 
 func setSlackInformation(ctx context.Context, env evergreen.Environment, u *DBUser) error {
-	if isSpiffeMonitoringUser(u.Id) {
-		// don't set slack information for spiffe monitoring users
+	if isSpiffeUser(u.Id) {
+		// SPIFFE users are service workloads, so they have no Slack account.
 		return nil
 	}
 	if u.Settings.SlackMemberId != "" {
@@ -511,12 +511,11 @@ func setSlackInformation(ctx context.Context, env evergreen.Environment, u *DBUs
 
 }
 
-const spiffeMonitoringRoute = "spiffe://cluster.local/ns/monitoring"
+const spiffeIDPrefix = "spiffe://"
 
-// isSpiffeServiceUser checks if the user is a spiffe monitoring user by checking
-// if it starts with spiffe://cluster.local/ns/monitoring
-func isSpiffeMonitoringUser(userId string) bool {
-	return strings.HasPrefix(userId, spiffeMonitoringRoute)
+// isSpiffeUser returns whether the user ID is a SPIFFE workload identity.
+func isSpiffeUser(userID string) bool {
+	return strings.HasPrefix(userID, spiffeIDPrefix)
 }
 
 // FindNeedsReauthorization finds all users that need to be reauthorized after
