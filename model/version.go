@@ -647,6 +647,7 @@ func TrackVersionS3CostForTask(ctx context.Context, taskID, versionID, source st
 		trace.WithNewRoot(),
 		trace.WithAttributes(
 			attribute.String(evergreen.TaskIDOtelAttribute, taskID),
+			attribute.String(evergreen.VersionIDOtelAttribute, versionID),
 			attribute.String(evergreen.TaskS3CostTaskStatusOtelAttribute, source),
 			attribute.Int(evergreen.TaskS3ArtifactPutRequestsOtelAttribute, s3Usage.Artifacts.PutRequests),
 			attribute.Int64(evergreen.TaskS3ArtifactUploadBytesOtelAttribute, s3Usage.Artifacts.UploadBytes),
