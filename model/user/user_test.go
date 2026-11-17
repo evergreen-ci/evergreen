@@ -1013,9 +1013,14 @@ func TestGetOrCreateUser(t *testing.T) {
 			_, err := GetOrCreateUser(t.Context(), id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
-			user, err := GetOrCreateUser(t.Context(), "", name, "", accessToken, refreshToken, nil)
+			user, err := GetOrCreateUser(t.Context(), "", "other_name", "", accessToken, refreshToken, nil)
 			assert.Error(t, err)
 			assert.Nil(t, user)
+
+			dbUser, err := FindOneById(t.Context(), id)
+			require.NoError(t, err)
+			require.NotZero(t, dbUser)
+			assert.Equal(t, name, dbUser.DisplayName())
 		},
 		"RolesMergeCorrectly": func(t *testing.T) {
 			roles := []string{"one", "two"}
@@ -1042,7 +1047,7 @@ func TestGetOrCreateUser(t *testing.T) {
 
 func TestSetSlackInformationSkipsSpiffeUsers(t *testing.T) {
 	u := &DBUser{Id: "spiffe://cluster.local/ns/devprod-mcp-gateway/sa/devprod-mcp-gateway-sa"}
-	assert.NoError(t, setSlackInformation(t.Context(), evergreen.GetEnvironment(), u))
+	assert.NoError(t, setSlackInformation(t.Context(), nil, u))
 }
 
 func TestGetOrCreateUserWithOktaID(t *testing.T) {
