@@ -149,13 +149,15 @@ func (h *repoUsersPermissionsGetHandler) Run(ctx context.Context) gimlet.Respond
 	if repo == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusNotFound, Message: fmt.Sprintf("repo '%s' not found", h.repoID)})
 	}
-	roles, err := h.rm.GetAllRoles(ctx)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting repo roles"))
-	}
 	scopeKinds := map[string]model.RepoPermissionScope{}
+	repoRoleIDs := []string{model.GetRepoAdminRole(repo.Id)}
 	for kind, id := range model.RepoPermissionScopes(repo.Id) {
 		scopeKinds[id] = kind
+		repoRoleIDs = append(repoRoleIDs, manaRepoRolePrefix+id)
+	}
+	roles, err := h.rm.GetRoles(ctx, repoRoleIDs)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting repo roles"))
 	}
 	roleIDs := []string{}
 	selected := map[string]gimlet.Role{}
