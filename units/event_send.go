@@ -3,11 +3,13 @@ package units
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -109,6 +111,7 @@ func (j *eventSendJob) Run(ctx context.Context) {
 	}
 
 	if err = j.checkDegradedMode(ctx, n); err != nil {
+		j.AddError(markGitHubStatusResync(ctx, n, err))
 		j.AddError(errors.Wrapf(n.MarkError(ctx, errors.Wrap(err, "checking degraded mode")), "setting error for notification '%s'", n.ID))
 		return
 	}
@@ -183,7 +186,38 @@ func (j *eventSendJob) Run(ctx context.Context) {
 
 	grip.Error(ctx, message.WrapError(err, logFields))
 	j.AddError(err)
+	j.AddError(markGitHubStatusResync(ctx, n, err))
 	j.AddError(errors.Wrapf(n.MarkError(ctx, err), "setting error for notification '%s'", n.ID))
+}
+
+// markGitHubStatusResync marks the patch that a GitHub status notification
+// reports on so its statuses can be sent again. Statuses that GitHub rejected
+// as invalid are not marked because sending them again won't help.
+func markGitHubStatusResync(ctx context.Context, n *notification.Notification, sendErr error) error {
+	if n.Metadata.PatchID == "" || isRejectedGitHubSend(sendErr) {
+		return nil
+	}
+	return patch.MarkGitHubStatusResync(ctx, n.Metadata.PatchID, n.Subscriber.Type == event.GithubMergeSubscriberType)
+}
+
+// isGitHubRateLimit returns whether GitHub refused the request with a status
+// that it uses for rate limits.
+func isGitHubRateLimit(err error) bool {
+	var githubErr *send.GitHubSendError
+	if !errors.As(err, &githubErr) {
+		return false
+	}
+	return githubErr.StatusCode == http.StatusForbidden || githubErr.StatusCode == http.StatusTooManyRequests
+}
+
+// isRejectedGitHubSend returns whether GitHub rejected the request with a
+// client error other than a rate limit.
+func isRejectedGitHubSend(err error) bool {
+	var githubErr *send.GitHubSendError
+	if !errors.As(err, &githubErr) || isGitHubRateLimit(err) {
+		return false
+	}
+	return githubErr.StatusCode >= http.StatusBadRequest && githubErr.StatusCode < http.StatusInternalServerError
 }
 
 func (j *eventSendJob) send(ctx context.Context, n *notification.Notification) error {

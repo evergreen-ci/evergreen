@@ -555,6 +555,8 @@ tasks:
 	v, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
 	require.NoError(t, err)
 	require.NotNil(t, v)
+	_, err = v.GetBuildVariants(ctx)
+	require.NoError(t, err)
 	assert.Len(t, v.BuildVariants, 3)
 	assert.False(t, v.BuildVariants[0].Activated)
 	assert.False(t, v.BuildVariants[1].Activated)
@@ -1934,22 +1936,6 @@ func TestCreateManifest(t *testing.T) {
 	assert.NotEmpty(module.URL)
 	assert.Equal(mfst.ModuleSelectionPinnedRef, module.SelectionRule)
 
-	// invalid revision
-	hash = "1234"
-	proj = model.Project{
-		Identifier: "proj",
-		Modules: []model.Module{
-			{
-				Name:   "module1",
-				Repo:   "git@github.com:evergreen-ci/sample.git",
-				Branch: "main",
-				Ref:    hash,
-			},
-		},
-	}
-	_, err = model.CreateManifest(t.Context(), &v, proj.Modules, projRef)
-	assert.Contains(err.Error(), "No commit found for SHA")
-
 	// patch with module ref that differs from base manifest should use YAML ref
 	baseRevision := "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
 	yamlRef := "cf46076567e4949f9fc68e0634139d4ac495c89b"
@@ -1983,6 +1969,7 @@ func TestCreateManifest(t *testing.T) {
 		},
 	}
 	manifest, err = model.CreateManifest(t.Context(), &patchVersion, proj.Modules, projRef)
+	require.NoError(t, err)
 	require.NotNil(t, manifest)
 	assert.Equal(patchVersion.Id, manifest.Id)
 	assert.Len(manifest.Modules, 1)

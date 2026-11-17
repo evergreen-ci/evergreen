@@ -573,6 +573,30 @@ func TestHandleMergeGroupDestroyedCancelsPatches(t *testing.T) {
 	assert.False(t, utility.FromBoolPtr(v.Activated))
 }
 
+func TestRefreshPatchStatusReturnsJobError(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(patch.Collection))
+
+	owner := "evergreen-ci"
+	repo := "evergreen"
+	prNumber := 1234
+	patchDoc := patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: "version1",
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: owner,
+			BaseRepo:  repo,
+			PRNumber:  prNumber,
+		},
+	}
+	require.NoError(t, patchDoc.Insert(ctx))
+
+	gh := &githubHookApi{}
+	err := gh.refreshPatchStatus(ctx, owner, repo, prNumber)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), patchDoc.Id.Hex())
+}
+
 func TestShouldSkipWebhookPersonalStaging(t *testing.T) {
 	ctx := t.Context()
 
@@ -827,5 +851,70 @@ func TestRecordWebhookLag(t *testing.T) {
 		assert.Equal(t, "merge_group", attrs[githubWebhookEventOtelAttribute].AsString())
 		assert.Equal(t, "evergreen-ci/evergreen", attrs[githubWebhookRepoOtelAttribute].AsString())
 		assert.NotContains(t, attrs, attribute.Key(githubWebhookLagMsOtelAttribute))
+	})
+}
+
+func TestHandleCommentDefinitionsCommenterAuthorization(t *testing.T) {
+	owner := "evergreen-ci"
+	repoName := "evergreen"
+	prNum := 42
+	makeEvent := func(body string) *github.IssueCommentEvent {
+		return &github.IssueCommentEvent{
+			Action:  utility.ToStringPtr("created"),
+			Issue:   &github.Issue{Number: &prNum, PullRequestLinks: &github.PullRequestLinks{}},
+			Comment: &github.IssueComment{Body: &body},
+			Repo:    &github.Repository{Name: &repoName, Owner: &github.User{Login: &owner}},
+			Sender:  &github.User{Login: utility.ToStringPtr("commenter")},
+		}
+	}
+	insertPatch := func(t *testing.T, repeatPatchID string) patch.Patch {
+		require.NoError(t, db.Clear(patch.Collection))
+		p := patch.Patch{
+			Id: mgobson.NewObjectId(),
+			GithubPatchData: thirdparty.GithubPatch{
+				BaseOwner:              owner,
+				BaseRepo:               repoName,
+				PRNumber:               prNum,
+				RepeatPatchIdNextPatch: repeatPatchID,
+			},
+		}
+		require.NoError(t, p.Insert(t.Context()))
+		return p
+	}
+	makeHookAPI := func(authorized bool) *githubHookApi {
+		return &githubHookApi{
+			sc:       &data.MockGitHubConnector{MockGitHubConnectorImpl: data.MockGitHubConnectorImpl{}},
+			settings: &evergreen.Settings{GithubPRCreatorOrg: "mongodb"},
+			isCommenterAuthorized: func(ctx context.Context, requiredOrg, owner, repo, commenter string) (bool, error) {
+				return authorized, nil
+			},
+		}
+	}
+	getRepeatPatchID := func(t *testing.T, id mgobson.ObjectId) string {
+		p, err := patch.FindOneId(t.Context(), id.Hex())
+		require.NoError(t, err)
+		require.NotNil(t, p)
+		return p.GithubPatchData.RepeatPatchIdNextPatch
+	}
+
+	t.Run("UnauthorizedKeepDefinitionsDoesNotPinPatch", func(t *testing.T) {
+		p := insertPatch(t, "")
+		require.NoError(t, makeHookAPI(false).handleComment(t.Context(), makeEvent(keepDefinitionsComment)))
+		assert.Empty(t, getRepeatPatchID(t, p.Id))
+	})
+	t.Run("AuthorizedKeepDefinitionsPinsPatch", func(t *testing.T) {
+		p := insertPatch(t, "")
+		require.NoError(t, makeHookAPI(true).handleComment(t.Context(), makeEvent(keepDefinitionsComment)))
+		assert.Equal(t, p.Id.Hex(), getRepeatPatchID(t, p.Id))
+	})
+	t.Run("UnauthorizedResetDefinitionsDoesNotClearPin", func(t *testing.T) {
+		p := insertPatch(t, "pinned")
+		require.NoError(t, makeHookAPI(false).handleComment(t.Context(), makeEvent(resetDefinitionsComment)))
+		assert.Equal(t, "pinned", getRepeatPatchID(t, p.Id))
+	})
+	t.Run("AuthorizedResetDefinitionsClearsPin", func(t *testing.T) {
+		p := insertPatch(t, "pinned")
+		require.NoError(t, makeHookAPI(true).handleComment(t.Context(), makeEvent(resetDefinitionsComment)))
+		assert.Empty(t, getRepeatPatchID(t, p.Id))
 	})
 }

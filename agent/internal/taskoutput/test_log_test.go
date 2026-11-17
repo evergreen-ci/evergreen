@@ -278,6 +278,128 @@ func TestTestLogDirectoryHandlerSymlink(t *testing.T) {
 	})
 }
 
+func TestUploadTestLogFilesForOutput(t *testing.T) {
+	comm := client.NewMock("url")
+
+	setup := func(t *testing.T) (task.Task, string, TestLogFilesOptions) {
+		runner := &task.Task{Id: "runner", Project: "project"}
+		logger, err := comm.GetLoggerProducer(t.Context(), runner, nil)
+		require.NoError(t, err)
+		t.Cleanup(func() { assert.NoError(t, logger.Close()) })
+
+		vTask := task.Task{
+			Id:      "virtual",
+			Project: "project",
+			TaskOutputInfo: &task.TaskOutput{
+				TestLogs: task.TestLogOutput{
+					Version: 1,
+					BucketConfig: evergreen.BucketConfig{
+						Name: t.TempDir(),
+						Type: evergreen.BucketTypeLocal,
+					},
+				},
+			},
+		}
+		dir := filepath.Join(t.TempDir(), "logs")
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, "job0"), 0777))
+		return vTask, dir, TestLogFilesOptions{
+			Dir:    dir,
+			Task:   vTask,
+			Output: vTask.TaskOutputInfo.TestLogs,
+			Logger: logger,
+		}
+	}
+	writeLog := func(t *testing.T, path string, lines ...string) {
+		require.NoError(t, os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0777))
+	}
+	getLines := func(t *testing.T, vTask task.Task, logPath string) []log.LogLine {
+		it, err := vTask.GetTestLogs(t.Context(), task.TestLogGetOptions{LogPaths: []string{logPath}})
+		require.NoError(t, err)
+		var lines []log.LogLine
+		for it.Next() {
+			lines = append(lines, it.Item())
+		}
+		assert.NoError(t, it.Close())
+		require.NoError(t, it.Err())
+		return lines
+	}
+	getData := func(lines []log.LogLine) []string {
+		var data []string
+		for _, line := range lines {
+			data = append(data, line.Data)
+		}
+		return data
+	}
+
+	t.Run("UploadsReferencedLogsUnderTask", func(t *testing.T) {
+		vTask, dir, opts := setup(t)
+		writeLog(t, filepath.Join(dir, "job0", "t.log"), "test log line")
+		writeLog(t, filepath.Join(dir, "job0", "global.log"), "global log line")
+		opts.LogPaths = []string{"job0/t.log", "job0/global.log"}
+
+		require.NoError(t, UploadTestLogFilesForOutput(t.Context(), opts))
+
+		assert.Equal(t, []string{"test log line"}, getData(getLines(t, vTask, "job0/t.log")))
+		assert.Equal(t, []string{"global log line"}, getData(getLines(t, vTask, "job0/global.log")))
+	})
+	t.Run("OnlyUploadsReferencedLogsWithinDir", func(t *testing.T) {
+		vTask, dir, opts := setup(t)
+		writeLog(t, filepath.Join(dir, "job0", "t.log"), "test log line")
+		writeLog(t, filepath.Join(dir, "unreferenced.log"), "unreferenced log line")
+		writeLog(t, filepath.Join(filepath.Dir(dir), "outside.log"), "outside log line")
+		writeLog(t, filepath.Join(dir, testLogSpecFilename), "format: text")
+		opts.LogPaths = []string{"job0/t.log", "../outside.log", "/etc/passwd", "job0/../../outside.log", "job0/missing.log", testLogSpecFilename}
+
+		require.NoError(t, UploadTestLogFilesForOutput(t.Context(), opts))
+
+		bucketDir := vTask.TaskOutputInfo.TestLogs.BucketConfig.Name
+		var keys []string
+		require.NoError(t, filepath.WalkDir(bucketDir, func(path string, d os.DirEntry, err error) error {
+			require.NoError(t, err)
+			if !d.IsDir() {
+				rel, err := filepath.Rel(bucketDir, path)
+				require.NoError(t, err)
+				keys = append(keys, filepath.ToSlash(rel))
+			}
+			return nil
+		}))
+		require.NotEmpty(t, keys)
+		for _, key := range keys {
+			assert.True(t, strings.HasPrefix(key, "project/virtual/0/"), "log '%s' should be uploaded under the virtual task", key)
+			assert.Contains(t, key, "job0/t.log", "only the referenced log within the log directory should be uploaded")
+		}
+	})
+	t.Run("RedactsLogs", func(t *testing.T) {
+		vTask, dir, opts := setup(t)
+		writeLog(t, filepath.Join(dir, "secret.log"), "secret DEADBEEF")
+		opts.LogPaths = []string{"secret.log"}
+		opts.RedactorOpts = redactor.RedactionOptions{
+			Expansions: util.NewDynamicExpansions(map[string]string{"secret_name": "DEADBEEF"}),
+			Redacted:   []string{"secret_name"},
+		}
+
+		require.NoError(t, UploadTestLogFilesForOutput(t.Context(), opts))
+
+		assert.Equal(t, []string{"secret <REDACTED:secret_name>"}, getData(getLines(t, vTask, "secret.log")))
+	})
+	t.Run("HonorsSpecFileFormat", func(t *testing.T) {
+		vTask, dir, opts := setup(t)
+		data, err := yaml.Marshal(&testLogSpec{Format: testLogFormatTextTimestamp})
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(filepath.Join(dir, testLogSpecFilename), data, 0777))
+		ts := time.Now().Add(-time.Hour).UnixNano()
+		writeLog(t, filepath.Join(dir, "t.log"), fmt.Sprintf("%d timestamped line", ts))
+		opts.LogPaths = []string{"t.log"}
+
+		require.NoError(t, UploadTestLogFilesForOutput(t.Context(), opts))
+
+		lines := getLines(t, vTask, "t.log")
+		require.Len(t, lines, 1)
+		assert.Equal(t, "timestamped line", lines[0].Data)
+		assert.Equal(t, ts, lines[0].Timestamp)
+	})
+}
+
 func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
 	ctx := t.Context()
 

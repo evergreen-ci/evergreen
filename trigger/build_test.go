@@ -230,6 +230,35 @@ func (s *buildSuite) TestOutcome() {
 	s.NotNil(n)
 }
 
+func (s *buildSuite) TestGenerateRecordsPatchIDForGitHubStatusNotifications() {
+	s.data.Status = evergreen.BuildSucceeded
+	githubSub := event.Subscriber{
+		Type: event.GithubMergeSubscriberType,
+		Target: &event.GithubMergeSubscriber{
+			Owner: "evergreen-ci",
+			Repo:  "evergreen",
+			Ref:   "776f608b5b12cd27b8d931c8ee4ca0c13f857299",
+		},
+	}
+	githubSubscription := event.NewSubscriptionByID(event.ResourceTypeBuild, event.TriggerOutcome, s.event.ResourceId, githubSub)
+	s.build.Version = "patch-id"
+
+	s.Run("GitHubPatchBuildRecordsPatchID", func() {
+		s.build.Requester = evergreen.GithubMergeRequester
+		n, err := s.t.generate(s.ctx, &githubSubscription, "")
+		s.Require().NoError(err)
+		s.Require().NotNil(n)
+		s.Equal("patch-id", n.Metadata.PatchID)
+	})
+	s.Run("MainlineBuildDoesNotRecordPatchID", func() {
+		s.build.Requester = evergreen.RepotrackerVersionRequester
+		n, err := s.t.generate(s.ctx, &githubSubscription, "")
+		s.Require().NoError(err)
+		s.Require().NotNil(n)
+		s.Empty(n.Metadata.PatchID)
+	})
+}
+
 func (s *buildSuite) TestGithubCheckOutcome() {
 	n, err := s.t.buildGithubCheckOutcome(s.ctx, &s.subs[1])
 	s.NoError(err)

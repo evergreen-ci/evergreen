@@ -2,11 +2,17 @@ package operations
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen/agent/taskexec"
@@ -16,6 +22,7 @@ import (
 )
 
 const ndjsonContentType = "application/x-ndjson"
+const daemonMaxBodySize = 1 << 20 // 1 MiB
 
 // localDaemonREST implements an API for the local debugger daemon
 type localDaemonREST struct {
@@ -25,38 +32,119 @@ type localDaemonREST struct {
 	configPath string
 	port       int
 	localMode  bool
+	token      string
 }
 
 // newLocalDaemonREST creates a new REST daemon
 func newLocalDaemonREST(port int, conf *ClientSettings) *localDaemonREST {
 	return &localDaemonREST{
-		port: port,
-		conf: conf,
+		port:  port,
+		conf:  conf,
+		token: newDaemonToken(),
 	}
 }
 
 // Start starts the REST debug daemon
 func (d *localDaemonREST) Start(ctx context.Context) error {
-	router := mux.NewRouter()
-	router.HandleFunc("/health", d.handleHealth).Methods("GET")
-	router.HandleFunc("/config/load", d.handleLoadConfig).Methods("POST")
-	router.HandleFunc("/task/select", d.handleSelectTask).Methods("POST")
-	router.HandleFunc("/task/list-steps", d.handleListSteps).Methods("GET")
-	router.HandleFunc("/step/next", d.handleStepNext).Methods("POST")
-	router.HandleFunc("/step/run-all", d.handleRunAll).Methods("POST")
-	router.HandleFunc("/step/run-until/{step}", d.handleRunUntil).Methods("POST")
-	router.HandleFunc("/step/jump/{step}", d.handleJumpTo).Methods("POST")
-	router.HandleFunc("/variable/set", d.handleSetVariable).Methods("POST")
-	router.HandleFunc("/variable/get/{key}", d.handleGetVariable).Methods("GET")
-	router.HandleFunc("/variable/all", d.handleGetVariables).Methods("GET")
-	router.HandleFunc("/status", d.handleStatus).Methods("GET")
+	router := d.newRouter()
 
 	if err := d.writeDaemonInfo(); err != nil {
-		grip.Warning(ctx, errors.Wrap(err, "writing daemon info"))
+		return errors.Wrap(err, "writing daemon info")
 	}
 
 	grip.Infof(ctx, "Starting REST daemon on port %d", d.port)
 	return http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", d.port), router)
+}
+
+// newRouter builds the daemon's route table with the token.
+func (d *localDaemonREST) newRouter() *mux.Router {
+	router := mux.NewRouter()
+	daemonRoutes := router.PathPrefix("/" + d.token).Subrouter()
+	daemonRoutes.Use(validateLocalRequest)
+	daemonRoutes.HandleFunc("/health", d.handleHealth).Methods("GET")
+	daemonRoutes.HandleFunc("/config/load", d.handleLoadConfig).Methods("POST")
+	daemonRoutes.HandleFunc("/task/select", d.handleSelectTask).Methods("POST")
+	daemonRoutes.HandleFunc("/task/list-steps", d.handleListSteps).Methods("GET")
+	daemonRoutes.HandleFunc("/step/next", d.handleStepNext).Methods("POST")
+	daemonRoutes.HandleFunc("/step/run-all", d.handleRunAll).Methods("POST")
+	daemonRoutes.HandleFunc("/step/run-until/{step}", d.handleRunUntil).Methods("POST")
+	daemonRoutes.HandleFunc("/step/jump/{step}", d.handleJumpTo).Methods("POST")
+	daemonRoutes.HandleFunc("/variable/set", d.handleSetVariable).Methods("POST")
+	daemonRoutes.HandleFunc("/variable/get/{key}", d.handleGetVariable).Methods("GET")
+	daemonRoutes.HandleFunc("/variable/all", d.handleGetVariables).Methods("GET")
+	daemonRoutes.HandleFunc("/status", d.handleStatus).Methods("GET")
+	return router
+}
+
+// newDaemonToken generates the per-instance capability token that gates every daemon
+// route. It is persisted next to the port file (with owner-only permissions) so the
+// local CLI can attach it, but is unreadable to other local users.
+func newDaemonToken() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		// An unavailable system entropy source is unrecoverable for a security token.
+		panic(errors.Wrap(err, "generating daemon token"))
+	}
+	return hex.EncodeToString(b)
+}
+
+// validateLocalRequest rejects cross-site browser requests.
+func validateLocalRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !isLoopbackHostname(stripPort(r.Host)) {
+			http.Error(w, "non-local Host header", http.StatusForbidden)
+			return
+		}
+		if origin := r.Header.Get("Origin"); origin != "" {
+			u, err := url.Parse(origin)
+			if err != nil || !isLoopbackHostname(u.Hostname()) {
+				http.Error(w, "non-local Origin header", http.StatusForbidden)
+				return
+			}
+		}
+		if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
+			http.Error(w, "cross-site request", http.StatusForbidden)
+			return
+		}
+		if r.Method == http.MethodPost && !strings.HasPrefix(strings.ToLower(r.Header.Get("Content-Type")), "application/json") {
+			http.Error(w, "POST requires a Content-Type of application/json", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func isLoopbackHostname(host string) bool {
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+}
+
+// stripPort removes the port from a Host header value, if present.
+func stripPort(hostPort string) string {
+	host, _, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		return hostPort
+	}
+	return host
+}
+
+// decodeJSONBody reads the single JSON document in the request body, rejecting
+// invalid requests.
+func decodeJSONBody(w http.ResponseWriter, r *http.Request, v any) bool {
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, daemonMaxBodySize))
+	if err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			http.Error(w, "request body exceeds the size limit", http.StatusRequestEntityTooLarge)
+		} else {
+			http.Error(w, errors.Wrap(err, "reading request body").Error(), http.StatusBadRequest)
+		}
+		return false
+	}
+	if err := json.Unmarshal(body, v); err != nil {
+		http.Error(w, errors.Wrap(err, "decoding request body").Error(), http.StatusBadRequest)
+		return false
+	}
+	return true
 }
 
 // handleHealth checks if the daemon is running
@@ -72,8 +160,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		TaskID     string `json:"task_id"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, errors.Wrap(err, "loading config").Error(), http.StatusBadRequest)
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 
@@ -194,8 +281,7 @@ func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Reques
 		VariantName string `json:"variant_name"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, errors.Wrap(err, "selecting task").Error(), http.StatusBadRequest)
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 
@@ -224,7 +310,7 @@ func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Reques
 	}))
 }
 
-// writeDaemonInfo writes PID and port files
+// writeDaemonInfo writes the PID, port, and token files.
 func (d *localDaemonREST) writeDaemonInfo() error {
 	dir, err := getDaemonDir()
 	if err != nil {
@@ -243,6 +329,11 @@ func (d *localDaemonREST) writeDaemonInfo() error {
 	portFile := filepath.Join(dir, daemonPortFile)
 	if err := os.WriteFile(portFile, []byte(fmt.Sprintf("%d", d.port)), 0644); err != nil {
 		return errors.Wrap(err, "writing port file")
+	}
+
+	tokenFile := filepath.Join(dir, daemonTokenFile)
+	if err := os.WriteFile(tokenFile, []byte(d.token), 0600); err != nil {
+		return errors.Wrap(err, "writing daemon token file")
 	}
 
 	return nil
@@ -412,8 +503,7 @@ func (d *localDaemonREST) handleSetVariable(w http.ResponseWriter, r *http.Reque
 		Value string `json:"value"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 

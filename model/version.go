@@ -187,13 +187,27 @@ func (v *Version) ActivateAndSetBuildVariants(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "getting build variant info for version")
 	}
+	taskBatchTimes := taskBatchTimesForBuildVariants(bvs)
+	if len(taskBatchTimes) > 0 {
+		bt := &VersionTaskBatchTimes{
+			Id:            v.Id,
+			Identifier:    v.Identifier,
+			Requester:     v.Requester,
+			Order:         v.RevisionOrderNumber,
+			Ignored:       v.Ignored,
+			BuildVariants: taskBatchTimes,
+		}
+		if err := bt.Upsert(ctx); err != nil {
+			return errors.Wrap(err, "setting task batchtimes")
+		}
+	}
 	return VersionUpdateOne(
 		ctx,
 		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$set": bson.M{
 				VersionActivatedKey:     true,
-				VersionBuildVariantsKey: bvs,
+				VersionBuildVariantsKey: withoutTaskBatchTimes(bvs),
 			},
 		},
 	)
@@ -415,6 +429,26 @@ func attachTaskBatchTimes(bvs []VersionBuildStatus, btt []BuildVariantTaskBatchT
 	}
 }
 
+// SplitTaskBatchTimes returns a copy of the version with the task batchtimes
+// split off into a separate doc. The task batchtimes doc is nil if the version
+// has no tasks with batchtime.
+func (v *Version) SplitTaskBatchTimes() (Version, *VersionTaskBatchTimes) {
+	bvs := taskBatchTimesForBuildVariants(v.BuildVariants)
+	if len(bvs) == 0 {
+		return *v, nil
+	}
+	stripped := *v
+	stripped.BuildVariants = withoutTaskBatchTimes(v.BuildVariants)
+	return stripped, &VersionTaskBatchTimes{
+		Id:            v.Id,
+		Identifier:    v.Identifier,
+		Requester:     v.Requester,
+		Order:         v.RevisionOrderNumber,
+		Ignored:       v.Ignored,
+		BuildVariants: bvs,
+	}
+}
+
 // versionS3CostBSONFields returns BSON pairs for the S3-only cost fields; EC2/EBS fields are managed by UpdateAggregateTaskCosts.
 func versionS3CostBSONFields(prefix string, c cost.Cost) bson.D {
 	return bson.D{
@@ -613,6 +647,7 @@ func TrackVersionS3CostForTask(ctx context.Context, taskID, versionID, source st
 		trace.WithNewRoot(),
 		trace.WithAttributes(
 			attribute.String(evergreen.TaskIDOtelAttribute, taskID),
+			attribute.String(evergreen.VersionIDOtelAttribute, versionID),
 			attribute.String(evergreen.TaskS3CostTaskStatusOtelAttribute, source),
 			attribute.Int(evergreen.TaskS3ArtifactPutRequestsOtelAttribute, s3Usage.Artifacts.PutRequests),
 			attribute.Int64(evergreen.TaskS3ArtifactUploadBytesOtelAttribute, s3Usage.Artifacts.UploadBytes),
@@ -1151,81 +1186,71 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 		}, nil
 	}
 
-	if module.Ref == "" {
-		ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
-		defer cancel()
-
-		var revision, url string
-		var rule manifest.ModuleSelectionRule
-		useHistory := !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester
-
-		// For versions aligned by ingest time, use the latest module revision Evergreen had ingested.
-		// Otherwise, use the current module branch head.
-		if useHistory {
-			repoRevision, err := FindLatestRepositoryRevisionByIngestTime(ctx, owner, repo, module.Branch, ingestTime)
-			if err != nil {
-				return nil, errors.Wrapf(err, "finding latest repository revision by ingest time for module '%s' in '%s/%s'", module.Name, owner, repo)
-			}
-			if repoRevision != nil {
-				revision = repoRevision.Revision
-				rule = manifest.ModuleSelectionLatestIngested
-				githubCommit, err := thirdparty.GetCommitEvent(ghCtx, owner, repo, revision)
-				if err == nil {
-					url = githubCommit.GetURL()
-				}
-			}
-		}
-
-		if revision == "" {
-			opts := &github.CommitsListOptions{
-				SHA: module.Branch,
-				ListOptions: github.ListOptions{
-					PerPage: 1,
-				},
-			}
-			if useHistory {
-				opts.Until = ingestTime
-			}
-			githubCommits, _, err := thirdparty.GetGithubCommits(ghCtx, owner, repo, opts)
-			if err != nil {
-				return nil, errors.Wrapf(err, "retrieving git commit for module '%s' on branch '%s'", module.Name, module.Branch)
-			}
-			if len(githubCommits) == 0 {
-				return nil, errors.Errorf("no commits found for module '%s' on branch '%s'", module.Name, module.Branch)
-			}
-			revision = githubCommits[0].GetSHA()
-			url = githubCommits[0].GetURL()
-			rule = manifest.ModuleSelectionGitHubFallback
-		}
-
-		return &manifest.Module{
-			Branch:        module.Branch,
-			Revision:      revision,
-			Repo:          repo,
-			Owner:         owner,
-			URL:           url,
-			SelectionRule: rule,
-		}, nil
-	}
-
-	ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
-
-	sha := module.Ref
-	gitCommit, err := thirdparty.GetCommitEvent(ghCtx, owner, repo, module.Ref)
+	revision, rule, err := resolveModuleRevision(ctx, owner, repo, module, requester, ingestTime)
 	if err != nil {
-		return nil, errors.Wrapf(err, "retrieving getting git commit for module '%s' with hash '%s'", module.Name, module.Ref)
+		return nil, err
 	}
-	url := gitCommit.GetURL()
-
 	return &manifest.Module{
 		Branch:        module.Branch,
-		Revision:      sha,
+		Revision:      revision,
 		Repo:          repo,
 		Owner:         owner,
-		URL:           url,
-		SelectionRule: manifest.ModuleSelectionPinnedRef,
+		URL:           thirdparty.GitHubCommitURL(owner, repo, revision),
+		SelectionRule: rule,
 	}, nil
+}
+
+// resolveModuleRevision returns the module commit to use for a version and how
+// it was chosen.
+func resolveModuleRevision(ctx context.Context, owner, repo string, module Module, requester string, ingestTime time.Time) (string, manifest.ModuleSelectionRule, error) {
+	if module.Ref != "" {
+		return module.Ref, manifest.ModuleSelectionPinnedRef, nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+
+	var until time.Time
+	if evergreen.IsPatchRequester(requester) || requester == evergreen.AdHocRequester {
+		// Patches use the current branch head, resolved with git so it doesn't
+		// depend on the GitHub API being available.
+		if sha, err := thirdparty.GitLsRemote(ctx, owner, repo, moduleBranchRef(module.Branch)); err == nil {
+			return sha, manifest.ModuleSelectionGitHubFallback, nil
+		}
+	} else {
+		// Versions aligned by ingest time use the latest module commit
+		// Evergreen had ingested by then.
+		repoRevision, err := FindLatestRepositoryRevisionByIngestTime(ctx, owner, repo, module.Branch, ingestTime)
+		if err != nil {
+			return "", "", errors.Wrapf(err, "finding latest repository revision by ingest time for module '%s' in '%s/%s'", module.Name, owner, repo)
+		}
+		if repoRevision != nil {
+			return repoRevision.Revision, manifest.ModuleSelectionLatestIngested, nil
+		}
+		until = ingestTime
+	}
+
+	githubCommits, _, err := thirdparty.GetGithubCommits(ctx, owner, repo, &github.CommitsListOptions{
+		SHA:         module.Branch,
+		Until:       until,
+		ListOptions: github.ListOptions{PerPage: 1},
+	})
+	if err != nil {
+		return "", "", errors.Wrapf(err, "retrieving git commit for module '%s' on branch '%s'", module.Name, module.Branch)
+	}
+	if len(githubCommits) == 0 {
+		return "", "", errors.Errorf("no commits found for module '%s' on branch '%s'", module.Name, module.Branch)
+	}
+	return githubCommits[0].GetSHA(), manifest.ModuleSelectionGitHubFallback, nil
+}
+
+// moduleBranchRef returns the git ref for a module branch. Modules without a
+// branch use the repo's default branch.
+func moduleBranchRef(branch string) string {
+	if branch == "" {
+		return "HEAD"
+	}
+	return "refs/heads/" + branch
 }
 
 // CreateManifest inserts a newly constructed manifest into the DB.

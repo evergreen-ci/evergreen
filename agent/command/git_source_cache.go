@@ -76,6 +76,8 @@ var (
 	sourceCacheTagRefreshTimedOutAttribute = sourceCacheAttribute("tag_refresh_timed_out")
 	sourceCacheTagTriggeredAttribute       = sourceCacheAttribute("tag_triggered")
 	sourceCacheTagRefreshAttemptsAttribute = sourceCacheAttribute("tag_refresh_attempts")
+
+	sourceCacheIslandDisconnectedAttribute = sourceCacheAttribute("pr_fetch_island_disconnected")
 )
 
 func sourceCacheAttribute(name string) string {

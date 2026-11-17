@@ -2080,13 +2080,18 @@ example:
         { "type": "xunit", "files": ["results/*.xml"] },
         { "type": "native", "files": ["results.json"] }
       ],
-      "created_at": "2026-08-12T12:00:00Z"
+      "created_at": "2026-08-12T12:00:00Z",
+      "log_dir": "virtual_task_logs/<task_id>"
     },
     "artifacts": [
       {
         "name": "test.log",
         "url": "https://bucket.s3.amazonaws.com/path",
-        "visibility": "signed"
+        "visibility": "signed",
+        "bucket": "bucket",
+        "file_key": "path",
+        "aws_key_var_name": "aws_key",
+        "aws_secret_var_name": "aws_secret"
       }
     ],
     "external_metadata": {
@@ -2115,9 +2120,25 @@ Fields:
     - `xunit`: xUnit XML (see [attach.xunit_results](#attachxunit_results)).
   - `created_at`: optional timestamp the test results were generated. Defaults
     to the current time.
+  - `log_dir`: directory (absolute or relative to the task's working
+    directory) containing the test log files referenced by `native` test
+    results' `log_info` (`log_name` and `logs_to_merge`). Those paths are
+    relative to this directory, and each referenced file is uploaded as a test
+    log for the virtual task. Multiple virtual tasks can share a `log_dir`,
+    since each only uploads the files its own results reference. Don't use a
+    directory under `build/TestLogs`, since everything there is also uploaded
+    for the runner task. Required if the results reference any log files;
+    otherwise, uploading the task's test results fails.
 - `artifacts`: optional list of artifact files to attach. Each artifact
   requires a `name` and an absolute HTTP or HTTPS `url`; `visibility` is optional
   and must be a valid artifact visibility if set (see [s3.put](#s3put) for
   visibility options and behavior).
+  - A `visibility: signed` S3 artifact must also give its location in S3
+    (`bucket` and `file_key`) and how to presign it: specify either the names of
+    the project variables holding the AWS credentials for presigning
+    (`aws_key_var_name` and `aws_secret_var_name`), or an `aws_role_arn` to
+    assume for presigning. If using project variables for presigning,
+    `presign_duration` optionally sets how long a presigned URL stays valid (in
+    Go duration syntax, e.g. `1h`).
 - `external_metadata`: optional metadata identifying the external execution
   that produced the results.
