@@ -21,8 +21,8 @@ const (
 )
 
 var (
-	githubGenerateTokenOwnerAttribute         = fmt.Sprintf("%s.owner", githubGenerateTokenAttribute)
-	githubGenerateTokenAllPermissionAttribute = fmt.Sprintf("%s.all_permissions", githubGenerateTokenAttribute)
+	githubGenerateTokenOwnerAttribute              = fmt.Sprintf("%s.owner", githubGenerateTokenAttribute)
+	githubGenerateTokenDefaultPermissionsAttribute = fmt.Sprintf("%s.used_default_permissions", githubGenerateTokenAttribute)
 )
 
 type githubGenerateToken struct {
@@ -32,7 +32,8 @@ type githubGenerateToken struct {
 	// ExpansionName is what the generated token will be saved as.
 	ExpansionName string `mapstructure:"expansion_name" plugin:"expand"`
 
-	// Permissions to grant the token. If not provided, set to nil to grant all permissions.
+	// Permissions to grant the token. If not provided, the app server restricts
+	// the token to contents: read permissions.
 	// The command can never specify to restrict all permissions- as it would
 	// be the same as not using a token.
 	Permissions *github.InstallationPermissions `mapstructure:"permissions"`
@@ -69,8 +70,8 @@ func (r *githubGenerateToken) ParseParams(params map[string]any) error {
 		if err := jsonDecoder.Decode(permissions); err != nil {
 			return errors.Wrap(err, "decoding permissions")
 		}
-		// If no keys were decoded, we assume all permissions should be granted.
-		// And we set the permissions back to nil.
+		// If no keys were decoded, leave the permissions unset so that the app
+		// server restricts the token to its default read-only permissions.
 		if len(metadata.Keys) == 0 {
 			r.Permissions = nil
 		}
@@ -98,7 +99,7 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.String(githubGenerateTokenOwnerAttribute, r.Owner),
-		attribute.Bool(githubGenerateTokenAllPermissionAttribute, r.Permissions == nil),
+		attribute.Bool(githubGenerateTokenDefaultPermissionsAttribute, r.Permissions == nil),
 	)
 
 	logger.Task().Infof(ctx, "Requesting a GitHub dynamic access token with owner:%s, permissions:%s", r.Owner, permissionsToString(r.Permissions))
@@ -120,7 +121,7 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 
 		trace.SpanFromContext(ctx).SetAttributes(
 			attribute.String(githubGenerateTokenOwnerAttribute, r.Owner),
-			attribute.Bool(githubGenerateTokenAllPermissionAttribute, r.Permissions == nil),
+			attribute.Bool(githubGenerateTokenDefaultPermissionsAttribute, r.Permissions == nil),
 		)
 		return errors.Wrap(comm.RevokeGitHubDynamicAccessToken(ctx, td, token), "revoking token")
 	})

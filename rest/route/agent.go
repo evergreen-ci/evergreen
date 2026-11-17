@@ -2053,15 +2053,17 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 // This route is used to create user-used GitHub access token for a task.
 // It returns an installation token using the task's project's GitHub app and
 // gets the intersecting permissions from the requester's permission group and the
-// permissions requested.
+// permissions requested. If no permissions are requested, the token defaults to
+// contents: read.
 // See createInstallationToken for tokens created with our own GitHub app,
 // for example to use for cloning sources and modules.
 type createGitHubDynamicAccessToken struct {
 	owner  string
 	taskID string
 
-	permissions    github.InstallationPermissions
-	allPermissions bool
+	readOnly bool
+
+	permissions github.InstallationPermissions
 
 	env evergreen.Environment
 }
@@ -2086,9 +2088,9 @@ func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 	if err != nil {
 		return errors.Wrap(err, "reading body")
 	}
-	// If the body is an empty json object or a null json object, we want to set allPermissions to true.
+	// Default to read only permissions if not specified.
 	if string(body) == "{}" || string(body) == "null" {
-		h.allPermissions = true
+		h.readOnly = true
 		return nil
 	}
 
@@ -2149,18 +2151,20 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 			Message:    "requester does not have permission to create a token",
 		})
 	}
-	intersection, err := requesterPermissionGroup.Intersection(model.GitHubDynamicTokenPermissionGroup{
-		Permissions:    h.permissions,
-		AllPermissions: h.allPermissions,
-	})
+
+	requestedPermissions := model.GitHubDynamicTokenPermissionGroup{
+		Permissions: h.permissions,
+	}
+	if h.readOnly {
+		requestedPermissions.Permissions = github.InstallationPermissions{
+			Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
+		}
+	}
+	intersection, err := requesterPermissionGroup.Intersection(requestedPermissions)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	// If all permissions is true, we want to send an empty permissions object to the GitHub API.
-	permissions := &intersection.Permissions
-	if intersection.AllPermissions {
-		permissions = nil
-	} else if intersection.HasNoPermissions() {
+	if intersection.HasNoPermissions() {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "the intersection of the project setting's requester permissions and provided permissions does not have any permissions to create a token",
@@ -2183,7 +2187,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	// wouldn't be possible to revoke them without revoking tokens that other
 	// tasks could be using.
 	token, permissions, err := githubAppAuth.CreateInstallationToken(ctx, h.owner, "", &github.InstallationTokenOptions{
-		Permissions: permissions,
+		Permissions: &intersection.Permissions,
 	})
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{

@@ -1477,7 +1477,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 			request = gimlet.SetURLVars(request, options)
 
 			require.NoError(t, handler.Parse(ctx, request))
-			require.True(t, handler.allPermissions)
+			require.True(t, handler.readOnly)
 		},
 		"ParseSucceedsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, taskID, owner)
@@ -1488,7 +1488,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 			request = gimlet.SetURLVars(request, options)
 
 			require.NoError(t, handler.Parse(ctx, request))
-			require.True(t, handler.allPermissions)
+			require.True(t, handler.readOnly)
 		},
 		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, taskID, owner)
@@ -1501,7 +1501,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 			require.NoError(t, handler.Parse(ctx, request))
 			assert.Equal(t, owner, handler.owner)
 			require.NotNil(t, handler.permissions)
-			require.False(t, handler.allPermissions)
+			assert.False(t, handler.readOnly)
 			assert.Equal(t, "read", utility.FromStringPtr(handler.permissions.Checks))
 			assert.Equal(t, "write", utility.FromStringPtr(handler.permissions.Actions))
 		},
