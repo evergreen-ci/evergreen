@@ -284,14 +284,20 @@ func DeleteServiceUser(ctx context.Context, id string) error {
 }
 
 // GetOrCreateUser upserts a user with the given userId with the given display
-// name, email, access token, and refresh token and returns the updated user. If
-// no such user exists for that userId yet, it also sets the user's API key and
-// roles.
+// name, email, access token, and refresh token and returns the updated user.
+// Empty fields leave the user's existing values unchanged. If userId is empty,
+// the user is found by email instead. If no such user exists yet, it also sets
+// the user's API key and roles.
 func GetOrCreateUser(ctx context.Context, userId, displayName, email, accessToken, refreshToken string, roles []string) (*DBUser, error) {
+	if userId == "" && email == "" {
+		return nil, errors.New("user ID or email must be specified")
+	}
+
 	u := &DBUser{}
 	env := evergreen.GetEnvironment()
-	setFields := bson.M{
-		EmailAddressKey: email,
+	setFields := bson.M{}
+	if email != "" {
+		setFields[EmailAddressKey] = email
 	}
 	if displayName != "" {
 		setFields[DispNameKey] = displayName
