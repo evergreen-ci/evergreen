@@ -730,9 +730,7 @@ that all execute independently:
      will improve the throughput of your team to complete requests,
      if patch builds are a prerequisite to committing.
    - _Git Tag Factor_ how much to weight tasks from versions triggered
-     by a git tag over other mainline builds. Git tag versions are
-     typically release builds, so this makes it possible to prioritize
-     them without changing the ordering of normal mainline tasks.
+     by a git tag over other versions.
    - _Time in Queue_ how much to weight tasks that have been waiting
      for a long period of time over tasks that have entered the queue
      more recently. This factor privileges older patches and newer
