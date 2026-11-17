@@ -1823,8 +1823,7 @@ func resolveTaskSelection(ctx context.Context, versionID string, selection TaskS
 	if hasTaskIDs {
 		return resolveTasksByIDs(ctx, versionID, selection.TaskIds)
 	}
-	tasks, err := resolveTasksByFilter(ctx, versionID, selection.Filter)
-	return tasks, []*TaskError{}, err
+	return resolveTasksByFilter(ctx, versionID, selection.Filter)
 }
 
 // taskSelectionFields are the only task fields loaded when resolving a task selection.
@@ -1856,13 +1855,13 @@ func resolveTasksByIDs(ctx context.Context, versionID string, taskIDs []string) 
 	return tasks, taskErrors, nil
 }
 
-func resolveTasksByFilter(ctx context.Context, versionID string, f *TaskSelectionFilter) ([]task.Task, error) {
+func resolveTasksByFilter(ctx context.Context, versionID string, f *TaskSelectionFilter) ([]task.Task, []*TaskError, error) {
 	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
+		return nil, nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
 	}
 	if v == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
+		return nil, nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
 	opts := task.GetTasksByVersionOptions{
 		Statuses:     getValidTaskStatusesFilter(f.Statuses),
@@ -1877,7 +1876,7 @@ func resolveTasksByFilter(ctx context.Context, versionID string, f *TaskSelectio
 	if len(opts.BaseStatuses) > 0 {
 		baseVersion, err := v.FindBaseVersion(ctx, false)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", v.Id, err.Error()))
+			return nil, nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", v.Id, err.Error()))
 		}
 		if baseVersion != nil {
 			opts.BaseVersionID = baseVersion.Id
@@ -1885,7 +1884,7 @@ func resolveTasksByFilter(ctx context.Context, versionID string, f *TaskSelectio
 	}
 	matched, _, err := task.GetTasksByVersion(ctx, versionID, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for version '%s': %s", versionID, err.Error()))
+		return nil, nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for version '%s': %s", versionID, err.Error()))
 	}
 
 	// A user can apply a filter but then unselect specific tasks. Here we remove any tasks the user has excluded.
@@ -1899,7 +1898,7 @@ func resolveTasksByFilter(ctx context.Context, versionID string, f *TaskSelectio
 			tasks = append(tasks, t)
 		}
 	}
-	return tasks, nil
+	return tasks, []*TaskError{}, nil
 }
 
 // getSchedulableTaskIDs returns the unique IDs of the tasks to schedule and an error for each given task that can't be
@@ -1918,6 +1917,7 @@ func getSchedulableTaskIDs(tasks []task.Task) ([]string, []*TaskError) {
 			continue
 		}
 		id := t.Id
+		// Use display task ID if it's an execution task.
 		if displayTaskID := utility.FromStringPtr(t.DisplayTaskId); displayTaskID != "" {
 			id = displayTaskID
 		}
