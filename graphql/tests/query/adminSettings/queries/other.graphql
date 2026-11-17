@@ -87,6 +87,10 @@ query Other {
     githubCheckRun {
       checkRunLimit
     }
+    githubRecoveryApp {
+      appId
+      privateKey
+    }
     releaseMode {
       distroMaxHostsFactor
       targetTimeSecondsOverride

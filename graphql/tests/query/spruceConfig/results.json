@@ -136,6 +136,7 @@
               "parserProject",
               "personalAccessToken",
               "preferredType",
+              "privateKey",
               "publicKey",
               "role",
               "roleARN",
