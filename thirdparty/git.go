@@ -19,6 +19,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -410,7 +411,10 @@ func GitLsRemote(ctx context.Context, owner, repo string, refs ...string) (strin
 		catcher := grip.NewBasicCatcher()
 		catcher.Add(ctx.Err())
 		catcher.Wrapf(err, "running git ls-remote in repo '%s/%s'", owner, repo)
-		return "", catcher.Resolve()
+		err = catcher.Resolve()
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return "", err
 	}
 
 	sha, ok := parseLsRemote(stdout.String(), refs)
@@ -427,7 +431,13 @@ func peeledRef(ref string) string {
 }
 
 // parseLsRemote returns the commit SHA for the first of the refs found in git
-// ls-remote output.
+// ls-remote output. Each line of the output is a SHA and a ref name separated
+// by a tab. Annotated tags have a second line with a "^{}" suffix that gives
+// the commit the tag points to, e.g.:
+//
+//	9fceb02d0ae598e95dc970b74767f19372d61af8	refs/heads/main
+//	7b2e1f3a6c9d4e8f0a1b2c3d4e5f6a7b8c9d0e1f	refs/tags/v1
+//	9fceb02d0ae598e95dc970b74767f19372d61af8	refs/tags/v1^{}
 func parseLsRemote(output string, refs []string) (string, bool) {
 	shas := map[string]string{}
 	for line := range strings.SplitSeq(output, "\n") {
