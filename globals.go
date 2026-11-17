@@ -578,6 +578,10 @@ const (
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
 	DisplayTaskNameOtelAttribute = "evergreen.display_task.name"
 
+	// VersionTagMakespanOtelSpanName is the span name for spans carrying the
+	// makespan of the tasks sharing a single tag on a version.
+	VersionTagMakespanOtelSpanName = "version-tag-makespan"
+
 	// version otel attributes
 	VersionIDOtelAttribute                    = "evergreen.version.id"
 	VersionRequesterOtelAttribute             = "evergreen.version.requester"
@@ -589,6 +593,8 @@ const (
 	VersionBranchOtelAttribute                = "evergreen.version.branch"
 	VersionHighestExecutionTaskOtelAttribute  = "evergreen.version.highest_execution_task"
 	VersionMakespanSecondsOtelAttribute       = "evergreen.version.makespan_seconds"
+	VersionTagOtelAttribute                   = "evergreen.version.tag"
+	VersionTagMakespanSecondsOtelAttribute    = "evergreen.version.tag.makespan_seconds"
 	VersionTimeTakenSecondsOtelAttribute      = "evergreen.version.time_taken_seconds"
 	VersionPRNumOtelAttribute                 = "evergreen.version.pr_num"
 	VersionDescriptionOtelAttribute           = "evergreen.version.description"

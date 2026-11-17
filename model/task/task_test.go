@@ -2162,6 +2162,71 @@ func TestGetTimeSpent(t *testing.T) {
 	assert.EqualValues(0, makespan)
 }
 
+func TestGetMakespansByTag(t *testing.T) {
+	start := time.Unix(1136239445, 0)
+	monitored := func(tag string, offset, duration time.Duration) Task {
+		return Task{
+			Tags:       []string{tag},
+			StartTime:  start.Add(offset),
+			FinishTime: start.Add(offset + duration),
+		}
+	}
+
+	t.Run("MakespanIsPerTag", func(t *testing.T) {
+		tasks := []Task{
+			monitored("foo", 0, 40*time.Minute),
+			monitored("foo", 10*time.Minute, time.Hour),
+			monitored("bar", time.Hour, 30*time.Minute),
+		}
+
+		makespans := GetMakespansByTag(tasks)
+		assert.Equal(t, map[string]time.Duration{
+			"foo": 70 * time.Minute,
+			"bar": 30 * time.Minute,
+		}, makespans)
+	})
+
+	t.Run("TasksWithSharedTagsAreGrouped", func(t *testing.T) {
+		task1 := monitored("foo", 0, time.Hour)
+		task1.Tags = append(task1.Tags, "bar")
+		task2 := monitored("bar", 90*time.Minute, 15*time.Minute)
+
+		makespans := GetMakespansByTag([]Task{task1, task2})
+		assert.Equal(t, map[string]time.Duration{
+			"foo": time.Hour,
+			"bar": 105 * time.Minute,
+		}, makespans)
+	})
+
+	t.Run("DisplayAndInvalidTasksAreExcluded", func(t *testing.T) {
+		display := monitored("foo", -time.Hour, 4*time.Hour)
+		display.DisplayOnly = true
+		unfinished := monitored("foo", -time.Hour, time.Hour)
+		unfinished.FinishTime = utility.ZeroTime
+		notStarted := monitored("foo", -time.Hour, time.Hour)
+		notStarted.StartTime = utility.ZeroTime
+		invalid := monitored("foo", 0, -time.Minute)
+
+		makespans := GetMakespansByTag([]Task{
+			monitored("foo", 0, 30*time.Minute),
+			display, unfinished, notStarted, invalid,
+		})
+		assert.Equal(t, map[string]time.Duration{"foo": 30 * time.Minute}, makespans)
+	})
+
+	t.Run("NoEligibleTasksOmitsTag", func(t *testing.T) {
+		makespans := GetMakespansByTag(nil)
+		assert.Empty(t, makespans)
+
+		notTagged := Task{
+			StartTime:  start,
+			FinishTime: start.Add(time.Hour),
+		}
+		makespans = GetMakespansByTag([]Task{notTagged})
+		assert.Empty(t, makespans)
+	})
+}
+
 func TestGetFormattedTimeSpent(t *testing.T) {
 	assert := assert.New(t)
 	referenceTime := time.Unix(1136239445, 0)

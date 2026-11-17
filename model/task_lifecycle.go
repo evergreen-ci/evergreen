@@ -1099,20 +1099,23 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 	return nil
 }
 
-// getVersionCtxForTracing returns a context with version attributes for tracing
-func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p *patch.Patch) (context.Context, error) {
+// getVersionCtxForTracing returns a context with version attributes for
+// tracing, along with the makespan of the version's tasks for each tag.
+func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p *patch.Patch) (context.Context, map[string]time.Duration, error) {
 	if v == nil {
-		return nil, errors.New("version is nil")
+		return nil, nil, errors.New("version is nil")
 	}
 
-	timeTaken, makespan, err := v.GetTimeSpent(ctx)
+	tasks, err := v.getTasksForTimeSpent(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting time spent")
+		return nil, nil, errors.Wrap(err, "getting time spent")
 	}
+	timeTaken, makespan := task.GetTimeSpent(tasks)
+	tagMakespans := task.GetMakespansByTag(tasks)
 
 	highestExecutionTask, err := v.GetHighestTaskExecution(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting highest execution task")
+		return nil, nil, errors.Wrap(err, "getting highest execution task")
 	}
 
 	attrs := []attribute.KeyValue{
@@ -1163,7 +1166,7 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p 
 	if p != nil && len(p.Triggers.ChildPatches) > 0 {
 		childVersions, err := VersionFind(ctx, db.Query(bson.M{VersionIdKey: bson.M{"$in": p.Triggers.ChildPatches}}).WithFields(VersionCostKey, VersionPredictedCostKey))
 		if err != nil {
-			return nil, errors.Wrap(err, "finding child versions for cost attributes")
+			return nil, nil, errors.Wrap(err, "finding child versions for cost attributes")
 		}
 		childPatchesCost, _ := cost.SumPerChildVersionAdjustedTotals(len(childVersions), func(i int) (actual, predicted *cost.Cost) {
 			return &childVersions[i].Cost, &childVersions[i].PredictedCost
@@ -1191,7 +1194,21 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p 
 
 	ctx = utility.ContextWithAttributes(ctx, attrs)
 
-	return ctx, nil
+	return ctx, tagMakespans, nil
+}
+
+// emitTagMakespanSpans publishes one span per task tag carrying the tag's
+// version makespan, so Honeycomb can track makespans of filtered task sets
+// without special-casing individual tags. Makespans must be computed
+// server-side because sampled task spans cannot be aggregated reliably.
+func emitTagMakespanSpans(ctx context.Context, tagMakespans map[string]time.Duration) {
+	for tag, makespan := range tagMakespans {
+		_, span := tracer.Start(ctx, evergreen.VersionTagMakespanOtelSpanName, trace.WithAttributes(
+			attribute.String(evergreen.VersionTagOtelAttribute, tag),
+			attribute.Int(evergreen.VersionTagMakespanSecondsOtelAttribute, int(makespan.Seconds())),
+		))
+		span.End()
+	}
 }
 
 // UpdateBlockedDependencies traverses the dependency graph and recursively sets
@@ -1855,13 +1872,14 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 
 	if versionStatusChanged && evergreen.IsFinishedVersionStatus(newVersionStatus) && !evergreen.IsPatchRequester(taskVersion.Requester) {
 		// only add tracing for versions, patches need to wait for child patches
-		traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, nil)
+		traceContext, tagMakespans, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, nil)
 		if err != nil {
 			return errors.Wrap(err, "getting context for tracing")
 		}
 		// use a new root span so that it logs it every time instead of only logging a small sample set as an http call span
-		_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
+		spanCtx, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
 		defer span.End()
+		emitTagMakespanSpans(spanCtx, tagMakespans)
 
 		return nil
 	}
@@ -1887,12 +1905,13 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 
 			event.LogVersionChildrenCompletionEvent(ctx, rootPatch.Id.Hex(), psu.patchFamilyFinishedCollectiveStatus, rootPatch.Author)
 
-			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, rootPatch)
+			traceContext, tagMakespans, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, rootPatch)
 			if err != nil {
 				return errors.Wrap(err, "getting context for tracing")
 			}
-			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
+			spanCtx, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
 			defer span.End()
+			emitTagMakespanSpans(spanCtx, tagMakespans)
 		}
 	}
 
