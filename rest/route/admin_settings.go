@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -36,7 +37,7 @@ func (h *adminGetHandler) Run(ctx context.Context) gimlet.Responder {
 		settings, err = evergreen.GetConfig(ctx)
 	}
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
+		return gimlet.MakeJSONInternalErrorResponder(fmt.Errorf("getting admin settings: %w", err))
 	}
 	settingsModel := model.NewConfigModel()
 
@@ -65,7 +66,7 @@ func (h *uiV2URLGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *uiV2URLGetHandler) Run(ctx context.Context) gimlet.Responder {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
+		return gimlet.MakeJSONInternalErrorResponder(fmt.Errorf("getting admin settings: %w", err))
 	}
 
 	return gimlet.NewJSONResponse(&model.APIUiV2URL{
@@ -98,7 +99,7 @@ func (h *taskLimitsGetHandler) Parse(ctx context.Context, r *http.Request) error
 func (h *taskLimitsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
+		return gimlet.MakeJSONInternalErrorResponder(fmt.Errorf("getting admin settings: %w", err))
 	}
 	taskLimits := &model.APITaskLimitsConfig{}
 	if err = taskLimits.BuildFromService(settings.TaskLimits); err != nil {
