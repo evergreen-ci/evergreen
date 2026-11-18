@@ -844,7 +844,7 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		// Insert tasks using BSON directly to avoid import cycle
 		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
 			"_id": "t1", "version": "v1", "display_only": false,
-			"cost": bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0, "on_demand_s3_artifact_put_cost": 0.05, "on_demand_s3_log_put_cost": 0.02},
+			"cost": bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0, "on_demand_s3_artifact_put_cost": 0.05, "on_demand_s3_log_put_cost": 0.02, "adjusted_engflow_cost": 0.30},
 			"predicted_cost": bson.M{
 				"on_demand_ec2_cost": 3.0, "adjusted_ec2_cost": 2.4,
 				"adjusted_s3_artifact_put_cost": 0.10, "adjusted_s3_log_put_cost": 0.04,
@@ -856,7 +856,7 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		}))
 		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
 			"_id": "t2", "version": "v1", "display_only": false,
-			"cost": bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "on_demand_s3_artifact_put_cost": 0.03, "on_demand_s3_log_put_cost": 0.01},
+			"cost": bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "on_demand_s3_artifact_put_cost": 0.03, "on_demand_s3_log_put_cost": 0.01, "adjusted_engflow_cost": 0.08},
 			"predicted_cost": bson.M{
 				"on_demand_ec2_cost": 2.0, "adjusted_ec2_cost": 1.6,
 				"adjusted_s3_artifact_put_cost": 0.20, "adjusted_s3_log_put_cost": 0.02,
@@ -871,6 +871,7 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		require.NoError(t, err)
 		assert.InDelta(t, 15.0, v.Cost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 12.0, v.Cost.AdjustedEC2Cost, 0.01)
+		assert.InDelta(t, 0.38, v.Cost.AdjustedEngFlowCost, 0.001)
 		assert.InDelta(t, 5.0, v.PredictedCost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 4.0, v.PredictedCost.AdjustedEC2Cost, 0.01)
 	})
