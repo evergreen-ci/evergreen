@@ -1,0 +1,12 @@
+mutation {
+    scheduleVersionTasks(selection: {filter: {}}, versionId: "blank_filter_version") {
+      modifiedTasks {
+        id
+        status
+      }
+      taskErrors {
+        taskId
+        reason
+      }
+    }
+}

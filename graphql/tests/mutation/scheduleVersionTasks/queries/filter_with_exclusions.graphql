@@ -1,0 +1,12 @@
+mutation {
+    scheduleVersionTasks(selection: {filter: {statuses: ["unscheduled"], excludeTaskIds: ["excluded_unscheduled_display_task"]}}, versionId: "exclusions_version") {
+      modifiedTasks {
+        id
+        status
+      }
+      taskErrors {
+        taskId
+        reason
+      }
+    }
+}
