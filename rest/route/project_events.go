@@ -12,6 +12,17 @@ import (
 	"github.com/pkg/errors"
 )
 
+func makeFetchProjectEvents() gimlet.RouteHandler {
+	return &projectEventsGet{}
+}
+
+type projectEventsGet struct {
+	Timestamp time.Time
+	Limit     int
+	Id        string
+	Url       string
+}
+
 // Factory creates an instance of the handler.
 //
 //	@Summary			Fetch a project's event log
@@ -25,17 +36,6 @@ import (
 //	@Success			200			{array}		model.APIProjectEvent
 //	@Header				200			{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."
 //	@x-pagination-type	"time-cursor"
-func makeFetchProjectEvents() gimlet.RouteHandler {
-	return &projectEventsGet{}
-}
-
-type projectEventsGet struct {
-	Timestamp time.Time
-	Limit     int
-	Id        string
-	Url       string
-}
-
 func (h *projectEventsGet) Factory() gimlet.RouteHandler {
 	return &projectEventsGet{
 		Timestamp: time.Now(),

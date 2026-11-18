@@ -12,6 +12,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+func makeFetchAdminEvents() gimlet.RouteHandler {
+	return &adminEventsGet{}
+}
+
+type adminEventsGet struct {
+	Timestamp time.Time
+	Limit     int
+	url       string
+}
+
 // Factory creates an instance of the handler.
 //
 //	@Summary			Fetch the Evergreen admin event log
@@ -24,16 +34,6 @@ import (
 //	@Success			200		{array}		model.APIAdminEvent
 //	@Header				200		{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."
 //	@x-pagination-type	"time-cursor"
-func makeFetchAdminEvents() gimlet.RouteHandler {
-	return &adminEventsGet{}
-}
-
-type adminEventsGet struct {
-	Timestamp time.Time
-	Limit     int
-	url       string
-}
-
 func (h *adminEventsGet) Factory() gimlet.RouteHandler {
 	return &adminEventsGet{
 		Timestamp: time.Now(),

@@ -190,7 +190,7 @@ func makeGetTaskLogs() *getTaskLogsHandler {
 //	@Param				print_priority	query		bool	false	"If set to true, returns log lines prefixed with their priority."
 //	@Param				paginate		query		bool	false	"If true, paginates and returns Link headers (rel=next, rel=prev) with timestamp cursors. Defaults to false."
 //	@Success			200				{string}	string
-//	@Header				200				{string}	Link	"Pagination links (rel=next and rel=prev) returned when 'paginate' is true and more log lines exist in the requested direction. Follow this header verbatim instead of constructing pagination URLs."
+//	@Header				200				{string}	Link	"Returned whenever 'paginate' is true. Always contains a rel=prev link pointing at the current page start; contains a rel=next link only when more log lines exist. Follow rel=next verbatim until it is no longer present."
 //	@x-pagination-type	"log-time-cursor"
 func (h *getTaskLogsHandler) Factory() gimlet.RouteHandler {
 	return &getTaskLogsHandler{}
@@ -255,7 +255,7 @@ func makeGetTestLogs() *getTestLogsHandler {
 //	@Param				print_priority	query		bool	false	"If set to true, returns log lines prefixed with their priority."
 //	@Param				paginate		query		bool	false	"If true, paginates and returns Link headers (rel=next, rel=prev) with timestamp cursors. Defaults to false."
 //	@Success			200				{string}	string
-//	@Header				200				{string}	Link	"Pagination links (rel=next and rel=prev) returned when 'paginate' is true and more log lines exist in the requested direction. Follow this header verbatim instead of constructing pagination URLs."
+//	@Header				200				{string}	Link	"Returned whenever 'paginate' is true. Always contains a rel=prev link pointing at the current page start; contains a rel=next link only when more log lines exist. Follow rel=next verbatim until it is no longer present."
 //	@x-pagination-type	"log-time-cursor"
 func (h *getTestLogsHandler) Factory() gimlet.RouteHandler {
 	return &getTestLogsHandler{}

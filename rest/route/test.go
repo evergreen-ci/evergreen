@@ -157,7 +157,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	var nextKey string
-	if tgh.key*tgh.limit < utility.FromIntPtr(results.Stats.FilteredCount) {
+	if (tgh.key+1)*tgh.limit < utility.FromIntPtr(results.Stats.FilteredCount) {
 		nextKey = fmt.Sprintf("%d", tgh.key+1)
 	}
 
