@@ -90,7 +90,7 @@ func (c *cacheRestore) Execute(ctx context.Context, comm client.Communicator, lo
 		}
 		switch classifyCacheDownloadErr(downloadErr) {
 		case cacheDownloadMaybeMiss:
-			logger.Task().Warningf(ctx, "cache.restore: got access-denied downloading '%s/%s', treating as a cache miss; if a cache was expected here, verify the credentials grant s3:GetObject on this path.", c.Bucket, remoteKey)
+			logger.Task().Infof(ctx, "cache.restore: no cached contents are available for this key, so the contents are being rebuilt from the original source. A cache save may run for this task or a later one, but not every task saves one.")
 			miss = true
 			return false, nil
 		case cacheDownloadMiss:
