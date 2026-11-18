@@ -248,6 +248,21 @@ func TestPlanner(t *testing.T) {
 					assert.EqualValues(t, 178, unit.sortingValueBreakdown(ctx).TotalValue)
 					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
+				t.Run("GitTagWithoutFactor", func(t *testing.T) {
+					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.GitTagRequester})
+					unit.SetDistro(&distro.Distro{})
+					assert.EqualValues(t, 181, unit.sortingValueBreakdown(ctx).TotalValue)
+					assert.EqualValues(t, 1, unit.sortingValueBreakdown(ctx).RankValueBreakdown.GitTagImpact)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
+				})
+				t.Run("GitTagWithFactor", func(t *testing.T) {
+					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.GitTagRequester})
+					unit.SetDistro(&distro.Distro{})
+					unit.distro.PlannerSettings.GitTagFactor = 25
+					assert.EqualValues(t, 205, unit.sortingValueBreakdown(ctx).TotalValue)
+					assert.EqualValues(t, 25, unit.sortingValueBreakdown(ctx).RankValueBreakdown.GitTagImpact)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
+				})
 				t.Run("LifeTimePatch", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.PatchVersionRequester, IngestTime: time.Now().Add(-10 * time.Hour)})
 					unit.SetDistro(&distro.Distro{})
@@ -560,6 +575,7 @@ func TestPlanner(t *testing.T) {
 
 func verifyRankBreakdown(t *testing.T, breakdown task.SortingValueBreakdown) {
 	totalRankValue := breakdown.RankValueBreakdown.StepbackImpact +
+		breakdown.RankValueBreakdown.GitTagImpact +
 		breakdown.RankValueBreakdown.PatchImpact +
 		breakdown.RankValueBreakdown.PatchWaitTimeImpact +
 		breakdown.RankValueBreakdown.MainlineWaitTimeImpact +

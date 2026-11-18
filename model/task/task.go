@@ -4416,6 +4416,9 @@ type RankValueBreakdown struct {
 	// StepbackImpact represents how much of the total rank value can be attributed to
 	// a task being activated by the stepback process.
 	StepbackImpact int64
+	// GitTagImpact represents how much of the total rank value can be attributed to
+	// a task being part of a version triggered by a git tag.
+	GitTagImpact int64
 	// PatchImpact represents how much of the total rank value can be attributed to a task
 	// being part of a patch.
 	PatchImpact int64
@@ -4450,6 +4453,7 @@ func (t *Task) SetSortingValueBreakdownAttributes(ctx context.Context, breakdown
 		attribute.Int64(fmt.Sprintf("%s.patch_wait_time", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.PatchWaitTimeImpact),
 		attribute.Int64(fmt.Sprintf("%s.mainline_wait_time", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.MainlineWaitTimeImpact),
 		attribute.Int64(fmt.Sprintf("%s.stepback", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.StepbackImpact),
+		attribute.Int64(fmt.Sprintf("%s.git_tag", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.GitTagImpact),
 		attribute.Int64(fmt.Sprintf("%s.num_dependents", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.NumDependentsImpact),
 		attribute.Int64(fmt.Sprintf("%s.estimated_runtime", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.EstimatedRuntimeImpact),
 		// Priority percentage values
@@ -4463,6 +4467,7 @@ func (t *Task) SetSortingValueBreakdownAttributes(ctx context.Context, breakdown
 		attribute.Float64(fmt.Sprintf("%s.commit_queue_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.CommitQueueImpact/breakdown.TotalValue*100)),
 		attribute.Float64(fmt.Sprintf("%s.mainline_wait_time_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.MainlineWaitTimeImpact/breakdown.TotalValue*100)),
 		attribute.Float64(fmt.Sprintf("%s.stepback_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.StepbackImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.git_tag_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.GitTagImpact/breakdown.TotalValue*100)),
 		attribute.Float64(fmt.Sprintf("%s.num_dependents_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.NumDependentsImpact/breakdown.TotalValue*100)),
 		attribute.Float64(fmt.Sprintf("%s.estimated_runtime_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.EstimatedRuntimeImpact/breakdown.TotalValue*100)),
 	)

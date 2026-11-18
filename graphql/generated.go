@@ -1733,6 +1733,7 @@ type ComplexityRoot struct {
 		ExpectedRuntimeFactor            func(childComplexity int) int
 		FutureHostFraction               func(childComplexity int) int
 		GenerateTaskFactor               func(childComplexity int) int
+		GitTagFactor                     func(childComplexity int) int
 		GroupVersions                    func(childComplexity int) int
 		HostAllocator                    func(childComplexity int) int
 		HostAllocatorFeedbackRule        func(childComplexity int) int
@@ -10106,6 +10107,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SchedulerConfig.GenerateTaskFactor(childComplexity), true
+	case "SchedulerConfig.gitTagFactor":
+		if e.complexity.SchedulerConfig.GitTagFactor == nil {
+			break
+		}
+
+		return e.complexity.SchedulerConfig.GitTagFactor(childComplexity), true
 	case "SchedulerConfig.groupVersions":
 		if e.complexity.SchedulerConfig.GroupVersions == nil {
 			break
@@ -20152,6 +20159,8 @@ func (ec *executionContext) fieldContext_AdminSettings_scheduler(_ context.Conte
 				return ec.fieldContext_SchedulerConfig_numDependentsFactor(ctx, field)
 			case "stepbackTaskFactor":
 				return ec.fieldContext_SchedulerConfig_stepbackTaskFactor(ctx, field)
+			case "gitTagFactor":
+				return ec.fieldContext_SchedulerConfig_gitTagFactor(ctx, field)
 			case "translateProjectConcurrencyLimit":
 				return ec.fieldContext_SchedulerConfig_translateProjectConcurrencyLimit(ctx, field)
 			case "translateProjectCacheBytesLimit":
@@ -59782,6 +59791,35 @@ func (ec *executionContext) fieldContext_SchedulerConfig_stepbackTaskFactor(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _SchedulerConfig_gitTagFactor(ctx context.Context, field graphql.CollectedField, obj *model.APISchedulerConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SchedulerConfig_gitTagFactor,
+		func(ctx context.Context) (any, error) {
+			return obj.GitTagFactor, nil
+		},
+		nil,
+		ec.marshalOInt2int64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SchedulerConfig_gitTagFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SchedulerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SchedulerConfig_translateProjectConcurrencyLimit(ctx context.Context, field graphql.CollectedField, obj *model.APISchedulerConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -90389,7 +90427,7 @@ func (ec *executionContext) unmarshalInputSchedulerConfigInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskFinder", "hostAllocator", "hostAllocatorRoundingRule", "hostAllocatorFeedbackRule", "hostsOverallocatedRule", "futureHostFraction", "cacheDurationSeconds", "targetTimeSeconds", "mergeQueueTargetTimeSeconds", "acceptableHostIdleTimeSeconds", "groupVersions", "patchFactor", "patchTimeInQueueFactor", "commitQueueFactor", "mainlineTimeInQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "numDependentsFactor", "stepbackTaskFactor", "translateProjectConcurrencyLimit", "translateProjectCacheBytesLimit", "translateProjectCacheTTLSeconds"}
+	fieldsInOrder := [...]string{"taskFinder", "hostAllocator", "hostAllocatorRoundingRule", "hostAllocatorFeedbackRule", "hostsOverallocatedRule", "futureHostFraction", "cacheDurationSeconds", "targetTimeSeconds", "mergeQueueTargetTimeSeconds", "acceptableHostIdleTimeSeconds", "groupVersions", "patchFactor", "patchTimeInQueueFactor", "commitQueueFactor", "mainlineTimeInQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "numDependentsFactor", "stepbackTaskFactor", "gitTagFactor", "translateProjectConcurrencyLimit", "translateProjectCacheBytesLimit", "translateProjectCacheTTLSeconds"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -90529,6 +90567,13 @@ func (ec *executionContext) unmarshalInputSchedulerConfigInput(ctx context.Conte
 				return it, err
 			}
 			it.StepbackTaskFactor = data
+		case "gitTagFactor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gitTagFactor"))
+			data, err := ec.unmarshalNInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GitTagFactor = data
 		case "translateProjectConcurrencyLimit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("translateProjectConcurrencyLimit"))
 			data, err := ec.unmarshalOInt2int(ctx, v)
@@ -106859,6 +106904,8 @@ func (ec *executionContext) _SchedulerConfig(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._SchedulerConfig_numDependentsFactor(ctx, field, obj)
 		case "stepbackTaskFactor":
 			out.Values[i] = ec._SchedulerConfig_stepbackTaskFactor(ctx, field, obj)
+		case "gitTagFactor":
+			out.Values[i] = ec._SchedulerConfig_gitTagFactor(ctx, field, obj)
 		case "translateProjectConcurrencyLimit":
 			out.Values[i] = ec._SchedulerConfig_translateProjectConcurrencyLimit(ctx, field, obj)
 		case "translateProjectCacheBytesLimit":

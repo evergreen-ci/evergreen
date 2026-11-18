@@ -198,6 +198,8 @@ type unitInfo struct {
 	ContainsGenerateTask bool `json:"contains_generate_task"`
 	// ContainsStepbackTask indicates if the unit contains task activated by stepback.
 	ContainsStepbackTask bool `json:"contains_stepback_task"`
+	// ContainsGitTagTask indicates if the unit contains any tasks that are part of a version triggered by a git tag.
+	ContainsGitTagTask bool `json:"contains_git_tag_task"`
 }
 
 // value computes a full SortingValueBreakdown, containing the final value by which the unit
@@ -241,6 +243,9 @@ func (u *unitInfo) computeRankValue(breakdown *task.SortingValueBreakdown) int64
 		if u.ContainsStepbackTask {
 			breakdown.RankValueBreakdown.StepbackImpact = u.Settings.GetStepbackTaskFactor()
 		}
+		if u.ContainsGitTagTask {
+			breakdown.RankValueBreakdown.GitTagImpact = u.Settings.GetGitTagFactor()
+		}
 	}
 	// Increase the value for the number of dependents, so that
 	// tasks (and units) which block other tasks run before tasks
@@ -260,6 +265,7 @@ func (u *unitInfo) computeRankValue(breakdown *task.SortingValueBreakdown) int64
 		breakdown.RankValueBreakdown.MainlineWaitTimeImpact +
 		breakdown.RankValueBreakdown.CommitQueueImpact +
 		breakdown.RankValueBreakdown.StepbackImpact +
+		breakdown.RankValueBreakdown.GitTagImpact +
 		breakdown.RankValueBreakdown.NumDependentsImpact +
 		breakdown.RankValueBreakdown.EstimatedRuntimeImpact
 }
@@ -314,6 +320,7 @@ func (unit *Unit) info(ctx context.Context) unitInfo {
 		info.ContainsNonGroupTasks = info.ContainsNonGroupTasks || t.TaskGroup == ""
 		info.ContainsGenerateTask = info.ContainsGenerateTask || t.GenerateTask
 		info.ContainsStepbackTask = info.ContainsStepbackTask || t.ActivatedBy == evergreen.StepbackTaskActivator
+		info.ContainsGitTagTask = info.ContainsGitTagTask || t.Requester == evergreen.GitTagRequester
 
 		if !t.ActivatedTime.IsZero() {
 			info.TimeInQueue += time.Since(t.ActivatedTime)
