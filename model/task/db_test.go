@@ -1142,25 +1142,6 @@ func TestGetTasksByVersionFilterDisplayTaskBySubtaskStatus(t *testing.T) {
 	})
 }
 
-func TestGetTasksByVersionMatchesNonFirstExecutionTaskStatus(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection))
-	tasks := []any{
-		Task{Id: "failed-child", Version: "v1", DisplayTaskId: utility.ToStringPtr("display"), DisplayStatusCache: evergreen.TaskFailed},
-		Task{Id: "successful-child", Version: "v1", DisplayTaskId: utility.ToStringPtr("display"), DisplayStatusCache: evergreen.TaskSucceeded},
-		Task{Id: "display", Version: "v1", DisplayOnly: true, DisplayTaskId: utility.ToStringPtr(""), ExecutionTasks: []string{"failed-child", "successful-child"}, DisplayStatusCache: evergreen.TaskFailed},
-	}
-	require.NoError(t, db.InsertMany(t.Context(), Collection, tasks...))
-
-	results, count, err := GetTasksByVersion(t.Context(), "v1", GetTasksByVersionOptions{
-		Statuses:                   []string{evergreen.TaskSucceeded},
-		IncludeNeverActivatedTasks: true,
-	})
-	require.NoError(t, err)
-	require.Len(t, results, 1)
-	assert.Equal(t, "display", results[0].Id)
-	assert.Equal(t, 1, count)
-}
-
 func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 

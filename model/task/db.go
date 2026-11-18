@@ -1961,90 +1961,27 @@ func recalculateTimeTaken() bson.M {
 func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTasksByVersion")})
 
-	deferBaseTask := opts.BaseVersionID != "" && len(opts.BaseStatuses) == 0
-	for _, sort := range opts.Sorts {
-		if sort.Key == BaseTaskStatusKey {
-			deferBaseTask = false
-		}
-	}
-	baseVersionID := opts.BaseVersionID
-	if deferBaseTask {
-		opts.BaseVersionID = ""
-	}
-	pipeline, err := getTasksByVersionPipeline(versionID, opts)
+	pipeline, err := getRootTasksPipeline(versionID, opts)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "getting tasks by version pipeline")
 	}
-	if len(opts.Sorts) > 0 {
-		sortPipeline := []bson.M{}
-
-		sortFields := bson.D{}
-		var hasIDSort bool
-		for _, singleSort := range opts.Sorts {
-			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
-				sortPipeline = append(sortPipeline, addStatusColorSort(singleSort.Key))
-				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
-			} else if singleSort.Key == TimeTakenKey {
-				sortPipeline = append(sortPipeline, recalculateTimeTaken())
-				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
-			} else {
-				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
-			}
-			if singleSort.Key == IdKey {
-				hasIDSort = true
-			}
-		}
-		// If we're not sorting by ID, we need to sort by ID as a tiebreaker to ensure a consistent sort order.
-		if !hasIDSort {
-			sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
-		}
-
-		sortPipeline = append(sortPipeline, bson.M{
-			"$sort": sortFields,
-		})
-
-		pipeline = append(pipeline, sortPipeline...)
+	baseForSelection := needsBaseForSelection(opts)
+	if baseForSelection {
+		pipeline = append(pipeline, populateBaseTaskPipeline(opts.BaseVersionID)...)
+		pipeline = append(pipeline, baseStatusFilterPipeline(opts)...)
 	}
-
-	var projection []bson.M
-	if len(opts.FieldsToProject) > 0 {
-		fieldKeys := bson.M{}
-		for _, field := range opts.FieldsToProject {
-			fieldKeys[field] = 1
-		}
-		projection = append(projection, bson.M{
-			"$project": fieldKeys,
-		})
+	resultsPipeline := sortAndPaginatePipeline(opts)
+	if opts.BaseVersionID != "" && !baseForSelection {
+		resultsPipeline = append(resultsPipeline, populateBaseTaskPipeline(opts.BaseVersionID)...)
 	}
-
-	// If there is a limit we should calculate the total count before we apply the limit and pagination
+	resultsPipeline = append(resultsPipeline, projectionPipeline(opts)...)
 	if opts.Limit > 0 {
-		paginatePipeline := []bson.M{}
-		paginatePipeline = append(paginatePipeline, bson.M{
-			"$skip": opts.Page * opts.Limit,
-		})
-		paginatePipeline = append(paginatePipeline, bson.M{
-			"$limit": opts.Limit,
-		})
-		if deferBaseTask {
-			paginatePipeline = append(paginatePipeline, populateBaseTaskPipeline(baseVersionID)...)
-		}
-		paginatePipeline = append(paginatePipeline, projection...)
-		// Use a $facet to perform separate aggregations for $count and to sort and paginate the results in the same query
-		tasksAndCountPipeline := bson.M{
-			"$facet": bson.M{
-				"count": []bson.M{
-					{"$count": "count"},
-				},
-				"tasks": paginatePipeline,
-			},
-		}
-		pipeline = append(pipeline, tasksAndCountPipeline)
+		pipeline = append(pipeline, bson.M{"$facet": bson.M{
+			"count": []bson.M{{"$count": "count"}},
+			"tasks": resultsPipeline,
+		}})
 	} else {
-		if deferBaseTask {
-			pipeline = append(pipeline, populateBaseTaskPipeline(baseVersionID)...)
-		}
-		pipeline = append(pipeline, projection...)
+		pipeline = append(pipeline, resultsPipeline...)
 	}
 
 	env := evergreen.GetEnvironment()
@@ -2087,6 +2024,81 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 	}
 
 	return results, count, nil
+}
+
+func needsBaseForSelection(opts GetTasksByVersionOptions) bool {
+	if opts.BaseVersionID == "" {
+		return false
+	}
+	if len(opts.BaseStatuses) > 0 {
+		return true
+	}
+	for _, sort := range opts.Sorts {
+		if sort.Key == BaseTaskStatusKey {
+			return true
+		}
+	}
+	return false
+}
+
+func sortAndPaginatePipeline(opts GetTasksByVersionOptions) []bson.M {
+	var pipeline []bson.M
+	if len(opts.Sorts) > 0 {
+		sortPipeline := []bson.M{}
+
+		sortFields := bson.D{}
+		var hasIDSort bool
+		for _, singleSort := range opts.Sorts {
+			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
+				sortPipeline = append(sortPipeline, addStatusColorSort(singleSort.Key))
+				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
+			} else if singleSort.Key == TimeTakenKey {
+				sortPipeline = append(sortPipeline, recalculateTimeTaken())
+				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
+			} else {
+				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
+			}
+			if singleSort.Key == IdKey {
+				hasIDSort = true
+			}
+		}
+		// If we're not sorting by ID, we need to sort by ID as a tiebreaker to ensure a consistent sort order.
+		if !hasIDSort {
+			sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
+		}
+
+		sortPipeline = append(sortPipeline, bson.M{
+			"$sort": sortFields,
+		})
+
+		pipeline = append(pipeline, sortPipeline...)
+	}
+
+	if opts.Limit > 0 {
+		if len(opts.Sorts) == 0 {
+			pipeline = append(pipeline, bson.M{"$sort": bson.M{IdKey: 1}})
+		}
+		pipeline = append(pipeline,
+			bson.M{"$skip": opts.Page * opts.Limit},
+			bson.M{"$limit": opts.Limit},
+		)
+	}
+	return pipeline
+}
+
+func projectionPipeline(opts GetTasksByVersionOptions) []bson.M {
+	var projection []bson.M
+	if len(opts.FieldsToProject) > 0 {
+		fieldKeys := bson.M{}
+		for _, field := range opts.FieldsToProject {
+			fieldKeys[field] = 1
+		}
+		projection = append(projection, bson.M{
+			"$project": fieldKeys,
+		})
+	}
+
+	return projection
 }
 
 // GetQuarantinedTestsSkippedCountByVersion returns the total number of tests
@@ -2380,7 +2392,18 @@ type GetTasksByVersionOptions struct {
 }
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
-	shouldPopulateBaseTask := opts.BaseVersionID != ""
+	pipeline, err := getRootTasksPipeline(versionID, opts)
+	if err != nil {
+		return nil, err
+	}
+	if opts.BaseVersionID != "" {
+		pipeline = append(pipeline, populateBaseTaskPipeline(opts.BaseVersionID)...)
+		pipeline = append(pipeline, baseStatusFilterPipeline(opts)...)
+	}
+	return pipeline, nil
+}
+
+func getRootTasksPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
 	match := bson.M{}
 
 	match[VersionKey] = versionID
@@ -2460,9 +2483,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 				"localField":   ExecutionTasksKey,
 				"foreignField": IdKey,
 				"pipeline": []bson.M{
-					{"$match": bson.M{DisplayStatusCacheKey: bson.M{"$in": opts.Statuses}}},
-					{"$limit": 1},
-					{"$project": bson.M{IdKey: 1}},
+					{"$project": bson.M{DisplayStatusCacheKey: 1, IdKey: 0}},
 				},
 				"as": executionTaskStatusesKey,
 			},
@@ -2471,7 +2492,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			"$match": bson.M{
 				"$or": []bson.M{
 					{DisplayStatusKey: bson.M{"$in": opts.Statuses}},
-					{bsonutil.GetDottedKeyName(executionTaskStatusesKey, "0"): bson.M{"$exists": true}},
+					{bsonutil.GetDottedKeyName(executionTaskStatusesKey, DisplayStatusCacheKey): bson.M{"$in": opts.Statuses}},
 				},
 			},
 		})
@@ -2486,18 +2507,14 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		})
 	}
 
-	if shouldPopulateBaseTask {
-		pipeline = append(pipeline, populateBaseTaskPipeline(opts.BaseVersionID)...)
-	}
-	if shouldPopulateBaseTask && len(opts.BaseStatuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
-			},
-		})
-	}
-
 	return pipeline, nil
+}
+
+func baseStatusFilterPipeline(opts GetTasksByVersionOptions) []bson.M {
+	if len(opts.BaseStatuses) == 0 {
+		return nil
+	}
+	return []bson.M{{"$match": bson.M{BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses}}}}
 }
 
 func populateBaseTaskPipeline(baseVersionID string) []bson.M {
