@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+const maxSelectedTaskIDs = 1000
+
 var taskSelectionFields = []string{
 	task.IdKey,
 	task.StatusKey,
@@ -26,6 +28,9 @@ func resolveTaskSelection(ctx context.Context, versionID string, selection TaskS
 		return nil, nil, InputValidationError.Send(ctx, "exactly one of 'taskIds' or 'filter' must be set in a task selection")
 	}
 	if hasTaskIDs {
+		if len(selection.TaskIds) > maxSelectedTaskIDs {
+			return nil, nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot select more than %d tasks by ID, use a filter instead", maxSelectedTaskIDs))
+		}
 		return resolveTasksByIDs(ctx, versionID, selection.TaskIds)
 	}
 	return resolveTasksByFilter(ctx, versionID, selection.Filter, selection.ExcludeTaskIds)

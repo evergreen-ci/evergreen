@@ -68,6 +68,11 @@ func TestResolveTaskSelection(t *testing.T) {
 				selection:   TaskSelection{TaskIds: []string{"failed1"}, Filter: failedFilter},
 				expectedErr: "exactly one of 'taskIds' or 'filter' must be set in a task selection",
 			},
+			"TooManyTaskIDsErrors": {
+				versionID:   "v1",
+				selection:   TaskSelection{TaskIds: make([]string, maxSelectedTaskIDs+1)},
+				expectedErr: "cannot select more than 1000 tasks by ID, use a filter instead",
+			},
 			"FilterOnUnknownVersionErrors": {
 				versionID:   "nonexistent",
 				selection:   TaskSelection{Filter: failedFilter},
