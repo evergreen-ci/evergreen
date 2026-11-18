@@ -24,9 +24,28 @@ func (r *projectResolver) Commits(ctx context.Context, obj *restModel.APIProject
 	}
 
 	maxOrderOpt := utility.FromIntPtr(options.MaxOrder)
+	if maxOrderOpt < 0 {
+		return nil, InputValidationError.Send(ctx, "max order must be non-negative")
+	}
+	if maxOrderOpt == 0 {
+		mostRecentVersion, err := model.VersionFindOneSecondary(ctx, model.VersionByMostRecentSystemRequester(projectID).WithFields(model.VersionRevisionOrderNumberKey))
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent commit version: %s", err.Error()))
+		}
+		if mostRecentVersion == nil {
+			return &ProjectCommits{
+				Versions: []*model.Version{},
+				Pagination: &ProjectCommitsPagination{
+					HasNextPage: false,
+				},
+			}, nil
+		}
+		maxOrderOpt = mostRecentVersion.RevisionOrderNumber + 1
+	}
 
 	opts := model.WaterfallOptions{
 		Limit:      limit + 1,
+		MinOrder:   max(0, maxOrderOpt-model.MaxWaterfallVersionLimit-1),
 		MaxOrder:   maxOrderOpt,
 		Requesters: []string{evergreen.RepotrackerVersionRequester},
 	}
