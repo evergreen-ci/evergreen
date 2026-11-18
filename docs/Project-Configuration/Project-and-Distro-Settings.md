@@ -198,15 +198,29 @@ users basic access to this project.
 Admins can store project variables that can be referenced in the config
 file via an expansion.
 
+Project variables have three tiers, which differ in who can see the value
+and which tasks receive it:
+
+| Tier | Visibility | Delivered to | Typical uses |
+|------|-----------|--------------|--------------|
+| Public | Visible to anyone who can view the project | Every task, including patches and PRs | Non-sensitive configuration, feature flags, URLs |
+| Private | Redacted from the UI, API responses, and task logs | Every task, including patches and PRs from non-admin users | Values that should not appear in logs or the UI but are safe to expose to any patch, such as internal identifiers or low-sensitivity tokens |
+| Admin only | Redacted like private variables | Only tasks from mainline commits, periodic builds, or trigger versions, or tasks activated by a project admin | Values that should be limited to trusted builds, such as release signing credentials or cloud credentials |
+
+Note that the private tier controls *display*: it hides the value from
+logs, the UI, and API responses, but the plaintext value is still delivered
+in full to the task environment of any patch on the project. The admin-only
+tier is the one that changes which tasks receive the value.
+
 Options:
 
 - Checking **private** makes the variable redacted so the value won't be
-  visible on the projects page or by API routes. Note that private
+  visible on the projects page or by API routes. Private variables will
+  also be redacted from task logs, and after saving them, private
+  variables cannot be retrieved. Note that private
   variables may still be accessible on [debug spawn hosts](../Hosts/Debug-Spawn-Hosts.md) by users,
   since these hosts run tasks on behalf of the user, which requires fetching expansions as part of that
   process. For values that must not be accessible even on debug hosts, use **admin only** instead, as these will be restricted even on debug spawn hosts.
-  Additionally, private variables will be redacted from task logs. After
-  saving them, private variables cannot be retrieved.
 - Checking **admin only** restricts the variable so it is only available
   to tasks in mainline commits, periodic builds, or trigger versions, or
   to tasks activated by a project admin.
