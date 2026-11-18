@@ -1961,6 +1961,16 @@ func recalculateTimeTaken() bson.M {
 func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTasksByVersion")})
 
+	deferBaseTask := opts.BaseVersionID != "" && len(opts.BaseStatuses) == 0
+	for _, sort := range opts.Sorts {
+		if sort.Key == BaseTaskStatusKey {
+			deferBaseTask = false
+		}
+	}
+	baseVersionID := opts.BaseVersionID
+	if deferBaseTask {
+		opts.BaseVersionID = ""
+	}
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "getting tasks by version pipeline")
@@ -1996,12 +2006,13 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 		pipeline = append(pipeline, sortPipeline...)
 	}
 
+	var projection []bson.M
 	if len(opts.FieldsToProject) > 0 {
 		fieldKeys := bson.M{}
 		for _, field := range opts.FieldsToProject {
 			fieldKeys[field] = 1
 		}
-		pipeline = append(pipeline, bson.M{
+		projection = append(projection, bson.M{
 			"$project": fieldKeys,
 		})
 	}
@@ -2015,6 +2026,10 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 		paginatePipeline = append(paginatePipeline, bson.M{
 			"$limit": opts.Limit,
 		})
+		if deferBaseTask {
+			paginatePipeline = append(paginatePipeline, populateBaseTaskPipeline(baseVersionID)...)
+		}
+		paginatePipeline = append(paginatePipeline, projection...)
 		// Use a $facet to perform separate aggregations for $count and to sort and paginate the results in the same query
 		tasksAndCountPipeline := bson.M{
 			"$facet": bson.M{
@@ -2025,6 +2040,11 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 			},
 		}
 		pipeline = append(pipeline, tasksAndCountPipeline)
+	} else {
+		if deferBaseTask {
+			pipeline = append(pipeline, populateBaseTaskPipeline(baseVersionID)...)
+		}
+		pipeline = append(pipeline, projection...)
 	}
 
 	env := evergreen.GetEnvironment()
@@ -2063,7 +2083,7 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 	}
 
 	if len(results) == 0 {
-		return nil, 0, nil
+		return nil, count, nil
 	}
 
 	return results, count, nil
@@ -2363,11 +2383,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	shouldPopulateBaseTask := opts.BaseVersionID != ""
 	match := bson.M{}
 
-	if shouldPopulateBaseTask {
-		match[VersionKey] = bson.M{"$in": []string{versionID, opts.BaseVersionID}}
-	} else {
-		match[VersionKey] = versionID
-	}
+	match[VersionKey] = versionID
 
 	// Filter on task name if it exists
 	nonEmptyTaskNames := utility.FilterSlice(opts.TaskNames, func(s string) bool { return s != "" })
@@ -2376,6 +2392,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		taskNamesAsRegex := strings.Join(nonEmptyTaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
+
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
 	if !opts.IncludeNeverActivatedTasks {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
@@ -2433,102 +2450,6 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		},
 	})
 
-	if shouldPopulateBaseTask {
-		// First group by variant and task name to group all tasks and their base tasks together
-		pipeline = append(pipeline, bson.M{
-			"$group": bson.M{
-				"_id": bson.M{
-					BuildVariantKey: "$" + BuildVariantKey,
-					DisplayNameKey:  "$" + DisplayNameKey,
-				},
-				"tasks": bson.M{
-					"$push": "$$ROOT",
-				},
-			},
-		})
-		// Separate the root task and base task into separate arrays
-		pipeline = append(pipeline, bson.M{
-			"$addFields": bson.M{
-				"root_task": bson.M{
-					"$filter": bson.M{
-						"input": "$tasks",
-						"as":    "task",
-						"cond": bson.M{
-							"$eq": []string{"$$task." + VersionKey, versionID},
-						},
-					},
-				},
-				"base_task": bson.M{
-					"$filter": bson.M{
-						"input": "$tasks",
-						"as":    "task",
-						"cond": bson.M{
-							"$eq": []string{"$$task." + VersionKey, opts.BaseVersionID},
-						},
-					},
-				},
-			},
-		})
-
-		// Project out the the tasks array since it is no longer needed
-		pipeline = append(pipeline, bson.M{
-			"$project": bson.M{
-				"tasks": 0,
-			},
-		})
-
-		// Unwind the root task and base task arrays so that each document is a single task
-		pipeline = append(pipeline, bson.M{
-			"$addFields": bson.M{
-				"root_task": bson.M{
-					"$first": "$root_task",
-				},
-				"base_task": bson.M{
-					"$first": "$base_task",
-				},
-			},
-		})
-
-		// Ensure that the root task is not nil if it is the task does not exist in the current version
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				"root_task": bson.M{
-					"$exists": true,
-				},
-			},
-		})
-
-		// Include the base task in the root task
-		pipeline = append(pipeline, bson.M{
-			"$addFields": bson.M{
-				"root_task": bson.M{
-					"base_task": "$base_task",
-				},
-			},
-		})
-
-		// Use display status from the base task as its status
-		pipeline = append(pipeline, bson.M{
-			"$addFields": bson.M{
-				bsonutil.GetDottedKeyName("root_task", BaseTaskStatusKey): "$" + bsonutil.GetDottedKeyName("root_task", BaseTaskKey, DisplayStatusKey),
-			},
-		})
-
-		// Replace the root document with the task
-		pipeline = append(pipeline, bson.M{
-			"$replaceRoot": bson.M{
-				"newRoot": "$root_task",
-			},
-		})
-
-		// Sort the tasks by their _id to ensure that they are in the same order as the original tasks
-		pipeline = append(pipeline, bson.M{
-			"$sort": bson.M{
-				"_id": 1,
-			},
-		})
-	}
-
 	if len(opts.Statuses) > 0 && !opts.IncludeExecutionTasks {
 		// A display task should be included when its own display status matches the
 		// filter or when any of its execution tasks matches.
@@ -2539,7 +2460,9 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 				"localField":   ExecutionTasksKey,
 				"foreignField": IdKey,
 				"pipeline": []bson.M{
-					{"$project": bson.M{DisplayStatusCacheKey: 1, "_id": 0}},
+					{"$match": bson.M{DisplayStatusCacheKey: bson.M{"$in": opts.Statuses}}},
+					{"$limit": 1},
+					{"$project": bson.M{IdKey: 1}},
 				},
 				"as": executionTaskStatusesKey,
 			},
@@ -2548,7 +2471,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			"$match": bson.M{
 				"$or": []bson.M{
 					{DisplayStatusKey: bson.M{"$in": opts.Statuses}},
-					{bsonutil.GetDottedKeyName(executionTaskStatusesKey, DisplayStatusCacheKey): bson.M{"$in": opts.Statuses}},
+					{bsonutil.GetDottedKeyName(executionTaskStatusesKey, "0"): bson.M{"$exists": true}},
 				},
 			},
 		})
@@ -2563,6 +2486,9 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		})
 	}
 
+	if shouldPopulateBaseTask {
+		pipeline = append(pipeline, populateBaseTaskPipeline(opts.BaseVersionID)...)
+	}
 	if shouldPopulateBaseTask && len(opts.BaseStatuses) > 0 {
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{
@@ -2572,6 +2498,30 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 
 	return pipeline, nil
+}
+
+func populateBaseTaskPipeline(baseVersionID string) []bson.M {
+	return []bson.M{
+		{"$lookup": bson.M{
+			"from": Collection,
+			"let":  bson.M{"variant": "$" + BuildVariantKey, "name": "$" + DisplayNameKey},
+			"pipeline": []bson.M{
+				{"$match": bson.M{
+					VersionKey: baseVersionID,
+					"$expr": bson.M{"$and": bson.A{
+						bson.M{"$eq": bson.A{"$" + BuildVariantKey, "$$variant"}},
+						bson.M{"$eq": bson.A{"$" + DisplayNameKey, "$$name"}},
+					}},
+				}},
+				{"$sort": bson.M{IdKey: 1}},
+				{"$limit": 1},
+				{"$project": bson.M{IdKey: 1, "status": "$" + DisplayStatusCacheKey}},
+			},
+			"as": "__base_tasks",
+		}},
+		{"$set": bson.M{BaseTaskKey: bson.M{"$first": "$__base_tasks"}}},
+		{"$unset": "__base_tasks"},
+	}
 }
 
 // FindAllDependencyTasksToModify finds tasks that depend on the

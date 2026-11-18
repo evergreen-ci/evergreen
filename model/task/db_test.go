@@ -1142,6 +1142,25 @@ func TestGetTasksByVersionFilterDisplayTaskBySubtaskStatus(t *testing.T) {
 	})
 }
 
+func TestGetTasksByVersionMatchesNonFirstExecutionTaskStatus(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	tasks := []any{
+		Task{Id: "failed-child", Version: "v1", DisplayTaskId: utility.ToStringPtr("display"), DisplayStatusCache: evergreen.TaskFailed},
+		Task{Id: "successful-child", Version: "v1", DisplayTaskId: utility.ToStringPtr("display"), DisplayStatusCache: evergreen.TaskSucceeded},
+		Task{Id: "display", Version: "v1", DisplayOnly: true, DisplayTaskId: utility.ToStringPtr(""), ExecutionTasks: []string{"failed-child", "successful-child"}, DisplayStatusCache: evergreen.TaskFailed},
+	}
+	require.NoError(t, db.InsertMany(t.Context(), Collection, tasks...))
+
+	results, count, err := GetTasksByVersion(t.Context(), "v1", GetTasksByVersionOptions{
+		Statuses:                   []string{evergreen.TaskSucceeded},
+		IncludeNeverActivatedTasks: true,
+	})
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, "display", results[0].Id)
+	assert.Equal(t, 1, count)
+}
+
 func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
@@ -1313,6 +1332,47 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 	assert.Equal(t, "t1", tasks[0].BaseTask.Id)
 	assert.Equal(t, t1.Status, tasks[0].BaseTask.Status)
 
+}
+
+func TestGetTasksByVersionPopulatesBaseTasksAroundPagination(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	for _, task := range []Task{
+		{Id: "a", Version: "root", BuildVariant: "variant", DisplayName: "a", DisplayStatusCache: evergreen.TaskSucceeded},
+		{Id: "b", Version: "root", BuildVariant: "variant", DisplayName: "b", DisplayStatusCache: evergreen.TaskSucceeded},
+		{Id: "base-a", Version: "base", BuildVariant: "variant", DisplayName: "a", DisplayStatusCache: evergreen.TaskSucceeded},
+		{Id: "base-b", Version: "base", BuildVariant: "variant", DisplayName: "b", DisplayStatusCache: evergreen.TaskFailed},
+	} {
+		task.DisplayTaskId = utility.ToStringPtr("")
+		require.NoError(t, task.Insert(t.Context()))
+	}
+	for _, test := range []struct {
+		name  string
+		opts  GetTasksByVersionOptions
+		id    string
+		count int
+	}{
+		{"ResponseOnlyPopulatesSelectedPage", GetTasksByVersionOptions{Limit: 1, Page: 1, Sorts: []TasksSortOrder{{Key: IdKey, Order: 1}}}, "b", 2},
+		{"BaseFilterAppliesBeforeLimit", GetTasksByVersionOptions{Limit: 1, BaseStatuses: []string{evergreen.TaskFailed}}, "b", 1},
+		{"BaseSortAppliesBeforeLimit", GetTasksByVersionOptions{Limit: 1, Sorts: []TasksSortOrder{{Key: BaseTaskStatusKey, Order: 1}}}, "b", 2},
+		{"EmptyPagePreservesCount", GetTasksByVersionOptions{Limit: 1, Page: 2}, "", 2},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			opts := test.opts
+			opts.BaseVersionID = "base"
+			opts.IncludeNeverActivatedTasks = true
+			tasks, count, err := GetTasksByVersion(t.Context(), "root", opts)
+			require.NoError(t, err)
+			assert.Equal(t, test.count, count)
+			if test.id == "" {
+				assert.Empty(t, tasks)
+				return
+			}
+			require.Len(t, tasks, 1)
+			assert.Equal(t, test.id, tasks[0].Id)
+			assert.Equal(t, "base-"+test.id, tasks[0].BaseTask.Id)
+			assert.Equal(t, evergreen.TaskFailed, tasks[0].BaseTask.Status)
+		})
+	}
 }
 
 func TestGetTasksByVersionErrorHandling(t *testing.T) {
