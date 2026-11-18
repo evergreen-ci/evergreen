@@ -207,7 +207,7 @@ func (apiPatch *APIPatch) GetIdentifier(ctx context.Context) {
 	if utility.FromStringPtr(apiPatch.ProjectId) != "" {
 		identifier, err := model.GetIdentifierForProjectSecondary(ctx, utility.FromStringPtr(apiPatch.ProjectId))
 
-		grip.ErrorWhen(ctx, !errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
+		grip.ErrorWhen(ctx, !errors.Is(err, context.Canceled), message.WrapError(err, message.Fields{
 			"message":  "could not get identifier for project",
 			"project":  apiPatch.ProjectId,
 			"patch_id": utility.FromStringPtr(apiPatch.Id),
@@ -325,7 +325,7 @@ func (apiPatch *APIPatch) populateCostFromVersion(ctx context.Context, versionID
 	}
 	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
-		grip.ErrorWhen(ctx, !errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
+		grip.ErrorWhen(ctx, !errors.Is(err, context.Canceled), message.WrapError(err, message.Fields{
 			"message":  "could not load version for patch cost",
 			"version":  versionID,
 			"patch_id": utility.FromStringPtr(apiPatch.Id),

@@ -72,7 +72,9 @@ type ServiceFlags struct {
 	APIRateLimiterDisabled               bool `bson:"api_rate_limiter_disabled" json:"api_rate_limiter_disabled"`
 	GraphQLComplexityLimiterDisabled     bool `bson:"graphql_complexity_limiter_disabled" json:"graphql_complexity_limiter_disabled"`
 	GraphQLComplexityRateLimiterDisabled bool `bson:"graphql_complexity_rate_limiter_disabled" json:"graphql_complexity_rate_limiter_disabled"`
-	VirtualTasksDisabled                 bool `bson:"virtual_tasks_disabled" json:"virtual_tasks_disabled"`
+
+	VirtualTasksDisabled       bool `bson:"virtual_tasks_disabled" json:"virtual_tasks_disabled"`
+	GitHubTokenReadOnlyEnabled bool `bson:"github_token_read_only_enabled" json:"github_token_read_only_enabled"`
 }
 
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
@@ -132,6 +134,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			liveArtifactCredentialsDisabledKey:      c.LiveArtifactCredentialsDisabled,
 			taskQueueAutoUnscheduleDisabledKey:      c.TaskQueueAutoUnscheduleDisabled,
 			virtualTasksDisabledKey:                 c.VirtualTasksDisabled,
+			githubTokenReadOnlyEnabledKey:           c.GitHubTokenReadOnlyEnabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

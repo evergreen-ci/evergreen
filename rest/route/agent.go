@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
@@ -33,6 +34,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -267,7 +269,7 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
+		return gimlet.MakeJSONInternalErrorResponder(fmt.Errorf("getting admin settings: %w", err))
 	}
 	maxDailyAutoRestarts := settings.TaskLimits.MaxDailyAutomaticRestarts
 	if err = projectRef.CheckAndUpdateAutoRestartLimit(ctx, maxDailyAutoRestarts); err != nil {
@@ -2053,15 +2055,17 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 // This route is used to create user-used GitHub access token for a task.
 // It returns an installation token using the task's project's GitHub app and
 // gets the intersecting permissions from the requester's permission group and the
-// permissions requested.
+// permissions requested. If no permissions are requested, the token defaults to
+// contents: read.
 // See createInstallationToken for tokens created with our own GitHub app,
 // for example to use for cloning sources and modules.
 type createGitHubDynamicAccessToken struct {
 	owner  string
 	taskID string
 
-	permissions    github.InstallationPermissions
-	allPermissions bool
+	noPermissionsRequested bool
+
+	permissions github.InstallationPermissions
 
 	env evergreen.Environment
 }
@@ -2086,9 +2090,8 @@ func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 	if err != nil {
 		return errors.Wrap(err, "reading body")
 	}
-	// If the body is an empty json object or a null json object, we want to set allPermissions to true.
 	if string(body) == "{}" || string(body) == "null" {
-		h.allPermissions = true
+		h.noPermissionsRequested = true
 		return nil
 	}
 
@@ -2149,22 +2152,30 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 			Message:    "requester does not have permission to create a token",
 		})
 	}
-	intersection, err := requesterPermissionGroup.Intersection(model.GitHubDynamicTokenPermissionGroup{
-		Permissions:    h.permissions,
-		AllPermissions: h.allPermissions,
-	})
+
+	requestedPermissions := model.GitHubDynamicTokenPermissionGroup{
+		Permissions: h.permissions,
+	}
+	if h.noPermissionsRequested {
+		flags, err := evergreen.GetServiceFlags(ctx)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags"))
+		}
+		requestedPermissions = h.defaultGitHubTokenPermissions(flags.GitHubTokenReadOnlyEnabled)
+	}
+	intersection, err := requesterPermissionGroup.Intersection(requestedPermissions)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	// If all permissions is true, we want to send an empty permissions object to the GitHub API.
-	permissions := &intersection.Permissions
-	if intersection.AllPermissions {
-		permissions = nil
-	} else if intersection.HasNoPermissions() {
+	if intersection.HasNoPermissions() {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "the intersection of the project setting's requester permissions and provided permissions does not have any permissions to create a token",
 		})
+	}
+	permissions := &intersection.Permissions
+	if intersection.AllPermissions {
+		permissions = nil
 	}
 
 	// The token also should use the project's GitHub app.
@@ -2207,10 +2218,38 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("no installation token returned for '%s'", h.owner))
 	}
 
+	if h.noPermissionsRequested {
+		lines := []log.LogLine{{
+			Priority:  level.Warning,
+			Timestamp: time.Now().UnixNano(),
+			Data:      "No permissions were specified for the GitHub token, so it uses Evergreen's default permissions.",
+		}}
+		if err := task.AppendTaskLogs(ctx, t, task.TaskLogTypeTask, lines); err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message": "appending GitHub token permissions warning to task log",
+				"task_id": t.Id,
+			}))
+		}
+	}
+
 	return gimlet.NewJSONResponse(&apimodels.Token{
 		Token:       token,
 		Permissions: permissions,
 	})
+}
+
+func (h *createGitHubDynamicAccessToken) defaultGitHubTokenPermissions(gitHubTokenReadOnlyEnabled bool) model.GitHubDynamicTokenPermissionGroup {
+	if gitHubTokenReadOnlyEnabled {
+		return model.GitHubDynamicTokenPermissionGroup{
+			Permissions: github.InstallationPermissions{
+				Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
+			},
+		}
+	}
+	return model.GitHubDynamicTokenPermissionGroup{
+		Permissions:    h.permissions,
+		AllPermissions: true,
+	}
 }
 
 // DELETE /rest/v2/task/{task_id}/github_dynamic_access_token
