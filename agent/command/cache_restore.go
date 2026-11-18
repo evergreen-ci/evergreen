@@ -90,7 +90,7 @@ func (c *cacheRestore) Execute(ctx context.Context, comm client.Communicator, lo
 		}
 		switch classifyCacheDownloadErr(downloadErr) {
 		case cacheDownloadMaybeMiss:
-			logger.Task().Infof(ctx, "cache.restore: no cached contents are available for this key, so the contents are being rebuilt from the original source. A cache save may run for this task or a later one, but not every task saves one.")
+			logger.Task().Infof(ctx, "cache.restore: no cached contents are available for this key yet, so the contents are being rebuilt from the original source.")
 			miss = true
 			return false, nil
 		case cacheDownloadMiss:
