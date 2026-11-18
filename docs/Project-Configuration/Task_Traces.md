@@ -54,7 +54,7 @@ When a version finishes, Evergreen publishes one span named
 (the time between the earliest task start and the latest task finish) of the
 tasks that share that tag. This makes it possible to track the makespan of a
 filtered set of tasks (for example, a workload tagged as high-value) with a
-Honeycomb query on the tag, without Evergreen special-casing individual tags.
+Honeycomb query on the tag.
 
 Each span carries these attributes (in addition to all the usual version
 attributes such as `evergreen.version.id` and `evergreen.project.identifier`):

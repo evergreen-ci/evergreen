@@ -4107,13 +4107,11 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 // Display-only tasks and tasks with missing or invalid timings are excluded.
 // Tags with no eligible task are omitted.
 func GetMakespansByTag(tasks []Task) map[string]time.Duration {
-	earliestStarts := make(map[string]time.Time)
-	latestFinishes := make(map[string]time.Time)
+	earliestStarts := map[string]time.Time{}
+	latestFinishes := map[string]time.Time{}
 	for _, t := range tasks {
-		if t.DisplayOnly ||
-			utility.IsZeroTime(t.StartTime) ||
-			utility.IsZeroTime(t.FinishTime) ||
-			t.FinishTime.Before(t.StartTime) {
+		if t.DisplayOnly || utility.IsZeroTime(t.StartTime) ||
+			utility.IsZeroTime(t.FinishTime) || t.FinishTime.Before(t.StartTime) {
 			continue
 		}
 		for _, tag := range t.Tags {
