@@ -1147,6 +1147,7 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p 
 			attribute.Float64(evergreen.VersionAdjustedS3LogPutCostOtelAttribute, v.Cost.AdjustedS3LogPutCost),
 			attribute.Float64(evergreen.VersionOnDemandS3LogStorageCostOtelAttribute, v.Cost.OnDemandS3LogStorageCost),
 			attribute.Float64(evergreen.VersionAdjustedS3LogStorageCostOtelAttribute, v.Cost.AdjustedS3LogStorageCost),
+			attribute.Float64(evergreen.VersionAdjustedEngFlowCostOtelAttribute, v.Cost.AdjustedEngFlowCost),
 			attribute.Float64(evergreen.VersionTotalAdjustedCostOtelAttribute, v.Cost.AdjustedTotal()),
 		)
 	}

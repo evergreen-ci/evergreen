@@ -400,6 +400,7 @@ type Cost {
   adjustedS3ArtifactStorageCost: Float
   adjustedS3LogPutCost: Float
   adjustedS3LogStorageCost: Float
+  adjustedEngFlowCost: Float
 }
 
 input QuarantineTestInput {

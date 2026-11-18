@@ -46,14 +46,15 @@ func TestCostAdjustedTotal(t *testing.T) {
 		AdjustedS3LogPutCost:          0.2,
 		AdjustedS3ArtifactStorageCost: 0.3,
 		AdjustedS3LogStorageCost:      0.4,
+		AdjustedEngFlowCost:           0.5,
 		OnDemandEC2Cost:               100,
 	}
-	assert.InDelta(t, 8.0, c.AdjustedTotal(), 1e-9)
+	assert.InDelta(t, 8.5, c.AdjustedTotal(), 1e-9)
 
 	withChildren := c
 	withChildren.ChildPatchesTotalCost = 2
-	assert.InDelta(t, 8.0, withChildren.AdjustedTotal(), 1e-9)
-	assert.InDelta(t, 10.0, withChildren.AdjustedTotal()+withChildren.ChildPatchesTotalCost, 1e-9)
+	assert.InDelta(t, 8.5, withChildren.AdjustedTotal(), 1e-9)
+	assert.InDelta(t, 10.5, withChildren.AdjustedTotal()+withChildren.ChildPatchesTotalCost, 1e-9)
 }
 
 func TestRoundCost(t *testing.T) {
@@ -94,6 +95,11 @@ func TestCostIsZero(t *testing.T) {
 
 	t.Run("NonZeroAdjusted", func(t *testing.T) {
 		cost := Cost{AdjustedEC2Cost: 1.0}
+		assert.False(t, cost.IsZero())
+	})
+
+	t.Run("NonZeroEngFlow", func(t *testing.T) {
+		cost := Cost{AdjustedEngFlowCost: 0.38}
 		assert.False(t, cost.IsZero())
 	})
 

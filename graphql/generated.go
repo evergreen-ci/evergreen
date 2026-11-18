@@ -420,6 +420,7 @@ type ComplexityRoot struct {
 		AdjustedEBSStorageCost        func(childComplexity int) int
 		AdjustedEBSThroughputCost     func(childComplexity int) int
 		AdjustedEC2Cost               func(childComplexity int) int
+		AdjustedEngFlowCost           func(childComplexity int) int
 		AdjustedS3ArtifactPutCost     func(childComplexity int) int
 		AdjustedS3ArtifactStorageCost func(childComplexity int) int
 		AdjustedS3LogPutCost          func(childComplexity int) int
@@ -4242,6 +4243,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Cost.AdjustedEC2Cost(childComplexity), true
+	case "Cost.adjustedEngFlowCost":
+		if e.complexity.Cost.AdjustedEngFlowCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.AdjustedEngFlowCost(childComplexity), true
 	case "Cost.adjustedS3ArtifactPutCost":
 		if e.complexity.Cost.AdjustedS3ArtifactPutCost == nil {
 			break
@@ -24979,6 +24986,35 @@ func (ec *executionContext) _Cost_adjustedS3LogStorageCost(ctx context.Context, 
 }
 
 func (ec *executionContext) fieldContext_Cost_adjustedS3LogStorageCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_adjustedEngFlowCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_adjustedEngFlowCost,
+		func(ctx context.Context) (any, error) {
+			return obj.AdjustedEngFlowCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_adjustedEngFlowCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Cost",
 		Field:      field,
@@ -67401,6 +67437,8 @@ func (ec *executionContext) fieldContext_Task_taskCost(_ context.Context, field 
 				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
 			case "adjustedS3LogStorageCost":
 				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
+			case "adjustedEngFlowCost":
+				return ec.fieldContext_Cost_adjustedEngFlowCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -67450,6 +67488,8 @@ func (ec *executionContext) fieldContext_Task_predictedTaskCost(_ context.Contex
 				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
 			case "adjustedS3LogStorageCost":
 				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
+			case "adjustedEngFlowCost":
+				return ec.fieldContext_Cost_adjustedEngFlowCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -76900,6 +76940,8 @@ func (ec *executionContext) fieldContext_Version_cost(_ context.Context, field g
 				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
 			case "adjustedS3LogStorageCost":
 				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
+			case "adjustedEngFlowCost":
+				return ec.fieldContext_Cost_adjustedEngFlowCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -77459,6 +77501,8 @@ func (ec *executionContext) fieldContext_Version_predictedCost(_ context.Context
 				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
 			case "adjustedS3LogStorageCost":
 				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
+			case "adjustedEngFlowCost":
+				return ec.fieldContext_Cost_adjustedEngFlowCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -95643,6 +95687,8 @@ func (ec *executionContext) _Cost(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Cost_adjustedS3LogPutCost(ctx, field, obj)
 		case "adjustedS3LogStorageCost":
 			out.Values[i] = ec._Cost_adjustedS3LogStorageCost(ctx, field, obj)
+		case "adjustedEngFlowCost":
+			out.Values[i] = ec._Cost_adjustedEngFlowCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
