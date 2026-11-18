@@ -47,7 +47,7 @@
     },
     {
       "_id": "excluded_unscheduled_display_task",
-      "version": "exclusions_version",
+      "version": "filter_with_exclusions_version",
       "branch": "mci",
       "build_id": "some_thang",
       "distro": "distro",
