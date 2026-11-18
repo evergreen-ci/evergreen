@@ -3,6 +3,8 @@ input WaterfallOptions {
   "Return all builds and tasks for each matching version instead of applying the waterfall filters to them."
   includeAllBuildsAndTasks: Boolean = true
   limit: Int = 5
+  "Max active versions to return to the client, between 1 and 300. Mostly used to allow smaller tests."
+  maxVersions: Int = 300
   "Return versions with an order greater than minOrder. Used for paginating backward."
   minOrder: Int
   "Return versions with an order lower than maxOrder. Used for paginating forward."

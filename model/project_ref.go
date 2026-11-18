@@ -822,6 +822,15 @@ func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 	// Ensure that any new project is originally explicitly disabled and set to private.
 	p.Enabled = false
 
+	// Authorize the repo attachment before writing anything
+	var repoRef *RepoRef
+	if p.UseRepoSettings() {
+		var err error
+		if repoRef, err = p.findRepoRefForAttachment(ctx, creator); err != nil {
+			return err
+		}
+	}
+
 	// if a hidden project exists for this configuration, use that ID
 	if p.Owner != "" && p.Repo != "" && p.Branch != "" {
 		hidden, err := FindHiddenProjectRefByOwnerRepoAndBranch(ctx, p.Owner, p.Repo, p.Branch)
@@ -833,6 +842,26 @@ func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 			err := p.Replace(ctx)
 			if err != nil {
 				return errors.Wrapf(err, "upserting project ref '%s'", hidden.Id)
+			}
+			if err := hidden.RemoveFromRepoScope(ctx); err != nil {
+				return errors.Wrap(err, "removing hidden project from repo scopes")
+			}
+			if p.UseRepoSettings() {
+				if err := p.addToRepoScope(ctx, repoRef, creator); err != nil {
+					return errors.Wrap(err, "adding replacement project to repo scopes")
+				}
+			}
+			restricted, err := p.resolveRestricted(ctx)
+			if err != nil {
+				return errors.Wrap(err, "resolving replacement project access restrictions")
+			}
+			if restricted {
+				err = p.MakeRestricted(ctx)
+			} else {
+				err = p.MakeUnrestricted(ctx)
+			}
+			if err != nil {
+				return errors.Wrap(err, "updating replacement project access scopes")
 			}
 			_, err = p.UpdateAdminRoles(ctx, p.Admins, nil)
 			return err
@@ -942,21 +971,35 @@ func DefaultGithubAppCredentialsToRepo(ctx context.Context, projectId string) er
 // adds the branch to the unrestricted branches under repo scope, and
 // adds repo view permission for branch admins, and adds branch edit access for repo admins.
 func (p *ProjectRef) AddToRepoScope(ctx context.Context, u *user.DBUser) error {
-	rm := evergreen.GetEnvironment().RoleManager()
+	repoRef, err := p.findRepoRefForAttachment(ctx, u)
+	if err != nil {
+		return err
+	}
+	return p.addToRepoScope(ctx, repoRef, u)
+}
+
+func (p *ProjectRef) findRepoRefForAttachment(ctx context.Context, u *user.DBUser) (*RepoRef, error) {
 	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
 	if err != nil {
-		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
+		return nil, errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
 	}
 	if u != nil {
 		if repoRef == nil {
 			if err := p.checkCanCreateNewRepoRef(ctx, u); err != nil {
-				return err
+				return nil, err
 			}
 		} else if err := p.checkRepoRefAdmin(ctx, u, repoRef); err != nil {
-			return err
+			return nil, err
 		}
 	}
+	return repoRef, nil
+}
+
+// addToRepoScope updates repo scopes. New attachments must be authorized by the caller.
+func (p *ProjectRef) addToRepoScope(ctx context.Context, repoRef *RepoRef, u *user.DBUser) error {
+	rm := evergreen.GetEnvironment().RoleManager()
 	if repoRef == nil {
+		var err error
 		repoRef, err = p.createNewRepoRef(ctx, u)
 		if err != nil {
 			return errors.Wrapf(err, "creating new repo ref")
@@ -987,7 +1030,7 @@ func (p *ProjectRef) AddToRepoScope(ctx context.Context, u *user.DBUser) error {
 		return errors.Wrapf(err, "adding resource to repo '%s' admin scope", p.RepoRefId)
 	}
 	// If the branch is unrestricted, add it to this scope so users who requested all-repo permissions have access.
-	if !p.IsRestricted() {
+	if !p.isRestrictedWithRepo(repoRef) {
 		if err := rm.AddResourceToScope(ctx, GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
 			return errors.Wrap(err, "adding resource to unrestricted branches scope")
 		}
@@ -1263,10 +1306,8 @@ func (p *ProjectRef) RemoveFromRepoScope(ctx context.Context) error {
 		return nil
 	}
 	rm := evergreen.GetEnvironment().RoleManager()
-	if !p.IsRestricted() {
-		if err := rm.RemoveResourceFromScope(ctx, GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
-			return errors.Wrap(err, "removing resource from unrestricted branches scope")
-		}
+	if err := rm.RemoveResourceFromScope(ctx, GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
+		return errors.Wrap(err, "removing resource from unrestricted branches scope")
 	}
 	if err := rm.RemoveResourceFromScope(ctx, GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
 		return errors.Wrapf(err, "removing admin scope from repo '%s'", p.Repo)
@@ -1279,8 +1320,12 @@ func (p *ProjectRef) RemoveFromRepoScope(ctx context.Context) error {
 // gives the inputted creator admin permissions.
 func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
+	restricted, err := p.resolveRestricted(ctx)
+	if err != nil {
+		return err
+	}
 	parentScope := evergreen.UnrestrictedProjectsScope
-	if p.IsRestricted() {
+	if restricted {
 		parentScope = evergreen.RestrictedProjectsScope
 	}
 	if err := rm.AddResourceToScope(ctx, parentScope, p.Id); err != nil {
@@ -2040,8 +2085,16 @@ func filterProjectsByBranch(pRefs []ProjectRef, branch string) []ProjectRef {
 	return res
 }
 
-// UserHasRepoViewPermission returns true if the user has permission to view any branch project settings.
+// UserHasRepoViewPermission returns true if the user can view the repo settings or any attached project's settings.
 func UserHasRepoViewPermission(ctx context.Context, u *user.DBUser, repoRefId string) (bool, error) {
+	if u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      repoRefId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsView.Value,
+	}) {
+		return true, nil
+	}
 	projectRefs := []ProjectRef{}
 	err := db.FindAllQ(ctx,
 		ProjectRefCollection,
@@ -2950,6 +3003,9 @@ func (p *ProjectRef) isValidCron(ctx context.Context, proposedCron time.Time, no
 	if mostRecentCommit == nil {
 		return true, nil
 	}
+	if _, err := mostRecentCommit.GetBuildVariants(ctx); err != nil {
+		return false, errors.Wrap(err, "getting build variant info for version")
+	}
 
 	return !isDuplicateCron(mostRecentCommit), nil
 }
@@ -2988,30 +3044,69 @@ func (p *ProjectRef) GetActivationTimeForTask(ctx context.Context, t *BuildVaria
 		return time.Now(), nil
 	}
 
-	lastActivated, err := VersionFindOne(ctx, VersionByLastTaskActivation(p.Id, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
+	lastActivated, err := findLastActivatedTaskBatchTime(ctx, p.Id, t.Variant, t.Name)
 	if err != nil {
-		return versionCreateTime, errors.Wrap(err, "finding version")
+		return versionCreateTime, errors.Wrapf(err, "finding last activated batchtime task '%s' in build variant '%s'", t.Name, t.Variant)
 	}
 	if lastActivated == nil {
 		return versionCreateTime, nil
 	}
-	if _, err := lastActivated.GetBuildVariants(ctx); err != nil {
-		return versionCreateTime, errors.Wrap(err, "getting build variant info for version")
+	return lastActivated.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTimeForTask(t))), nil
+}
+
+// findLastActivatedTaskBatchTime returns the batchtime task status for the
+// given build variant and task from the most recent version in which that task
+// was activated, or nil if there is no such version.
+func findLastActivatedTaskBatchTime(ctx context.Context, projectID, bvName, taskName string) (*BatchTimeTaskStatus, error) {
+	// In newer versions, task batchtime info is stored in a separate
+	// collection.
+	bt, err := VersionTaskBatchTimesFindByLastTaskActivation(ctx, projectID, bvName, taskName)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding batchtime task activation")
+	}
+	// In the legacy case, versions may still have task batchtime stored
+	// directly in the version doc, so check for that as well.
+	v, err := VersionFindOne(ctx, VersionByLastTaskActivation(projectID, bvName, taskName).WithFields(VersionBuildVariantsKey, VersionRevisionOrderNumberKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding batchtime task activation")
 	}
 
-	for _, buildStatus := range lastActivated.BuildVariants {
-		// don't check buildStatus activation; this corresponds to the batchtime for the overall variant, not the individual tasks.
-		if buildStatus.BuildVariant != t.Variant {
-			continue
-		}
-		for _, taskStatus := range buildStatus.BatchTimeTasks {
-			if taskStatus.TaskName != t.Name || !taskStatus.Activated {
-				continue
-			}
-			return taskStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTimeForTask(t))), nil
+	if v != nil && (bt == nil || v.RevisionOrderNumber >= bt.Order) {
+		// The last activated task is in a version that has the legacy batchtime
+		// task status stored in the version doc, so return that.
+		return batchTimeTaskStatusFor(v.BuildVariants, bvName, taskName), nil
+	}
+
+	if bt == nil {
+		return nil, nil
+	}
+
+	return batchTimeTaskStatusFor(versionBuildVariantsFromTaskBatchTimes(bt.BuildVariants), bvName, taskName), nil
+}
+
+func versionBuildVariantsFromTaskBatchTimes(bt []BuildVariantTaskBatchTime) []VersionBuildStatus {
+	buildStatuses := make([]VersionBuildStatus, len(bt))
+	for i, v := range bt {
+		buildStatuses[i] = VersionBuildStatus{
+			BuildVariant:   v.BuildVariant,
+			BatchTimeTasks: v.BatchTimeTasks,
 		}
 	}
-	return versionCreateTime, nil
+	return buildStatuses
+}
+
+func batchTimeTaskStatusFor(buildStatuses []VersionBuildStatus, bvName, taskName string) *BatchTimeTaskStatus {
+	for _, bs := range buildStatuses {
+		if bs.BuildVariant != bvName {
+			continue
+		}
+		for _, ts := range bs.BatchTimeTasks {
+			if ts.TaskName == taskName {
+				return &ts
+			}
+		}
+	}
+	return nil
 }
 
 // isValidBVCron checks is a build variant cron is valid.

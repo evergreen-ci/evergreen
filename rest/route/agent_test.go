@@ -31,6 +31,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
@@ -1101,6 +1102,30 @@ func TestIsRepoAllowedForTask(t *testing.T) {
 	}
 }
 
+func TestCreateInstallationTokenRepoAccess(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.VersionCollection, model.ParserProjectCollection, manifest.Collection))
+
+	require.NoError(t, (&model.ProjectRef{Id: "p1", Owner: "myorg", Repo: "myrepo"}).Insert(t.Context()))
+	require.NoError(t, (&model.Version{Id: "v1", Identifier: "p1", Owner: "myorg", Repo: "old-repo", Requester: evergreen.RepotrackerVersionRequester}).Insert(t.Context()))
+	require.NoError(t, (&model.ParserProject{Id: "v1"}).Insert(t.Context()))
+	tsk := task.Task{Id: "t1", Project: "p1", Version: "v1", Requester: evergreen.RepotrackerVersionRequester}
+	require.NoError(t, tsk.Insert(t.Context()))
+
+	t.Run("UndeclaredRepoIsForbidden", func(t *testing.T) {
+		r, ok := makeCreateInstallationToken(env).(*createInstallationTokenForClone)
+		require.True(t, ok)
+		r.taskID, r.owner, r.repo = tsk.Id, "myorg", "secret-repo"
+		assert.Equal(t, http.StatusForbidden, r.Run(t.Context()).Status())
+	})
+	t.Run("VersionRepoIsAllowedAfterProjectRepoMoves", func(t *testing.T) {
+		allowed, err := isRepoAllowedForTask(t.Context(), env, &tsk, "myorg", "old-repo")
+		require.NoError(t, err)
+		assert.True(t, allowed)
+	})
+}
+
 func TestUpsertCheckRunParse(t *testing.T) {
 	ctx := t.Context()
 
@@ -1418,25 +1443,56 @@ tasks:
 }
 
 func TestCreateGitHubDynamicAccessToken(t *testing.T) {
-	route := "/task/%s/github_dynamic_access_token/%s/%s"
+	route := "/task/%s/github_dynamic_access_token/%s"
 	owner := "owner"
-	repo := "repo"
 	taskID := "taskID"
 	json := []byte(`{ "checks": "read", "actions": "write" }`)
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *createGitHubDynamicAccessToken){
 		"ParseErrorsOnEmptyOwner": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf(route, taskID, "", repo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
+			url := fmt.Sprintf(route, taskID, "")
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(json))
 			require.NoError(t, err)
 
-			options := map[string]string{"owner": "", "repo": repo, "task_id": taskID}
+			options := map[string]string{"owner": "", "task_id": taskID}
 			request = gimlet.SetURLVars(request, options)
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
 		},
-		"ParseSucceedsWithoutRepo": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf("/task/%s/github_dynamic_access_token/%s", taskID, owner)
+		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
+			url := fmt.Sprintf(route, "", owner)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(json))
+			require.NoError(t, err)
+
+			options := map[string]string{"owner": owner, "task_id": ""}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing task_id")
+		},
+		"ParseSucceedsOnNullBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
+			url := fmt.Sprintf(route, taskID, owner)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte("null")))
+			require.NoError(t, err)
+
+			options := map[string]string{"owner": owner, "task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			require.NoError(t, handler.Parse(ctx, request))
+			require.True(t, handler.noPermissionsRequested)
+		},
+		"ParseSucceedsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
+			url := fmt.Sprintf(route, taskID, owner)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte("{}")))
+			require.NoError(t, err)
+
+			options := map[string]string{"owner": owner, "task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			require.NoError(t, handler.Parse(ctx, request))
+			require.True(t, handler.noPermissionsRequested)
+		},
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
+			url := fmt.Sprintf(route, taskID, owner)
 			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(json))
 			require.NoError(t, err)
 
@@ -1445,51 +1501,8 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 
 			require.NoError(t, handler.Parse(ctx, request))
 			assert.Equal(t, owner, handler.owner)
-			assert.Empty(t, handler.repo)
-		},
-		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf(route, "", owner, repo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
-			require.NoError(t, err)
-
-			options := map[string]string{"owner": owner, "repo": repo, "task_id": ""}
-			request = gimlet.SetURLVars(request, options)
-
-			assert.ErrorContains(t, handler.Parse(ctx, request), "missing task_id")
-		},
-		"ParseSucceedsOnNullBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf(route, taskID, owner, repo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader([]byte("null")))
-			require.NoError(t, err)
-
-			options := map[string]string{"owner": owner, "repo": repo, "task_id": taskID}
-			request = gimlet.SetURLVars(request, options)
-
-			require.NoError(t, handler.Parse(ctx, request))
-			require.True(t, handler.allPermissions)
-		},
-		"ParseSucceedsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf(route, taskID, owner, repo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader([]byte("{}")))
-			require.NoError(t, err)
-
-			options := map[string]string{"owner": owner, "repo": repo, "task_id": taskID}
-			request = gimlet.SetURLVars(request, options)
-
-			require.NoError(t, handler.Parse(ctx, request))
-			require.True(t, handler.allPermissions)
-		},
-		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf(route, taskID, owner, repo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
-			require.NoError(t, err)
-
-			options := map[string]string{"owner": owner, "repo": repo, "task_id": taskID}
-			request = gimlet.SetURLVars(request, options)
-
-			require.NoError(t, handler.Parse(ctx, request))
 			require.NotNil(t, handler.permissions)
-			require.False(t, handler.allPermissions)
+			assert.False(t, handler.noPermissionsRequested)
 			assert.Equal(t, "read", utility.FromStringPtr(handler.permissions.Checks))
 			assert.Equal(t, "write", utility.FromStringPtr(handler.permissions.Actions))
 		},
@@ -1504,6 +1517,31 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 			require.True(t, ok)
 
 			tCase(ctx, t, r)
+		})
+	}
+}
+
+func TestDefaultGitHubTokenPermissions(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		readOnlyEnabled bool
+		expected        model.GitHubDynamicTokenPermissionGroup
+	}{
+		"EnabledFlagShouldDefaultToContentsRead": {
+			readOnlyEnabled: true,
+			expected: model.GitHubDynamicTokenPermissionGroup{
+				Permissions: github.InstallationPermissions{
+					Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
+				},
+			},
+		},
+		"DisabledFlagShouldDefaultToAllPermissions": {
+			readOnlyEnabled: false,
+			expected:        model.GitHubDynamicTokenPermissionGroup{AllPermissions: true},
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			h := &createGitHubDynamicAccessToken{}
+			assert.Equal(t, tCase.expected, h.defaultGitHubTokenPermissions(tCase.readOnlyEnabled))
 		})
 	}
 }

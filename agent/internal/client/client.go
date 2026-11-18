@@ -966,7 +966,7 @@ func (c *baseCommunicator) CreateInstallationTokenForClone(ctx context.Context, 
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return "", errors.Wrapf(err, "creating installation token to clone '%s/%s'", owner, repo)
+		return "", util.RespError(resp, errors.Wrapf(err, "creating installation token to clone '%s/%s'", owner, repo).Error())
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -988,7 +988,7 @@ func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, t
 	}
 	resp, err := c.retryRequest(ctx, info, permissions)
 	if err != nil {
-		return "", nil, errors.Wrapf(err, "creating github dynamic access token for '%s'", owner)
+		return "", nil, util.RespError(resp, errors.Wrapf(err, "creating github dynamic access token for '%s'", owner).Error())
 	}
 
 	if resp.StatusCode != http.StatusOK {

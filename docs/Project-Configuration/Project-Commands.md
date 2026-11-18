@@ -1025,7 +1025,7 @@ Parameters:
 
 - `owner`: The organization the GitHub app is installed on. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's owner.
 - `expansion_name`: The name for the expansion the token will be saved in.
-- `permissions`: By default, the token will have the full permissions of the GitHub app that it's generated from. If you want the token to have less permissions, specify which permissions it should be restricted to. Permissions can also be restricted in project settings. For more on how to set that up and how it interacts with the permissions defined here, please see [here](Github-Integrations#dynamic-github-access-tokens). For a list of available permission types and levels, please take a look at `properties of permissions` in [the github documentation](https://docs.github.com/en/rest/apps/apps?apiVersion=2022-11-28#create-an-installation-access-token-for-an-app). Expansions cannot be used for this field.
+- `permissions`: By default, the token only has `contents: read` permissions, so it can clone but cannot write to GitHub. To give the token other read permissions or any write/admin access, specify the permissions it should have. Permissions can also be restricted in project settings. For more on how to set that up and how it interacts with the permissions defined here, please see [here](Github-Integrations#dynamic-github-access-tokens). For a list of available permission types and levels, please take a look at `properties of permissions` in [the github documentation](https://docs.github.com/en/rest/apps/apps?apiVersion=2022-11-28#create-an-installation-access-token-for-an-app). Expansions cannot be used for this field.
 
 For an example of how to generate a token and use that token to clone a repository, please see below. (Please check if [git.get_project](#gitget_project) or [modules](Project-Configuration-Files#modules) work for your use case before cloning manually).
 
@@ -2080,13 +2080,18 @@ example:
         { "type": "xunit", "files": ["results/*.xml"] },
         { "type": "native", "files": ["results.json"] }
       ],
-      "created_at": "2026-08-12T12:00:00Z"
+      "created_at": "2026-08-12T12:00:00Z",
+      "log_dir": "virtual_task_logs/<task_id>"
     },
     "artifacts": [
       {
         "name": "test.log",
         "url": "https://bucket.s3.amazonaws.com/path",
-        "visibility": "signed"
+        "visibility": "signed",
+        "bucket": "bucket",
+        "file_key": "path",
+        "aws_key_var_name": "aws_key",
+        "aws_secret_var_name": "aws_secret"
       }
     ],
     "external_metadata": {
@@ -2115,9 +2120,25 @@ Fields:
     - `xunit`: xUnit XML (see [attach.xunit_results](#attachxunit_results)).
   - `created_at`: optional timestamp the test results were generated. Defaults
     to the current time.
+  - `log_dir`: directory (absolute or relative to the task's working
+    directory) containing the test log files referenced by `native` test
+    results' `log_info` (`log_name` and `logs_to_merge`). Those paths are
+    relative to this directory, and each referenced file is uploaded as a test
+    log for the virtual task. Multiple virtual tasks can share a `log_dir`,
+    since each only uploads the files its own results reference. Don't use a
+    directory under `build/TestLogs`, since everything there is also uploaded
+    for the runner task. Required if the results reference any log files;
+    otherwise, uploading the task's test results fails.
 - `artifacts`: optional list of artifact files to attach. Each artifact
   requires a `name` and an absolute HTTP or HTTPS `url`; `visibility` is optional
   and must be a valid artifact visibility if set (see [s3.put](#s3put) for
   visibility options and behavior).
+  - A `visibility: signed` S3 artifact must also give its location in S3
+    (`bucket` and `file_key`) and how to presign it: specify either the names of
+    the project variables holding the AWS credentials for presigning
+    (`aws_key_var_name` and `aws_secret_var_name`), or an `aws_role_arn` to
+    assume for presigning. If using project variables for presigning,
+    `presign_duration` optionally sets how long a presigned URL stays valid (in
+    Go duration syntax, e.g. `1h`).
 - `external_metadata`: optional metadata identifying the external execution
   that produced the results.

@@ -41,7 +41,16 @@ func (b *base) Process(ctx context.Context, sub *event.Subscription) (*notificat
 		return nil, nil
 	}
 
-	return f(ctx, sub)
+	n, err := f(ctx, sub)
+	if n != nil {
+		n.SubscriptionID = sub.ID
+		// Project-owned subscriptions tag the notification so its failed
+		// deliveries can be queried per project.
+		if sub.OwnerType == event.OwnerTypeProject {
+			n.Project = sub.Owner
+		}
+	}
+	return n, err
 }
 
 func (b *base) ValidateTrigger(t string) bool {

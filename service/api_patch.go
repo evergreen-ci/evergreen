@@ -122,7 +122,6 @@ type patchData struct {
 	GithubAuthor                       string                     `json:"github_author"`
 	PatchAuthor                        string                     `json:"patch_author"`
 	LocalModuleIncludes                []patch.LocalModuleInclude `json:"local_module_includes"`
-	CrossFileYAMLAnchorsEnabled        bool                       `json:"cross_file_yaml_anchors_enabled"`
 }
 
 // submitPatch creates the Patch document, adds the patched project config to it,
@@ -211,7 +210,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		RepeatFailed:                       data.RepeatFailed,
 		RepeatPatchId:                      data.RepeatPatchId,
 		LocalModuleIncludes:                data.LocalModuleIncludes,
-		CrossFileYAMLAnchorsEnabled:        data.CrossFileYAMLAnchorsEnabled,
 	})
 
 	if err != nil {
@@ -287,6 +285,12 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	p, err := getPatchFromRequest(r)
 	if err != nil {
 		gimlet.WriteJSONError(r.Context(), w, err.Error())
+		return
+	}
+
+	u := MustHaveUser(r)
+	if !model.UserCanModifyPatch(r.Context(), u, *p) {
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.Errorf("user '%s' is not authorized to modify patch '%s'", u.Username(), p.Id.Hex()))
 		return
 	}
 
@@ -394,6 +398,14 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't modify a commit queue patch"))
 		return
 	}
+	// Canceling a finalized patch only aborts its tasks, which any user who can
+	// edit the project's tasks may do, but canceling an unfinalized patch
+	// deletes it.
+	needsOwnership := action == "update" || action == "finalize" || (action == "cancel" && p.Version == "")
+	if needsOwnership && !model.UserCanModifyPatch(ctx, dbUser, *p) {
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.Errorf("user '%s' is not authorized to modify patch '%s'", dbUser.Username(), p.Id.Hex()))
+		return
+	}
 	// dispatch to handlers based on specified action
 	switch action {
 	case "update":
@@ -432,7 +444,11 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 
 		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			statusCode := http.StatusInternalServerError
+			if errResp, ok := errors.Cause(err).(gimlet.ErrorResponse); ok {
+				statusCode = errResp.StatusCode
+			}
+			as.LoggedError(w, r, statusCode, err)
 			return
 		}
 		grip.Info(ctx, message.Fields{
@@ -513,6 +529,11 @@ func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
 	p, err := getPatchFromRequest(r)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
+		return
+	}
+	u := MustHaveUser(r)
+	if !model.UserCanModifyPatch(r.Context(), u, *p) {
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.Errorf("user '%s' is not authorized to modify patch '%s'", u.Username(), p.Id.Hex()))
 		return
 	}
 	moduleName := r.FormValue("module")

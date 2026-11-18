@@ -51,6 +51,23 @@ func IsFileNotFound(err error) bool {
 	return ok || errors.As(err, &fnf)
 }
 
+// RevisionNotFoundError is returned when the requested revision does not exist
+// in the repo.
+type RevisionNotFoundError struct {
+	owner    string
+	repo     string
+	revision string
+}
+
+func (e RevisionNotFoundError) Error() string {
+	return fmt.Sprintf("revision '%s' does not exist in repo '%s/%s'", e.revision, e.owner, e.repo)
+}
+
+func IsRevisionNotFound(err error) bool {
+	var rnf RevisionNotFoundError
+	return errors.As(err, &rnf)
+}
+
 type YAMLFormatError struct {
 	Message string
 }

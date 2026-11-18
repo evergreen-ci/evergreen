@@ -260,66 +260,6 @@ func TestFindLatestRevisionAndAuthorForProject(t *testing.T) {
 	}
 }
 
-func TestFindBaseVersionForVersion(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(VersionCollection))
-
-	patch0 := Version{
-		Id:                  "v0",
-		Identifier:          "project1",
-		Requester:           evergreen.PatchVersionRequester,
-		Revision:            "ghi",
-		RevisionOrderNumber: 1,
-	}
-	patch1 := Version{
-		Id:                  "v1",
-		Identifier:          "project1",
-		Requester:           evergreen.PatchVersionRequester,
-		Revision:            "abc",
-		RevisionOrderNumber: 2,
-	}
-	mainlineCommit1 := Version{
-		Id:                  "project1_v1",
-		Identifier:          "project1",
-		Requester:           evergreen.RepotrackerVersionRequester,
-		Revision:            "abc",
-		RevisionOrderNumber: 1,
-	}
-	mainlineCommit2 := Version{
-		Id:                  "project1_v2",
-		Identifier:          "project1",
-		Requester:           evergreen.RepotrackerVersionRequester,
-		Revision:            "def",
-		RevisionOrderNumber: 2,
-	}
-
-	assert.NoError(t, patch0.Insert(t.Context()))
-	assert.NoError(t, patch1.Insert(t.Context()))
-	assert.NoError(t, mainlineCommit1.Insert(t.Context()))
-	assert.NoError(t, mainlineCommit2.Insert(t.Context()))
-	// Test that it returns the base version mainline commit for a patch.
-	version, err := FindBaseVersionForVersion(t.Context(), "v1")
-	assert.NoError(t, err)
-	assert.NotNil(t, version)
-	assert.Equal(t, "project1_v1", version.Id)
-
-	// test that it returns the previous mainline commit for a mainline commit
-	version, err = FindBaseVersionForVersion(t.Context(), "project1_v2")
-	assert.NoError(t, err)
-	assert.NotNil(t, version)
-	assert.Equal(t, "project1_v1", version.Id)
-
-	// Test that it returns an empty string if the previous version doesn't exist for a mainline commit
-	version, err = FindBaseVersionForVersion(t.Context(), "project1_v1")
-	assert.NoError(t, err)
-	assert.Nil(t, version)
-
-	// Test that it returns an empty string if the base version doesn't exist for a patch
-	version, err = FindBaseVersionForVersion(t.Context(), "v0")
-	assert.NoError(t, err)
-	assert.Nil(t, version)
-
-}
-
 func TestVersionByProjectIdAndRevisionPrefix(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(VersionCollection))
 	ts := time.Now()
@@ -385,6 +325,40 @@ func TestVersionByProjectIdAndRevisionPrefix(t *testing.T) {
 	v, err = VersionFindOne(t.Context(), VersionByProjectIdAndCreateTime("proj", ts.Add(-5*utility.Day)))
 	assert.NoError(t, err)
 	assert.Nil(t, v)
+}
+
+func TestVersionByProjectIdAndRevisionPrefixMatchesTriggerSHA(t *testing.T) {
+	mainlineRevision := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	triggerSHA := "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	projectID := "project"
+
+	require.NoError(t, db.ClearCollections(VersionCollection))
+	require.NoError(t, db.InsertMany(t.Context(), VersionCollection,
+		Version{Id: "mainline", Identifier: projectID, Requester: evergreen.RepotrackerVersionRequester, Revision: mainlineRevision},
+		Version{Id: "trigger", Identifier: projectID, Requester: evergreen.TriggerRequester, Revision: mainlineRevision, TriggerSHA: triggerSHA},
+		Version{Id: "triggerNoSHA", Identifier: projectID, Requester: evergreen.TriggerRequester, Revision: "cccccccccccccccccccccccccccccccccccccccc"},
+	))
+
+	for name, tc := range map[string]struct {
+		prefix     string
+		expectedID string
+	}{
+		"MainlineMatchesOnRevision":               {prefix: "aaaaaaa", expectedID: "mainline"},
+		"TriggerMatchesOnTriggerSHA":              {prefix: "bbbbbbb", expectedID: "trigger"},
+		"TriggerWithoutTriggerSHAMatchesRevision": {prefix: "ccccccc", expectedID: "triggerNoSHA"},
+		"UnknownPrefixDoesNotMatch":               {prefix: "ddddddd"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			v, err := VersionFindOne(t.Context(), VersionByProjectIdAndRevisionPrefix(projectID, tc.prefix))
+			require.NoError(t, err)
+			if tc.expectedID == "" {
+				assert.Nil(t, v)
+				return
+			}
+			require.NotNil(t, v)
+			assert.Equal(t, tc.expectedID, v.Id)
+		})
+	}
 }
 
 func TestRemoveGitTagFromVersions(t *testing.T) {

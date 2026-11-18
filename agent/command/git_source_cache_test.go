@@ -315,6 +315,153 @@ func TestPostRestoreCommandFetchesTagsSavedAfterTheArchive(t *testing.T) {
 	assert.Equal(t, "v1.0.0", strings.TrimSpace(string(describe)))
 }
 
+// git describe --tags from the PR head finds the refreshed base tag exactly when the bounded fetch stays connected to the base history.
+func TestPRCheckoutBoundedFetchGitDescribe(t *testing.T) {
+	ctx := t.Context()
+	logger := grip.NewJournaler("test")
+	jpm, err := jasper.NewSynchronizedManager(false)
+	require.NoError(t, err)
+	c := &gitFetchProject{Directory: "src"}
+	c.SetJasperManager(jpm)
+
+	env := append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+	run := func(args ...string) string {
+		cmd := exec.CommandContext(ctx, "git", args...)
+		cmd.Env = env
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "git %v: %s", args, out)
+		return strings.TrimSpace(string(out))
+	}
+
+	for _, tc := range []struct {
+		name             string
+		branchCommits    int
+		fetchDepth       int
+		describeSucceeds bool
+		wantIsland       bool
+	}{
+		{name: "WithinTheBoundDescribesTheRefreshedTag", branchCommits: 3, fetchDepth: prFetchMinDepth, describeSucceeds: true, wantIsland: false},
+		{name: "BeyondTheBoundTruncatesTheBaseHistoryAndDescribeFails", branchCommits: 150, fetchDepth: prFetchMinDepth, describeSucceeds: false, wantIsland: true},
+		{name: "UnboundedFetchKeepsTheBaseHistoryReachable", branchCommits: 150, fetchDepth: 0, describeSucceeds: true, wantIsland: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			workDir, originPath := newRepoWithLocalOrigin(t)
+			devDir := filepath.Join(workDir, "src")
+			// Twelve base commits put a depth-5 restored window's far edge well past any branch point below it.
+			for range 11 {
+				run("-C", devDir, "commit", "--allow-empty", "-m", "base")
+			}
+			run("-C", devDir, "push", originPath, "main")
+			baseRevision := run("-C", devDir, "rev-parse", "HEAD")
+
+			// The branch is explicit because the bare origin's HEAD defaults to master on hosts without an init.defaultBranch gitconfig.
+			producerDir := filepath.Join(workDir, "producer")
+			run("clone", "--depth", "5", "--branch", "main", originPath, producerDir)
+			run("-C", producerDir, "config", "url.file://"+originPath+".insteadOf", "https://github.com/some-org/some-repo.git")
+
+			run("-C", devDir, "checkout", "-b", "pr")
+			for range tc.branchCommits {
+				run("-C", devDir, "commit", "--allow-empty", "-m", "pr")
+			}
+			run("-C", devDir, "push", originPath, "pr")
+			prHead := run("-C", devDir, "rev-parse", "HEAD")
+
+			// The producer archives before the tag exists, the way a pre-tag build populates the cache.
+			archive := filepath.Join(t.TempDir(), "source"+cacheArchiveSuffix)
+			require.NoError(t, makeCacheArchive(ctx, producerDir, []string{producerDir}, archive, logger, true))
+			run("-C", devDir, "tag", "-a", "v1.0.0", "-m", "release", baseRevision)
+			run("-C", devDir, "push", originPath, "v1.0.0")
+
+			consumerWorkDir := t.TempDir()
+			consumerDir := filepath.Join(consumerWorkDir, "src")
+			require.NoError(t, os.MkdirAll(consumerDir, 0755))
+			f, err := os.Open(archive)
+			require.NoError(t, err)
+			t.Cleanup(func() { assert.NoError(t, f.Close()) })
+			require.NoError(t, extractTarball(ctx, f, consumerDir, []string{}, true))
+
+			comm := client.NewMock("http://localhost.com")
+			conf := sourceCacheTestConfig()
+			conf.WorkDir = consumerWorkDir
+			conf.Task.Requester = evergreen.GithubPRRequester
+			conf.GithubPatchData.PRNumber = 9001
+			conf.GithubPatchData.HeadHash = prHead
+			taskLogger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+			require.NoError(t, err)
+
+			opts := cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken, cloneDepth: tc.fetchDepth}
+			require.NoError(t, c.runCommands(ctx, taskLogger, conf, c.buildPostRestoreCommand(conf, opts, baseRevision, true)))
+			require.NoError(t, c.refreshTagsOnRestoredSource(ctx, taskLogger, conf, apimodels.SourceCacheRestoreKey{Revision: baseRevision}))
+
+			recorder := tracetest.NewSpanRecorder()
+			probeCtx, span := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder)).Tracer("test").Start(ctx, "git.get_project")
+			c.recordPRFetchIsland(probeCtx, taskLogger, conf, baseRevision)
+			span.End()
+
+			ended := recorder.Ended()
+			require.Len(t, ended, 1)
+			var islandAttr *attribute.KeyValue
+			for _, attr := range ended[0].Attributes() {
+				if string(attr.Key) == sourceCacheIslandDisconnectedAttribute {
+					islandAttr = &attr
+				}
+			}
+			require.NotNil(t, islandAttr, "SHA fetches report island state")
+			assert.Equal(t, tc.wantIsland, islandAttr.Value.AsBool())
+
+			describe, describeErr := exec.CommandContext(ctx, "git", "-C", consumerDir, "describe", "--tags").Output()
+			if tc.describeSucceeds {
+				require.NoError(t, describeErr)
+				assert.True(t, strings.HasPrefix(strings.TrimSpace(string(describe)), "v1.0.0-"), "describe: %s", describe)
+			} else {
+				assert.Error(t, describeErr, "describe must not reach the base tag through a truncated fetch")
+			}
+		})
+	}
+}
+
+func TestPRFetchModeSpanAttribute(t *testing.T) {
+	recorder := tracetest.NewSpanRecorder()
+	provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
+
+	conf := sourceCacheTestConfig()
+	conf.Task.Requester = evergreen.GithubPRRequester
+	conf.GithubPatchData.HeadHash = strings.Repeat("a", 40)
+	ctx, span := provider.Tracer("test").Start(t.Context(), "git.get_project")
+	setPRFetchModeSpanAttr(ctx, conf, prFetchMinDepth)
+	span.End()
+
+	ended := recorder.Ended()
+	require.Len(t, ended, 1)
+	var mode string
+	var found bool
+	var depth *int64
+	for _, attr := range ended[0].Attributes() {
+		switch string(attr.Key) {
+		case clonePRFetchModeAttribute:
+			mode, found = attr.Value.AsString(), true
+		case clonePRFetchDepthAttribute:
+			d := attr.Value.AsInt64()
+			depth = &d
+		}
+	}
+	require.True(t, found, "PR tasks record the fetch mode on the command span")
+	assert.Equal(t, prFetchModeSHA, mode)
+	require.NotNil(t, depth, "PR fetches record their effective depth on the command span")
+	assert.Equal(t, int64(prFetchMinDepth), *depth)
+
+	ctx, span = provider.Tracer("test").Start(t.Context(), "git.get_project")
+	setPRFetchModeSpanAttr(ctx, sourceCacheTestConfig(), 0)
+	span.End()
+
+	ended = recorder.Ended()
+	require.Len(t, ended, 2)
+	for _, attr := range ended[1].Attributes() {
+		assert.NotEqual(t, clonePRFetchModeAttribute, string(attr.Key), "non-PR tasks record no fetch mode")
+		assert.NotEqual(t, clonePRFetchDepthAttribute, string(attr.Key), "non-PR tasks record no fetch depth")
+	}
+}
+
 func TestBuildRefreshTagsCommand(t *testing.T) {
 	c := &gitFetchProject{Directory: "src"}
 	joined := strings.Join(c.buildRefreshTagsCommand("abc123", false), "\n")

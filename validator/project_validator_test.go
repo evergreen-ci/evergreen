@@ -1831,12 +1831,29 @@ func TestValidateProjectLimits(t *testing.T) {
 		errs := validateProjectLimits(t.Context(), settings, project, &model.ProjectRef{}, false)
 		require.Len(t, errs, 1)
 		assert.Equal(t, Error, errs[0].Level)
-		assert.Contains(t, "project's total number of tasks (100) exceeds maximum limit (10)", errs[0].Message)
+		assert.Equal(t, "project's total number of non-virtual tasks (100) exceeds maximum limit (10)", errs[0].Message)
 	})
 	t.Run("SucceedsWithNoMaxTaskLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{}
 		project := makeProjectWithDoubleNumTasks(50)
 		assert.Empty(t, validateProjectLimits(t.Context(), settings, project, &model.ProjectRef{}, false))
+	})
+	t.Run("IgnoresVirtualTasksTowardLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxTasksPerVersion: 6,
+			},
+		}
+		project := makeProjectWithDoubleNumTasks(50)
+		for i := 3; i < len(project.Tasks); i++ {
+			project.Tasks[i].Virtual = true
+		}
+		assert.Empty(t, validateProjectLimits(t.Context(), settings, project, &model.ProjectRef{}, false))
+
+		project.Tasks[3].Virtual = false
+		errs := validateProjectLimits(t.Context(), settings, project, &model.ProjectRef{}, false)
+		require.Len(t, errs, 1)
+		assert.Equal(t, "project's total number of non-virtual tasks (8) exceeds maximum limit (6)", errs[0].Message)
 	})
 }
 

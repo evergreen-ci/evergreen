@@ -80,7 +80,7 @@ func NewPatchIntentProcessor(env evergreen.Environment, patchID mgobson.ObjectId
 	j.intent = intent
 	j.env = env
 
-	j.SetID(fmt.Sprintf("%s-%s-%s", patchIntentJobName, j.IntentType, j.IntentID))
+	j.SetID(patchIntentProcessorJobID(j.IntentType, j.IntentID))
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
 		MaxTime: maxPatchIntentJobTime,
 	})
@@ -92,6 +92,10 @@ func NewGitHubPatchIntentProcessor(env evergreen.Environment, patchID mgobson.Ob
 	j := NewPatchIntentProcessor(env, patchID, intent).(*patchIntentProcessor)
 	j.ProjectID = projectID
 	return j
+}
+
+func patchIntentProcessorJobID(intentType, intentID string) string {
+	return fmt.Sprintf("%s-%s-%s", patchIntentJobName, intentType, intentID)
 }
 
 func makePatchIntentProcessor() *patchIntentProcessor {
@@ -241,8 +245,12 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 		catcher.Wrap(err, "building GitHub patch document")
 	case patch.GithubMergeIntentType:
-		if err := j.buildGithubMergeDoc(ctx, patchDoc); err != nil {
+		var shouldCreatePatch bool
+		shouldCreatePatch, err = j.buildGithubMergeDoc(ctx, patchDoc)
+		if err != nil {
 			catcher.Wrap(err, "building GitHub merge queue patch document")
+		} else if !shouldCreatePatch {
+			return nil
 		}
 	case patch.TriggerIntentType:
 		patchedProject, patchedParserProject, err = j.buildTriggerPatchDoc(ctx, patchDoc)
@@ -349,6 +357,12 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		j.gitHubError = ProjectFailsValidation
 		return errors.Wrapf(validationCatcher.Resolve(), "invalid patched project config")
 	}
+	if err = model.ValidatePatchModuleRepos(ctx, patchDoc, pref, patchedProject.Modules); err != nil {
+		if model.IsUntrustedModuleReposError(err) {
+			j.gitHubError = untrustedModuleRepos
+		}
+		return errors.Wrap(err, "validating module repos")
+	}
 	// Don't create patches for github PRs if the only changes are in ignored files.
 	if patchDoc.IsGithubPRPatch() && patchedProject.IgnoresAllFiles(patchDoc.FilesChanged()) {
 		j.sendGitHubSuccessMessages(ctx, patchDoc, pref)
@@ -394,6 +408,12 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		len(patchDoc.VariantsTasks) == 0 {
 		j.gitHubError = NoTasksOrVariants
 		return errors.New("patch has no build variants or tasks")
+	}
+
+	// Check again right before inserting because another intent for the same merge group may have
+	// created its patch while this one was talking to GitHub.
+	if patchDoc.IsMergeQueuePatch() && j.hasDuplicateMergeQueuePatch(ctx, patchDoc, pref.Id) {
+		return nil
 	}
 
 	// set the patch number based on patch author
@@ -558,11 +578,12 @@ func (j *patchIntentProcessor) createGitHubSubscriptions(ctx context.Context, p 
 // createGithubMergeSubscription creates a subscription on a commit for the GitHub merge queue.
 func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context, p *patch.Patch) error {
 	catcher := grip.NewBasicCatcher()
-	ghSub := event.NewGithubMergeAPISubscriber(event.GithubMergeSubscriber{
+	mergeGroupTarget := event.GithubMergeSubscriber{
 		Owner: p.GithubMergeData.Org,
 		Repo:  p.GithubMergeData.Repo,
 		Ref:   p.GithubMergeData.HeadSHA,
-	})
+	}
+	ghSub := event.NewGithubMergeAPISubscriber(mergeGroupTarget)
 
 	patchSub := event.NewExpiringPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
 	catcher.Wrap(patchSub.Upsert(ctx), "inserting patch subscription for GitHub merge queue")
@@ -572,12 +593,9 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 	if p.IsParent() {
 		// add a subscription on each child patch to report its status to github when it's done.
 		for _, childPatch := range p.Triggers.ChildPatches {
-			childGhStatusSub := event.NewGithubMergeAPISubscriber(event.GithubMergeSubscriber{
-				Owner:   p.GithubPatchData.BaseOwner,
-				Repo:    p.GithubPatchData.BaseRepo,
-				Ref:     p.GithubPatchData.HeadHash,
-				ChildId: childPatch,
-			})
+			childTarget := mergeGroupTarget
+			childTarget.ChildId = childPatch
+			childGhStatusSub := event.NewGithubMergeAPISubscriber(childTarget)
 			patchSub := event.NewExpiringPatchChildOutcomeSubscription(childPatch, childGhStatusSub)
 			catcher.Wrap(patchSub.Upsert(ctx), "inserting child patch subscription for GitHub MQ")
 		}
@@ -998,19 +1016,17 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		return errors.Errorf("project ref '%s' not found", patchDoc.Project)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	commit, err := thirdparty.GetCommitEvent(ctx, projectRef.Owner,
-		projectRef.Repo, patchDoc.Githash)
-	if err != nil {
-		return errors.Wrapf(err, "finding base revision '%s' for project '%s'",
-			patchDoc.Githash, projectRef.Id)
-	}
-	// With `evergreen patch-file`, a user can pass a branch name or tag instead of a hash. We
-	// must normalize this to a hash before storing the patch doc.
-	if commit != nil && commit.SHA != nil && patchDoc.Githash != *commit.SHA {
-		patchDoc.Githash = *commit.SHA
+	// With `evergreen patch-file`, a user can pass a branch name, tag, or
+	// short hash instead of a full hash. We must normalize this to a full
+	// lowercase hash before storing the patch doc.
+	if thirdparty.IsFullCommitSHA(patchDoc.Githash) {
+		patchDoc.Githash = strings.ToLower(patchDoc.Githash)
+	} else {
+		sha, err := resolveCliPatchBaseRevision(ctx, projectRef, patchDoc.Githash)
+		if err != nil {
+			return err
+		}
+		patchDoc.Githash = sha
 	}
 
 	if len(patchDoc.Patches) > 0 {
@@ -1020,6 +1036,33 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	}
 
 	return nil
+}
+
+// resolveCliPatchBaseRevision resolves a base revision that isn't a full commit
+// hash using git so that it doesn't depend on the GitHub API being available.
+// Like the GitHub API, branches take precedence over tags with the same name.
+// It falls back to the GitHub API for revisions git can't resolve, such as
+// short hashes.
+func resolveCliPatchBaseRevision(ctx context.Context, projectRef *model.ProjectRef, revision string) (string, error) {
+	sha, gitErr := thirdparty.GitLsRemote(ctx, projectRef.Owner, projectRef.Repo, "refs/heads/"+revision, "refs/tags/"+revision)
+	if gitErr == nil {
+		return sha, nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	commit, err := thirdparty.GetCommitEvent(ctx, projectRef.Owner, projectRef.Repo, revision)
+	if err != nil {
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(gitErr)
+		catcher.Add(err)
+		return "", errors.Wrapf(catcher.Resolve(), "finding base revision '%s' for project '%s'", revision, projectRef.Id)
+	}
+	if commit == nil || commit.SHA == nil {
+		return "", errors.Errorf("base revision '%s' for project '%s' not found", revision, projectRef.Id)
+	}
+	return *commit.SHA, nil
 }
 
 // getModulePatch reads the patch from GridFS, processes it, and
@@ -1223,7 +1266,9 @@ func (j *patchIntentProcessor) getChangedFilenamesForLargePRs(ctx context.Contex
 	return nil
 }
 
-func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch) error {
+// buildGithubMergeDoc populates the merge queue patch document. It returns false if the patch should not be
+// created because another patch already exists for the same merge group.
+func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch) (bool, error) {
 	defer func() {
 		grip.Error(ctx, message.WrapError(j.intent.SetProcessed(ctx), message.Fields{
 			"message":     "could not mark patch intent as processed",
@@ -1244,7 +1289,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		patchDoc.GithubMergeData.HeadSHA,
 		githubHeadPRURL,
 	)
-	baseAttrs = append(baseAttrs, attribute.String(patch.MergeQueueAttrPatchID, patchDoc.Id.Hex()))
+	baseAttrs = append(baseAttrs, attribute.String(patch.MergeQueueAttrPatchID, j.PatchID.Hex()))
 	ctx, span := tracer.Start(ctx, patch.MergeQueuePatchProcessingSpan,
 		trace.WithAttributes(baseAttrs...))
 	defer span.End()
@@ -1252,21 +1297,25 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(ctx, patchDoc.GithubMergeData.Org,
 		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	if err != nil {
-		return errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
+		return false, errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch,
 		)
 	}
 	if projectRef == nil {
 		j.gitHubError = mergeQueueDisabled
-		return errors.Errorf("project ref for repo '%s/%s' with branch '%s' and merge queue enabled not found",
+		return false, errors.Errorf("project ref for repo '%s/%s' with branch '%s' and merge queue enabled not found",
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	}
 
 	span.SetAttributes(attribute.String(patch.MergeQueueAttrProjectID, projectRef.Identifier))
 
+	if j.hasDuplicateMergeQueuePatch(ctx, patchDoc, projectRef.Id) {
+		return false, nil
+	}
+
 	j.user, err = findEvergreenUserForGithubMergeGroup(ctx)
 	if err != nil {
-		return errors.Wrap(err, "finding GitHub merge queue user")
+		return false, errors.Wrap(err, "finding GitHub merge queue user")
 	}
 	patchDoc.Author = j.user.Id
 	patchDoc.Project = projectRef.Id
@@ -1279,10 +1328,50 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 
 	// Get changed files to use for variant filtering.
 	if err = j.getChangedFilesForGithubMerge(ctx, patchDoc); err != nil {
-		return errors.Wrap(err, "getting changed files")
+		return false, errors.Wrap(err, "getting changed files")
 	}
 
-	return nil
+	return true, nil
+}
+
+// hasDuplicateMergeQueuePatch reports whether another patch already exists for this merge queue patch's merge
+// group. The same merge group can arrive more than once, for example when merge queue recovery creates a patch
+// and the delayed GitHub webhook arrives afterwards. A second patch would run every task again and post a
+// competing status for the same commit, so callers should skip it without reporting anything to GitHub.
+func (j *patchIntentProcessor) hasDuplicateMergeQueuePatch(ctx context.Context, patchDoc *patch.Patch, projectID string) bool {
+	// We use the patch intent job's timeout as the grace period because once it has passed, the job that
+	// inserted the patch has been cancelled, so an older unfinalized patch is a leftover and shouldn't block a new one.
+	existingPatchID, err := patch.FindDuplicateMergeQueuePatchID(ctx, projectID, patchDoc.GithubMergeData.Org,
+		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.HeadSHA, j.PatchID, maxPatchIntentJobTime)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message":     "could not check for an existing merge queue patch, creating patch anyway",
+			"job":         j.ID(),
+			"patch_id":    j.PatchID,
+			"project_id":  projectID,
+			"head_sha":    patchDoc.GithubMergeData.HeadSHA,
+			"intent_type": j.IntentType,
+			"intent_id":   j.IntentID,
+			"source":      "patch intents",
+		}))
+		return false
+	}
+	if existingPatchID == "" {
+		return false
+	}
+
+	trace.SpanFromContext(ctx).SetAttributes(attribute.String(patch.MergeQueueAttrDuplicateOfPatchID, existingPatchID))
+	grip.Info(ctx, message.Fields{
+		"message":           "skipping duplicate merge queue patch because one already exists for the merge group",
+		"job":               j.ID(),
+		"patch_id":          j.PatchID,
+		"existing_patch_id": existingPatchID,
+		"project_id":        projectID,
+		"head_sha":          patchDoc.GithubMergeData.HeadSHA,
+		"intent_id":         j.IntentID,
+		"source":            "patch intents",
+	})
+	return true
 }
 
 func (j *patchIntentProcessor) getChangedFilesForGithubMerge(ctx context.Context, patchDoc *patch.Patch) error {

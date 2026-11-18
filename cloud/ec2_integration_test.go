@@ -23,7 +23,7 @@ func fetchTestDistro() distro.Distro {
 		WorkDir:  "/data/mci",
 		Provider: evergreen.ProviderNameEc2Fleet,
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(
-			birch.EC.String("ami", "ami-97785bed"),
+			birch.EC.String("ami", "ami-096ef200a877f36af"),
 			birch.EC.String("instance_type", "t2.micro"),
 			birch.EC.String("region", "us-east-1"),
 			birch.EC.Boolean("is_vpc", true),

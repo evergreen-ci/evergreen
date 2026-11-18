@@ -75,6 +75,25 @@ func TestSelectTestsInternalServerErrorShouldRetry(t *testing.T) {
 	assert.EqualValues(t, 2, calls.Load())
 }
 
+func TestCreateGitHubDynamicAccessTokenClientErrorShouldIncludeServerMessage(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", evergreen.ContentTypeValue)
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"status":404,"message":"project 'project' does not have a GitHub App defined"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	communicator := NewHostCommunicator(server.URL, "host", "host_secret")
+	t.Cleanup(communicator.Close)
+
+	_, _, err := communicator.CreateGitHubDynamicAccessToken(t.Context(), TaskData{
+		ID:     "task",
+		Secret: "task_secret",
+	}, "owner", nil)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "project 'project' does not have a GitHub App defined")
+}
+
 func TestLoggerProducerRedactorOptions(t *testing.T) {
 	secretKey := "secret_key"
 	secretKeyRedaction := fmt.Sprintf("<REDACTED:%s>", secretKey)

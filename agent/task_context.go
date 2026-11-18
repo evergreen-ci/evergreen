@@ -440,13 +440,13 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	var confPatch *patch.Patch
-	if evergreen.IsGitHubPatchRequester(taskInfo.task.Requester) {
-		grip.Info(ctx, "Fetching patch document for GitHub PR request.")
+	if evergreen.IsPatchRequester(taskInfo.task.Requester) {
+		grip.Info(ctx, "Fetching patch document.")
 		ctx, getTaskPatchSpan := a.tracer.Start(ctx, "get-task-patch")
 		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task)
 		getTaskPatchSpan.End()
 		if err != nil {
-			return nil, errors.Wrap(err, "fetching patch for GitHub PR request")
+			return nil, errors.Wrap(err, "fetching patch")
 		}
 	}
 

@@ -363,15 +363,13 @@ include:
     module: module_name
 ```
 
-#### YAML Anchors (Beta)
-
-Cross-file YAML anchor support is in beta. It must be enabled either globally by an Evergreen admin via the **Cross-file YAML anchors** service flag, or per-invocation using the `--cross-file-anchors` flag on `evergreen patch`, `evergreen evaluate`, or `evergreen validate`. The CLI flag is useful for testing your config before the feature is enabled globally for your project.
+#### YAML Anchors
 
 YAML anchors (`&name`) and aliases (`*name`) are supported within a single file and across include files.
 
 An anchor defined in the main config file or in an earlier include file can be referenced as an alias in any later include file. Files are processed in the order they are listed in `include`, so an alias can only refer to an anchor that was defined in a file that appears earlier in the list (or in the main config file).
 
-Note: [version-controlled project settings configurations](Project-and-Distro-Settings#version-control) are not yet supported in combination with YAML anchors; they are not processed when `--yaml-anchors` is enabled.
+Note: [version-controlled project settings configurations](Project-and-Distro-Settings#version-control) are not yet supported in combination with YAML anchors; they are not processed when YAML anchors are enabled.
 
 ```yaml
 # main evergreen.yml — defines an anchor for reuse
@@ -520,6 +518,8 @@ the "Version Manifest" shown in the Spruce UI should show module configurations 
 The modules will only be cloned in the [git.get_project](Project-Commands#gitgetproject) command if the [build variant](Project-Configuration-Files#build-variants)
 is configured to use the module via the module field.
 
+Some private module repo use is restricted. See [private module repos in patches](#private-module-repos-in-patches).
+
 ```yaml
 modules:
   - name: evergreen
@@ -586,6 +586,31 @@ modules:
     repo: mongo.wiki
     prefix: src/wiki
 ```
+
+#### Private module repos in patches
+
+Evergreen clones private module repos with its own GitHub App, which can read many private repos. To prevent patch authors
+from reading repos they don't have access to by declaring them as modules, CLI patches and GitHub PR patches can
+use a private module repo only if one of these is true:
+
+- It's the project's own repo.
+- A recent mainline version of the project declares it as a module.
+- A recent mainline version of another project for the same GitHub repo declares it as a module.
+- The patch is a GitHub PR patch and the PR author can read the repo on GitHub.
+
+Public repos, merge queue patches, and child patches aren't restricted.
+
+A patch that uses any other private module repo fails with an error like this:
+
+```text
+modules 'my-module' (my-org/my-private-repo) use private repos that patches can't use
+```
+
+To fix it, do one of these:
+
+- Add the module to the project's config on a tracked branch
+- Test the change in a GitHub PR instead of a CLI patch. The PR's patch can use the module if the PR author can read
+  its repo.
 
 ### Pre and Post
 

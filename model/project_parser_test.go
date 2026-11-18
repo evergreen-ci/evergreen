@@ -3748,12 +3748,11 @@ tasks:
 }
 
 // moduleIncludeOpts builds GetProjectOpts that serves include files from
-// inline bytes, bypassing GitHub and git, with cross-file YAML anchors enabled.
+// inline bytes, bypassing GitHub and git.
 func moduleIncludeOpts(t testing.TB, includes ...patch.LocalModuleInclude) *GetProjectOpts {
 	t.Helper()
 	return &GetProjectOpts{
-		LocalModuleIncludes:         includes,
-		CrossFileYAMLAnchorsEnabled: true,
+		LocalModuleIncludes: includes,
 	}
 }
 

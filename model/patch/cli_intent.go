@@ -111,9 +111,6 @@ type cliIntent struct {
 
 	// LocalModuleIncludes is only used to include local module changes
 	LocalModuleIncludes []LocalModuleInclude `bson:"local_module_includes,omitempty"`
-	// CrossFileYAMLAnchorsEnabled allows the CLI to request cross-file YAML anchor
-	// processing regardless of the admin service flag.
-	CrossFileYAMLAnchorsEnabled bool `bson:"cross_file_yaml_anchors_enabled,omitempty"`
 }
 
 // BSON fields for the patches
@@ -215,7 +212,6 @@ func (c *cliIntent) NewPatch() *Patch {
 		Patches:                                 []ModulePatch{},
 		GitInfo:                                 c.GitInfo,
 		LocalModuleIncludes:                     c.LocalModuleIncludes,
-		CrossFileYAMLAnchorsEnabled:             c.CrossFileYAMLAnchorsEnabled,
 	}
 	if len(c.PatchFileID) > 0 {
 		p.Patches = append(p.Patches,
@@ -256,7 +252,6 @@ type CLIIntentParams struct {
 	RepeatFailed                       bool
 	RepeatPatchId                      string
 	LocalModuleIncludes                []LocalModuleInclude
-	CrossFileYAMLAnchorsEnabled        bool
 }
 
 func NewCliIntent(params CLIIntentParams) (Intent, error) {
@@ -309,7 +304,6 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		RepeatFailed:                            params.RepeatFailed,
 		RepeatPatchId:                           params.RepeatPatchId,
 		LocalModuleIncludes:                     params.LocalModuleIncludes,
-		CrossFileYAMLAnchorsEnabled:             params.CrossFileYAMLAnchorsEnabled,
 	}, nil
 }
 

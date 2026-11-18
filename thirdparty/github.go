@@ -58,6 +58,13 @@ const (
 	githubCachedAttribute      = "evergreen.github.cached"
 	githubLocalCachedAttribute = "evergreen.github.local_cached"
 	githubAuthMethodAttribute  = "evergreen.github.auth_method"
+
+	githubRateLimitLimitAttribute     = "evergreen.github.rate_limit.limit"
+	githubRateLimitRemainingAttribute = "evergreen.github.rate_limit.remaining"
+	githubRateLimitUsedAttribute      = "evergreen.github.rate_limit.used"
+	githubRateLimitResetAttribute     = "evergreen.github.rate_limit.reset"
+	githubRateLimitResourceAttribute  = "evergreen.github.rate_limit.resource"
+	githubRequestIDAttribute          = "evergreen.github.request_id"
 )
 
 var githubWritePermissions = []string{
@@ -332,7 +339,11 @@ func (c *retryConfig) shouldIgnoreCode(statusCode int) bool {
 
 func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunction {
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
-		trace.SpanFromContext(req.Context()).SetAttributes(attribute.Int(githubRetriesAttribute, index))
+		span := trace.SpanFromContext(req.Context())
+		span.SetAttributes(attribute.Int(githubRetriesAttribute, index))
+		if resp != nil {
+			span.SetAttributes(githubResponseAttributes(resp.Header)...)
+		}
 
 		if !(config.retry || config.retry404) {
 			return false
@@ -633,6 +644,12 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref string, ghAppAuth
 			defer resp.Body.Close()
 			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 			if resp.StatusCode == http.StatusNotFound {
+				// GitHub also returns a 404 when the ref doesn't exist, which
+				// is distinguishable only by the error message.
+				var errResp *github.ErrorResponse
+				if errors.As(err, &errResp) && strings.HasPrefix(errResp.Message, "No commit found for the ref") {
+					return RevisionNotFoundError{owner: owner, repo: repo, revision: ref}
+				}
 				return FileNotFoundError{filepath: path}
 			}
 			if err != nil {
@@ -1048,6 +1065,30 @@ func parseGithubRateLimit(h http.Header) github.Rate {
 	}
 
 	return rate
+}
+
+func githubResponseAttributes(h http.Header) []attribute.KeyValue {
+	var attrs []attribute.KeyValue
+	if requestID := h.Get("X-GitHub-Request-Id"); requestID != "" {
+		attrs = append(attrs, attribute.String(githubRequestIDAttribute, requestID))
+	}
+	if h.Get("X-Ratelimit-Limit") == "" {
+		return attrs
+	}
+
+	rate := parseGithubRateLimit(h)
+	attrs = append(attrs,
+		attribute.Int(githubRateLimitLimitAttribute, rate.Limit),
+		attribute.Int(githubRateLimitRemainingAttribute, rate.Remaining),
+		attribute.String(githubRateLimitResourceAttribute, h.Get("X-Ratelimit-Resource")),
+	)
+	if used, err := strconv.Atoi(h.Get("X-Ratelimit-Used")); err == nil {
+		attrs = append(attrs, attribute.Int(githubRateLimitUsedAttribute, used))
+	}
+	if !rate.Reset.IsZero() {
+		attrs = append(attrs, attribute.String(githubRateLimitResetAttribute, rate.Reset.UTC().Format(time.RFC3339)))
+	}
+	return attrs
 }
 
 // GithubAuthenticate does a POST to github with the code that it received, the ClientId, ClientSecret
@@ -1567,7 +1608,16 @@ func githubAppSlugForUser(appUser *github.User, userID int, botSuffix string) (s
 // GitHubUserHasWritePermission returns true if the given user has write permission for the repo.
 // Returns an error if the user isn't found or the token isn't authed for this repo.
 func GitHubUserHasWritePermission(ctx context.Context, owner, repo, username string) (bool, error) {
-	caller := "userHasWritePermission"
+	return gitHubUserHasPermission(ctx, "userHasWritePermission", owner, repo, username, githubWritePermissions)
+}
+
+// GitHubUserHasReadPermission returns true if the given user can read the repo.
+// Returns an error if the user isn't found or the token isn't authed for this repo.
+func GitHubUserHasReadPermission(ctx context.Context, owner, repo, username string) (bool, error) {
+	return gitHubUserHasPermission(ctx, "userHasReadPermission", owner, repo, username, allGitHubPermissions)
+}
+
+func gitHubUserHasPermission(ctx context.Context, caller, owner, repo, username string, permissions []string) (bool, error) {
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -1596,7 +1646,43 @@ func GitHubUserHasWritePermission(ctx context.Context, owner, repo, username str
 		return false, errors.Errorf("GitHub returned an invalid response to request for user permissions for '%s'", username)
 	}
 
-	return utility.StringSliceContains(githubWritePermissions, permissionLevel.GetPermission()), nil
+	return utility.StringSliceContains(permissions, permissionLevel.GetPermission()), nil
+}
+
+// IsGitHubRepoPublic returns true if the repo is visible to anyone on GitHub.
+func IsGitHubRepoPublic(ctx context.Context, owner, repo string) (bool, error) {
+	caller := "IsGitHubRepoPublic"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
+	if err != nil {
+		return false, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(ctx, token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	ghRepo, resp, err := githubClient.Repositories.Get(ctx, owner, repo)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		if resp.StatusCode == http.StatusNotFound {
+			return false, nil
+		}
+		if err != nil {
+			return false, parseGithubErrorResponse(resp)
+		}
+	}
+	if err != nil {
+		return false, errors.Wrapf(err, "getting repo '%s/%s'", owner, repo)
+	}
+
+	return !ghRepo.GetPrivate(), nil
 }
 
 // ValidateGitHubPermission checks if the given permission is a valid GitHub permission.
