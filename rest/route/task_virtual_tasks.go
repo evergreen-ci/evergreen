@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
@@ -256,6 +257,9 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 	if tr := completion.TestResults; tr != nil && (tr.Stats.FailedCount < 0 || tr.Stats.TotalCount < 0) {
 		return failed("test results stats counts cannot be negative")
 	}
+	if md := completion.ExternalMetadata; md != nil && !validCostUSD(md.EstimatedCostUSD) {
+		return failed("estimated_cost_usd must be a finite non-negative number")
+	}
 	files := make([]artifact.File, 0, len(completion.Artifacts))
 	for _, a := range completion.Artifacts {
 		if a.Name == "" || a.URL == "" {
@@ -341,6 +345,11 @@ func (h *completeVirtualTasksHandler) completeTask(ctx context.Context, runner *
 		TaskID:  completion.TaskID,
 		Outcome: apimodels.VirtualTaskCompletionOutcomeSuccess,
 	}
+}
+
+// validCostUSD reports whether the cost is a finite, non-negative dollar amount.
+func validCostUSD(v float64) bool {
+	return v >= 0 && !math.IsInf(v, 0) && !math.IsNaN(v)
 }
 
 // setSignedArtifactFields fills in the S3 location and presign credentials for

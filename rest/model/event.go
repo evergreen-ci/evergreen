@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -64,7 +65,7 @@ type HostAPIEventData struct {
 func (el *TaskEventData) BuildFromService(ctx context.Context, v *event.TaskEventData) error {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return errors.Wrap(err, "getting admin settings")
+		return fmt.Errorf("getting admin settings: %w", err)
 	}
 	jiraHost := settings.Jira.GetHostURL()
 	jiraLink := ""
