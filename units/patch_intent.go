@@ -904,11 +904,10 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 			Permission:    evergreen.PermissionPatches,
 			RequiredLevel: evergreen.PatchSubmit.Value,
 		}
-		if submitter != nil && submitter.HasPermission(ctx, opts) {
-			continue
-		}
-		if u != nil && !u.HasPermission(ctx, opts) {
-			return errors.Errorf("user '%s' is not authorized to submit patches on child project '%s'", u.Id, alias.ChildProject)
+		if submitter == nil || !submitter.HasPermission(ctx, opts) {
+			if u != nil && !u.HasPermission(ctx, opts) {
+				return errors.Errorf("user '%s' is not authorized to submit patches on child project '%s'", u.Id, alias.ChildProject)
+			}
 		}
 
 		group := aliasGroup{

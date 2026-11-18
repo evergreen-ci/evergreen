@@ -32,7 +32,7 @@ func makeClonePatchHandler(env evergreen.Environment) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Clone a patch
-//	@Description	Creates a new patch copying the diffs, base commit, description, and task/variant definition from the given patch. The clone is created unactivated unless 'finalize' is true. Cloning a patch with trigger aliases reproduces its child patches in their projects, which requires 'Patches: Submit and Edit' permission on each child project. Merge queue patches cannot be cloned, since their base branch is temporary. The caller must have 'Patches: Submit and Edit' permission in the source patch's project; the clone belongs to the caller in the same project.
+//	@Description	Creates a new patch copying the diffs, base commit, description, and task/variant definition from the given patch. The clone is created unactivated unless 'finalize' is true. The caller must have 'Patches: Submit and Edit' permission on the project (and all child projects if relevant). Merge queue patches cannot be cloned, since their base branch is temporary.
 //	@Tags			patches
 //	@Router			/patches/{patch_id}/clone [post]
 //	@Security		Api-User || Api-Key

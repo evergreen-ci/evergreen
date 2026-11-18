@@ -146,6 +146,7 @@ func createPatchFromIntent(ctx context.Context, env evergreen.Environment, usr *
 	}
 
 	args.intentParams.User = author
+	args.intentParams.SubmittedBy = usr.Id
 	args.intentParams.Project = pref.Id
 	args.intentParams.Finalize = false
 
