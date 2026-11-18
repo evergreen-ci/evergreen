@@ -1918,7 +1918,7 @@ type ComplexityRoot struct {
 		ExecutionPlatform            func(childComplexity int) int
 		ExecutionSteps               func(childComplexity int) int
 		ExecutionTasks               func(childComplexity int) int
-		ExecutionTasksFull           func(childComplexity int, options *ExecutionTasksFilterOptions) int
+		ExecutionTasksFull           func(childComplexity int) int
 		ExpectedDuration             func(childComplexity int) int
 		FailedTestCount              func(childComplexity int) int
 		Files                        func(childComplexity int) int
@@ -2791,7 +2791,7 @@ type TaskResolver interface {
 	ExecutionPlatform(ctx context.Context, obj *model.APITask) (task.ExecutionPlatform, error)
 	ExecutionSteps(ctx context.Context, obj *model.APITask) ([]*model1.TaskExecutionStep, error)
 
-	ExecutionTasksFull(ctx context.Context, obj *model.APITask, options *ExecutionTasksFilterOptions) ([]*model.APITask, error)
+	ExecutionTasksFull(ctx context.Context, obj *model.APITask) ([]*model.APITask, error)
 
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
 	Files(ctx context.Context, obj *model.APITask) (*TaskFiles, error)
@@ -10880,12 +10880,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		args, err := ec.field_Task_executionTasksFull_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Task.ExecutionTasksFull(childComplexity, args["options"].(*ExecutionTasksFilterOptions)), true
+		return e.complexity.Task.ExecutionTasksFull(childComplexity), true
 	case "Task.expectedDuration":
 		if e.complexity.Task.ExpectedDuration == nil {
 			break
@@ -13494,7 +13489,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputEBSCostConfigInput,
 		ec.unmarshalInputEditSpawnHostInput,
 		ec.unmarshalInputEnvVarInput,
-		ec.unmarshalInputExecutionTasksFilterOptions,
 		ec.unmarshalInputExpansionInput,
 		ec.unmarshalInputExternalLinkInput,
 		ec.unmarshalInputFWSConfigInput,
@@ -17313,17 +17307,6 @@ func (ec *executionContext) field_Query_waterfall_args(ctx context.Context, rawA
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "options", ec.unmarshalNWaterfallOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfallOptions)
-	if err != nil {
-		return nil, err
-	}
-	args["options"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Task_executionTasksFull_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "options", ec.unmarshalOExecutionTasksFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExecutionTasksFilterOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -63854,8 +63837,7 @@ func (ec *executionContext) _Task_executionTasksFull(ctx context.Context, field 
 		field,
 		ec.fieldContext_Task_executionTasksFull,
 		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Task().ExecutionTasksFull(ctx, obj, fc.Args["options"].(*ExecutionTasksFilterOptions))
+			return ec.resolvers.Task().ExecutionTasksFull(ctx, obj)
 		},
 		nil,
 		ec.marshalOTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskᚄ,
@@ -63864,7 +63846,7 @@ func (ec *executionContext) _Task_executionTasksFull(ctx context.Context, field 
 	)
 }
 
-func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Task",
 		Field:      field,
@@ -64067,17 +64049,6 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Task_executionTasksFull_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
 	}
 	return fc, nil
 }
@@ -85113,37 +85084,6 @@ func (ec *executionContext) unmarshalInputEnvVarInput(ctx context.Context, obj a
 				return it, err
 			}
 			it.Value = data
-		}
-	}
-
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputExecutionTasksFilterOptions(ctx context.Context, obj any) (ExecutionTasksFilterOptions, error) {
-	var it ExecutionTasksFilterOptions
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	if _, present := asMap["statuses"]; !present {
-		asMap["statuses"] = []any{}
-	}
-
-	fieldsInOrder := [...]string{"statuses"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "statuses":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statuses"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Statuses = data
 		}
 	}
 
@@ -121837,14 +121777,6 @@ func (ec *executionContext) unmarshalOEditSpawnHostInput2ᚖgithubᚗcomᚋeverg
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputEditSpawnHostInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalOExecutionTasksFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExecutionTasksFilterOptions(ctx context.Context, v any) (*ExecutionTasksFilterOptions, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputExecutionTasksFilterOptions(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
