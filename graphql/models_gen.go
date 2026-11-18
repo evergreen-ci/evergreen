@@ -651,20 +651,12 @@ type TaskQueueDistro struct {
 }
 
 // TaskSelection describes which tasks in a Version a bulk operation applies to. Exactly one of taskIds or filter must be
-// set.
+// set. A filter selects every matching task across all pages, so its limit, page, and sorts are ignored. excludeTaskIds
+// removes tasks from the filter's matches and has no effect when taskIds is set.
 type TaskSelection struct {
-	TaskIds []string             `json:"taskIds,omitempty"`
-	Filter  *TaskSelectionFilter `json:"filter,omitempty"`
-}
-
-// TaskSelectionFilter selects every task in a Version that matches it, across all pages.
-type TaskSelectionFilter struct {
-	BaseStatuses               []string `json:"baseStatuses,omitempty"`
-	ExcludeTaskIds             []string `json:"excludeTaskIds,omitempty"`
-	IncludeNeverActivatedTasks *bool    `json:"includeNeverActivatedTasks,omitempty"`
-	Statuses                   []string `json:"statuses,omitempty"`
-	TaskName                   *string  `json:"taskName,omitempty"`
-	Variant                    *string  `json:"variant,omitempty"`
+	TaskIds        []string           `json:"taskIds,omitempty"`
+	Filter         *TaskFilterOptions `json:"filter,omitempty"`
+	ExcludeTaskIds []string           `json:"excludeTaskIds,omitempty"`
 }
 
 // TaskTestResult is the return value for the task.Tests resolver.

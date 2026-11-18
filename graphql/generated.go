@@ -13659,7 +13659,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTaskOwnershipSettingsInput,
 		ec.unmarshalInputTaskPriority,
 		ec.unmarshalInputTaskSelection,
-		ec.unmarshalInputTaskSelectionFilter,
 		ec.unmarshalInputTaskSpecifierInput,
 		ec.unmarshalInputTestFilter,
 		ec.unmarshalInputTestFilterOptions,
@@ -92565,7 +92564,11 @@ func (ec *executionContext) unmarshalInputTaskSelection(ctx context.Context, obj
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskIds", "filter"}
+	if _, present := asMap["excludeTaskIds"]; !present {
+		asMap["excludeTaskIds"] = []any{}
+	}
+
+	fieldsInOrder := [...]string{"taskIds", "filter", "excludeTaskIds"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -92581,51 +92584,11 @@ func (ec *executionContext) unmarshalInputTaskSelection(ctx context.Context, obj
 			it.TaskIds = data
 		case "filter":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filter"))
-			data, err := ec.unmarshalOTaskSelectionFilter2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSelectionFilter(ctx, v)
+			data, err := ec.unmarshalOTaskFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskFilterOptions(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Filter = data
-		}
-	}
-
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputTaskSelectionFilter(ctx context.Context, obj any) (TaskSelectionFilter, error) {
-	var it TaskSelectionFilter
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	if _, present := asMap["baseStatuses"]; !present {
-		asMap["baseStatuses"] = []any{}
-	}
-	if _, present := asMap["excludeTaskIds"]; !present {
-		asMap["excludeTaskIds"] = []any{}
-	}
-	if _, present := asMap["includeNeverActivatedTasks"]; !present {
-		asMap["includeNeverActivatedTasks"] = false
-	}
-	if _, present := asMap["statuses"]; !present {
-		asMap["statuses"] = []any{}
-	}
-
-	fieldsInOrder := [...]string{"baseStatuses", "excludeTaskIds", "includeNeverActivatedTasks", "statuses", "taskName", "variant"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "baseStatuses":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseStatuses"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.BaseStatuses = data
 		case "excludeTaskIds":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("excludeTaskIds"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -92633,34 +92596,6 @@ func (ec *executionContext) unmarshalInputTaskSelectionFilter(ctx context.Contex
 				return it, err
 			}
 			it.ExcludeTaskIds = data
-		case "includeNeverActivatedTasks":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeNeverActivatedTasks"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.IncludeNeverActivatedTasks = data
-		case "statuses":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statuses"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Statuses = data
-		case "taskName":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskName"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TaskName = data
-		case "variant":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variant"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Variant = data
 		}
 	}
 
@@ -125391,6 +125326,14 @@ func (ec *executionContext) marshalOTaskExecutionStep2ᚕᚖgithubᚗcomᚋeverg
 	return ret
 }
 
+func (ec *executionContext) unmarshalOTaskFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskFilterOptions(ctx context.Context, v any) (*TaskFilterOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTaskFilterOptions(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOTaskHostOverrides2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskHostOverrides(ctx context.Context, sel ast.SelectionSet, v *model.APITaskHostOverrides) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -125489,14 +125432,6 @@ func (ec *executionContext) marshalOTaskQuarantinedTestsSample2ᚕᚖgithubᚗco
 	}
 
 	return ret
-}
-
-func (ec *executionContext) unmarshalOTaskSelectionFilter2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSelectionFilter(ctx context.Context, v any) (*TaskSelectionFilter, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputTaskSelectionFilter(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifierᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APITaskSpecifier) graphql.Marshaler {

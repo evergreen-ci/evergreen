@@ -50,7 +50,7 @@ func TestResolveTaskSelection(t *testing.T) {
 		require.NoError(t, tsk.Insert(t.Context()))
 	}
 
-	failedFilter := &TaskSelectionFilter{Statuses: []string{evergreen.TaskFailed}}
+	failedFilter := &TaskFilterOptions{Statuses: []string{evergreen.TaskFailed}}
 
 	t.Run("InvalidTaskSelection", func(t *testing.T) {
 		for testName, testCase := range map[string]struct {
@@ -121,30 +121,33 @@ func TestResolveTaskSelection(t *testing.T) {
 
 	t.Run("TaskSelectionWithFilter", func(t *testing.T) {
 		for testName, testCase := range map[string]struct {
-			filter      *TaskSelectionFilter
-			expectedIDs []string
+			filter         *TaskFilterOptions
+			excludeTaskIDs []string
+			expectedIDs    []string
 		}{
 			"ReturnsAllMatchingTasksInVersion": {
 				filter:      failedFilter,
 				expectedIDs: []string{"failed1", "failed2", "failed3"},
 			},
 			"EmptyFilterReturnsAllTasksInVersion": {
-				filter:      &TaskSelectionFilter{},
+				filter:      &TaskFilterOptions{},
 				expectedIDs: []string{"failed1", "failed2", "failed3", "succeeded1"},
 			},
 			"OmitsExcludedTasks": {
-				filter: &TaskSelectionFilter{
-					Statuses:       []string{evergreen.TaskFailed},
-					ExcludeTaskIds: []string{"failed2"},
-				},
-				expectedIDs: []string{"failed1", "failed3"},
+				filter:         failedFilter,
+				excludeTaskIDs: []string{"failed2"},
+				expectedIDs:    []string{"failed1", "failed3"},
+			},
+			"IgnoresLimitAndPage": {
+				filter:      &TaskFilterOptions{Statuses: []string{evergreen.TaskFailed}, Limit: utility.ToIntPtr(1), Page: utility.ToIntPtr(1)},
+				expectedIDs: []string{"failed1", "failed2", "failed3"},
 			},
 			"MatchingNothingReturnsNoTasks": {
-				filter: &TaskSelectionFilter{Statuses: []string{evergreen.TaskStarted}},
+				filter: &TaskFilterOptions{Statuses: []string{evergreen.TaskStarted}},
 			},
 		} {
 			t.Run(testName, func(t *testing.T) {
-				resolved, taskErrors, err := resolveTaskSelection(t.Context(), "v1", TaskSelection{Filter: testCase.filter})
+				resolved, taskErrors, err := resolveTaskSelection(t.Context(), "v1", TaskSelection{Filter: testCase.filter, ExcludeTaskIds: testCase.excludeTaskIDs})
 				require.NoError(t, err)
 				taskIDs := make([]string, 0, len(resolved))
 				for _, t := range resolved {

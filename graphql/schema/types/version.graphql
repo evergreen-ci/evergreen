@@ -23,24 +23,13 @@ input TaskFilterOptions {
 }
 
 """
-TaskSelectionFilter selects every task in a Version that matches it, across all pages.
-"""
-input TaskSelectionFilter {
-  baseStatuses: [String!] = []
-  excludeTaskIds: [String!] = []
-  includeNeverActivatedTasks: Boolean = false
-  statuses: [String!] = []
-  taskName: String
-  variant: String
-}
-
-"""
-TaskSelection describes which tasks in a Version a bulk operation applies to. Exactly one of taskIds or filter must be
-set.
+TaskSelection describes which tasks in a Version a bulk operation applies to. Exactly one of (taskIds) or (filter, excludeTaskIds)
+must be set.
 """
 input TaskSelection {
   taskIds: [String!]
-  filter: TaskSelectionFilter
+  filter: TaskFilterOptions
+  excludeTaskIds: [String!] = []
 }
 
 """

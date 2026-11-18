@@ -10,8 +10,15 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
-// resolveTaskSelection returns the tasks in the version that the selection refers to, along with any explicitly
-// requested tasks that couldn't be found in the version.
+var taskSelectionFields = []string{
+	task.IdKey,
+	task.StatusKey,
+	task.ActivatedKey,
+	task.RequesterKey,
+	task.DisplayTaskIdKey,
+}
+
+// resolveTaskSelection returns the tasks in the version that the selection refers to, along with any task errors encountered.
 func resolveTaskSelection(ctx context.Context, versionID string, selection TaskSelection) ([]task.Task, []*TaskError, error) {
 	hasTaskIDs := selection.TaskIds != nil
 	hasFilters := selection.Filter != nil
@@ -21,16 +28,7 @@ func resolveTaskSelection(ctx context.Context, versionID string, selection TaskS
 	if hasTaskIDs {
 		return resolveTasksByIDs(ctx, versionID, selection.TaskIds)
 	}
-	return resolveTasksByFilter(ctx, versionID, selection.Filter)
-}
-
-// taskSelectionFields are the only task fields loaded when resolving a task selection.
-var taskSelectionFields = []string{
-	task.IdKey,
-	task.StatusKey,
-	task.ActivatedKey,
-	task.RequesterKey,
-	task.DisplayTaskIdKey,
+	return resolveTasksByFilter(ctx, versionID, selection.Filter, selection.ExcludeTaskIds)
 }
 
 func resolveTasksByIDs(ctx context.Context, versionID string, taskIDs []string) ([]task.Task, []*TaskError, error) {
@@ -53,7 +51,7 @@ func resolveTasksByIDs(ctx context.Context, versionID string, taskIDs []string) 
 	return tasks, taskErrors, nil
 }
 
-func resolveTasksByFilter(ctx context.Context, versionID string, f *TaskSelectionFilter) ([]task.Task, []*TaskError, error) {
+func resolveTasksByFilter(ctx context.Context, versionID string, f *TaskFilterOptions, excludeTaskIDs []string) ([]task.Task, []*TaskError, error) {
 	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return nil, nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
@@ -61,33 +59,21 @@ func resolveTasksByFilter(ctx context.Context, versionID string, f *TaskSelectio
 	if v == nil {
 		return nil, nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
-	opts := task.GetTasksByVersionOptions{
-		Statuses:     getValidTaskStatusesFilter(f.Statuses),
-		BaseStatuses: getValidTaskStatusesFilter(f.BaseStatuses),
-		Variants:     []string{utility.FromStringPtr(f.Variant)},
-		TaskNames:    []string{utility.FromStringPtr(f.TaskName)},
-		// If the version is mainline, include never-activated tasks regardless of the user's preference.
-		IncludeNeverActivatedTasks: utility.FromBoolPtr(f.IncludeNeverActivatedTasks) || !evergreen.IsPatchRequester(v.Requester),
-		FieldsToProject:            taskSelectionFields,
+
+	opts, err := getTasksByVersionOptions(ctx, v, *f)
+	if err != nil {
+		return nil, nil, err
 	}
-	// Base version is only needed if filtering on base statuses.
-	if len(opts.BaseStatuses) > 0 {
-		baseVersion, err := v.FindBaseVersion(ctx, false)
-		if err != nil {
-			return nil, nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", v.Id, err.Error()))
-		}
-		if baseVersion != nil {
-			opts.BaseVersionID = baseVersion.Id
-		}
-	}
+	opts.FieldsToProject = taskSelectionFields
+
 	matched, _, err := task.GetTasksByVersion(ctx, versionID, opts)
 	if err != nil {
 		return nil, nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for version '%s': %s", versionID, err.Error()))
 	}
 
 	// A user can apply a filter but then unselect specific tasks. Here we remove any tasks the user has excluded.
-	excluded := make(map[string]bool, len(f.ExcludeTaskIds))
-	for _, id := range f.ExcludeTaskIds {
+	excluded := make(map[string]bool, len(excludeTaskIDs))
+	for _, id := range excludeTaskIDs {
 		excluded[id] = true
 	}
 	tasks := make([]task.Task, 0, len(matched))
