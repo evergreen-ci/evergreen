@@ -47,6 +47,42 @@ You can use the `error exists` attribute to search for errors. Here's an example
 
 In the `WHERE` section there's two attributes present. One says "show errors" and the other identifies a project. In the graph under the query you can see the timespan when the errors happened, and if you click on "Traces" you can get links to a trace for each one.
 
+## Version Makespans by Tag
+
+When a version finishes, Evergreen publishes one span named
+`version-tag-makespan` for each task tag on the version, carrying the makespan
+(the time between the earliest task start and the latest task finish) of the
+tasks that share that tag. This makes it possible to track the makespan of a
+filtered set of tasks (for example, a workload tagged as high-value) with a
+Honeycomb query on the tag, without Evergreen special-casing individual tags.
+
+Each span carries these attributes (in addition to all the usual version
+attributes such as `evergreen.version.id` and `evergreen.project.identifier`):
+
+| Attribute                                | Description                                                    |
+| ---------------------------------------- | -------------------------------------------------------------- |
+| `evergreen.version.tag`                  | The task tag the makespan is calculated for                    |
+| `evergreen.version.tag.makespan_seconds` | The makespan of the version's finished tasks carrying that tag |
+
+Makespans are calculated server-side from the finished tasks' recorded
+timings. Display-only tasks and tasks that did not run are excluded, and
+spans are only published for tags with at least one eligible task. Calculating
+this server-side (rather than querying task spans in Honeycomb) is necessary
+because task spans are sampled, so aggregating their timings would be
+unreliable.
+
+### Querying for a Tag's Makespan
+
+For example, to track the makespan of tasks tagged `release_critical` on a
+project over time, run:
+
+```text
+WHERE name = version-tag-makespan
+WHERE evergreen.version.tag = release_critical
+GROUP BY evergreen.version.id
+MAX(evergreen.version.tag.makespan_seconds)
+```
+
 ## Tag Validation Tracking
 
 Projects can require that tasks added by `generate.tasks` carry a tag with a
