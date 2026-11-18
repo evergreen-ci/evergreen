@@ -44,9 +44,8 @@ The script rechecks all scopes after applying and requires zero remaining drift 
 
 ## Local validation
 
-The tests use synthetic data and no database connection:
+Check the script's syntax without a database connection:
 
 ```sh
 node --check scripts/backfill-repo-permission-scopes.js
-node scripts/backfill-repo-permission-scopes.test.js
 ```
