@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -932,11 +933,18 @@ func TestGetOrCreateUser(t *testing.T) {
 			assert.Equal(t, apiKey, dbUser.GetAPIKey())
 
 			t.Run("GetsUserWithJustEmail", func(t *testing.T) {
+				const existingEmail = "name@example.com"
+				// A Slack member ID keeps the lookup from calling Slack.
+				require.NoError(t, UpdateOne(t.Context(), bson.M{IdKey: id}, bson.M{"$set": bson.M{
+					EmailAddressKey: existingEmail,
+					bsonutil.GetDottedKeyName(SettingsKey, userSettingsSlackMemberIdKey): "slack_member_id",
+				}}))
+
 				// Only include the email.
-				user, err = GetOrCreateUser(t.Context(), "", "", email, "", "", nil)
+				user, err = GetOrCreateUser(t.Context(), "", "", existingEmail, "", "", nil)
 				require.NoError(t, err)
 
-				checkUser(t, user, id, name, email, accessToken, refreshToken)
+				checkUser(t, user, id, name, existingEmail, accessToken, refreshToken)
 				assert.Equal(t, apiKey, user.GetAPIKey())
 			})
 		},
@@ -983,6 +991,37 @@ func TestGetOrCreateUser(t *testing.T) {
 			checkUser(t, user, id, name, email, newAccessToken, newRefreshToken)
 			assert.Equal(t, apiKey, user.GetAPIKey())
 		},
+		"EmptyEmailShouldNotOverwriteExistingEmail": func(t *testing.T) {
+			const existingEmail = "name@example.com"
+			// A Slack member ID keeps the lookup from calling Slack.
+			require.NoError(t, (&DBUser{
+				Id:           id,
+				EmailAddress: existingEmail,
+				Settings:     UserSettings{SlackMemberId: "slack_member_id"},
+			}).Insert(t.Context()))
+
+			user, err := GetOrCreateUser(t.Context(), id, name, "", accessToken, refreshToken, nil)
+			require.NoError(t, err)
+			checkUser(t, user, id, name, existingEmail, accessToken, refreshToken)
+
+			dbUser, err := FindOneById(t.Context(), id)
+			require.NoError(t, err)
+			require.NotZero(t, dbUser)
+			assert.Equal(t, existingEmail, dbUser.Email())
+		},
+		"MissingIDAndEmailShouldError": func(t *testing.T) {
+			_, err := GetOrCreateUser(t.Context(), id, name, email, accessToken, refreshToken, nil)
+			require.NoError(t, err)
+
+			user, err := GetOrCreateUser(t.Context(), "", "other_name", "", accessToken, refreshToken, nil)
+			assert.Error(t, err)
+			assert.Nil(t, user)
+
+			dbUser, err := FindOneById(t.Context(), id)
+			require.NoError(t, err)
+			require.NotZero(t, dbUser)
+			assert.Equal(t, name, dbUser.DisplayName())
+		},
 		"RolesMergeCorrectly": func(t *testing.T) {
 			roles := []string{"one", "two"}
 			user, err := GetOrCreateUser(t.Context(), id, "", "", "token", "", roles)
@@ -1004,6 +1043,11 @@ func TestGetOrCreateUser(t *testing.T) {
 			testCase(t)
 		})
 	}
+}
+
+func TestSetSlackInformationSkipsSpiffeUsers(t *testing.T) {
+	u := &DBUser{Id: "spiffe://cluster.local/ns/devprod-mcp-gateway/sa/devprod-mcp-gateway-sa"}
+	assert.NoError(t, setSlackInformation(t.Context(), nil, u))
 }
 
 func TestGetOrCreateUserWithOktaID(t *testing.T) {

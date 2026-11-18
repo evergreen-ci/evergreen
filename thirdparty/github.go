@@ -58,6 +58,13 @@ const (
 	githubCachedAttribute      = "evergreen.github.cached"
 	githubLocalCachedAttribute = "evergreen.github.local_cached"
 	githubAuthMethodAttribute  = "evergreen.github.auth_method"
+
+	githubRateLimitLimitAttribute     = "evergreen.github.rate_limit.limit"
+	githubRateLimitRemainingAttribute = "evergreen.github.rate_limit.remaining"
+	githubRateLimitUsedAttribute      = "evergreen.github.rate_limit.used"
+	githubRateLimitResetAttribute     = "evergreen.github.rate_limit.reset"
+	githubRateLimitResourceAttribute  = "evergreen.github.rate_limit.resource"
+	githubRequestIDAttribute          = "evergreen.github.request_id"
 )
 
 var githubWritePermissions = []string{
@@ -332,7 +339,11 @@ func (c *retryConfig) shouldIgnoreCode(statusCode int) bool {
 
 func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunction {
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
-		trace.SpanFromContext(req.Context()).SetAttributes(attribute.Int(githubRetriesAttribute, index))
+		span := trace.SpanFromContext(req.Context())
+		span.SetAttributes(attribute.Int(githubRetriesAttribute, index))
+		if resp != nil {
+			span.SetAttributes(githubResponseAttributes(resp.Header)...)
+		}
 
 		if !(config.retry || config.retry404) {
 			return false
@@ -633,6 +644,12 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref string, ghAppAuth
 			defer resp.Body.Close()
 			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 			if resp.StatusCode == http.StatusNotFound {
+				// GitHub also returns a 404 when the ref doesn't exist, which
+				// is distinguishable only by the error message.
+				var errResp *github.ErrorResponse
+				if errors.As(err, &errResp) && strings.HasPrefix(errResp.Message, "No commit found for the ref") {
+					return RevisionNotFoundError{owner: owner, repo: repo, revision: ref}
+				}
 				return FileNotFoundError{filepath: path}
 			}
 			if err != nil {
@@ -1048,6 +1065,30 @@ func parseGithubRateLimit(h http.Header) github.Rate {
 	}
 
 	return rate
+}
+
+func githubResponseAttributes(h http.Header) []attribute.KeyValue {
+	var attrs []attribute.KeyValue
+	if requestID := h.Get("X-GitHub-Request-Id"); requestID != "" {
+		attrs = append(attrs, attribute.String(githubRequestIDAttribute, requestID))
+	}
+	if h.Get("X-Ratelimit-Limit") == "" {
+		return attrs
+	}
+
+	rate := parseGithubRateLimit(h)
+	attrs = append(attrs,
+		attribute.Int(githubRateLimitLimitAttribute, rate.Limit),
+		attribute.Int(githubRateLimitRemainingAttribute, rate.Remaining),
+		attribute.String(githubRateLimitResourceAttribute, h.Get("X-Ratelimit-Resource")),
+	)
+	if used, err := strconv.Atoi(h.Get("X-Ratelimit-Used")); err == nil {
+		attrs = append(attrs, attribute.Int(githubRateLimitUsedAttribute, used))
+	}
+	if !rate.Reset.IsZero() {
+		attrs = append(attrs, attribute.String(githubRateLimitResetAttribute, rate.Reset.UTC().Format(time.RFC3339)))
+	}
+	return attrs
 }
 
 // GithubAuthenticate does a POST to github with the code that it received, the ClientId, ClientSecret

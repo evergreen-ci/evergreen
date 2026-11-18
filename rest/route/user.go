@@ -398,6 +398,9 @@ type UsersPermissionsInput struct {
 	ResourceId string `json:"resource_id"`
 	// The resource type
 	ResourceType string `json:"resource_type"`
+	// ExcludeRepoGrants returns independently assigned project permissions,
+	// omitting access that comes from repo grants or a repo's admin list.
+	ExcludeRepoGrants bool `json:"exclude_repo_grants,omitempty"`
 }
 
 // UserPermissionsResult is a map from userId to their highest permission for the resource
@@ -463,6 +466,9 @@ func (h *allUsersPermissionsGetHandler) Run(ctx context.Context) gimlet.Responde
 	roleIds := []string{}
 	permissionsMap := map[string]gimlet.Permissions{}
 	for _, role := range roles {
+		if h.input.ExcludeRepoGrants && (isRepoPermissionRole(role) || isNativeRepoAdminRole(role)) {
+			continue
+		}
 		// Don't return internal roles.
 		if !utility.StringSliceContains(evergreen.GeneralAccessRoles, role.ID) {
 			roleIds = append(roleIds, role.ID)

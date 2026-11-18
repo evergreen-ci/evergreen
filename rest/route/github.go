@@ -876,7 +876,12 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 	if isKeepDefinitionsComment(commentBody) {
 		grip.Info(ctx, gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
 
-		err := keepPRPatchDefinition(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
+		authorized, err := gh.authorizeCommenter(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber(), event.GetSender().GetLogin())
+		if !authorized {
+			return errors.Wrap(err, "commenting on PR about unauthorized commenter")
+		}
+
+		err = keepPRPatchDefinition(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
 
 		grip.Error(ctx, message.WrapError(err, gh.getCommentLogWithMessage(event,
 			"problem keeping pr patch definitions")))
@@ -888,7 +893,12 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 	if isResetDefinitionsComment(commentBody) {
 		grip.Info(ctx, gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
 
-		err := resetPRPatchDefinition(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
+		authorized, err := gh.authorizeCommenter(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber(), event.GetSender().GetLogin())
+		if !authorized {
+			return errors.Wrap(err, "commenting on PR about unauthorized commenter")
+		}
+
+		err = resetPRPatchDefinition(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
 
 		grip.Error(ctx, message.WrapError(err, gh.getCommentLogWithMessage(event,
 			"problem resetting pr patch definitions")))
@@ -1125,6 +1135,33 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 	return gh.AddIntentForPR(ctx, pr, pr.User.GetLogin(), calledBy, alias, commenter, true)
 }
 
+// authorizeCommenter returns whether the commenter is allowed to trigger CI
+// actions on the repo.
+func (gh *githubHookApi) authorizeCommenter(ctx context.Context, owner, repo string, prNum int, commenter string) (bool, error) {
+	authorized, err := gh.isCommenterAuthorized(ctx, gh.settings.GithubPRCreatorOrg, owner, repo, commenter)
+	if err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message":   "checking commenter authorization",
+			"commenter": commenter,
+			"owner":     owner,
+			"repo":      repo,
+			"pr_num":    prNum,
+		}))
+	}
+	if authorized {
+		return true, nil
+	}
+	grip.Warning(ctx, message.Fields{
+		"message":   "commenter is not authorized to trigger CI",
+		"commenter": commenter,
+		"owner":     owner,
+		"repo":      repo,
+		"pr_num":    prNum,
+	})
+	unauthorizedComment := fmt.Sprintf("GitHub user %s is not authorized to trigger Evergreen CI.", commenter)
+	return false, gh.sc.AddCommentToPR(ctx, owner, repo, prNum, unauthorizedComment)
+}
+
 // keepPRPatchDefinition looks for the most recent patch created for the pr number and updates the
 // RepeatPatchIdNextPatch field in the githubPatchData to the patch id of the latest patch.
 // When the next github patch intent is created for that PR, it will look at this field on the last pr patch
@@ -1199,27 +1236,9 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	}
 
 	if commenter != "" {
-		requiredOrg := gh.settings.GithubPRCreatorOrg
-		authorized, err := gh.isCommenterAuthorized(ctx, requiredOrg, baseOwnerRepo[0], baseOwnerRepo[1], commenter)
-		if err != nil {
-			grip.Error(ctx, message.WrapError(err, message.Fields{
-				"message":   "checking commenter authorization",
-				"commenter": commenter,
-				"owner":     baseOwnerRepo[0],
-				"repo":      baseOwnerRepo[1],
-				"pr_num":    pr.GetNumber(),
-			}))
-		}
+		authorized, err := gh.authorizeCommenter(ctx, baseOwnerRepo[0], baseOwnerRepo[1], pr.GetNumber(), commenter)
 		if !authorized {
-			grip.Warning(ctx, message.Fields{
-				"message":   "commenter is not authorized to trigger CI",
-				"commenter": commenter,
-				"owner":     baseOwnerRepo[0],
-				"repo":      baseOwnerRepo[1],
-				"pr_num":    pr.GetNumber(),
-			})
-			unauthorizedComment := fmt.Sprintf("GitHub user %s is not authorized to trigger Evergreen CI.", commenter)
-			return gh.sc.AddCommentToPR(ctx, baseOwnerRepo[0], baseOwnerRepo[1], pr.GetNumber(), unauthorizedComment)
+			return err
 		}
 	}
 
@@ -1627,7 +1646,7 @@ func (gh *githubHookApi) handleCreatedGitTag(ctx context.Context, event *github.
 func (gh *githubHookApi) handleDeletedGitTag(ctx context.Context, event *github.PushEvent, tag model.GitTag, owner, repo string) error {
 	err := model.RemoveGitTagFromVersions(ctx, owner, repo, tag)
 	if err != nil {
-		grip.ErrorWhen(ctx, !errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
+		grip.ErrorWhen(ctx, !errors.Is(err, context.Canceled), message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
 			"message": "removing tag from versions",
 			"ref":     event.GetRef(),
@@ -1732,7 +1751,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		if gh.settings == nil {
 			gh.settings, err = evergreen.GetConfig(ctx)
 			if err != nil {
-				return nil, errors.Wrap(err, "getting admin settings")
+				return nil, fmt.Errorf("getting admin settings: %w", err)
 			}
 		}
 		projectInfo, err = gh.sc.GetProjectFromFile(ctx, pRef, remotePath, gh.settings)

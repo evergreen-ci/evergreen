@@ -22,6 +22,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 func TestLastKnownGoodConfig(t *testing.T) {
@@ -1080,6 +1082,26 @@ func TestIncrementVersionS3CostAndUsage(t *testing.T) {
 	})
 }
 
+func TestTrackVersionS3CostForTaskSpanShouldIncludeTaskAndVersionIDs(t *testing.T) {
+	spanRecorder := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
+	originalTracer := tracer
+	tracer = tp.Tracer("test")
+	t.Cleanup(func() { tracer = originalTracer })
+
+	require.NoError(t, TrackVersionS3CostForTask(t.Context(), "t1", "v1", evergreen.TaskSucceeded, cost.Cost{}, s3usage.S3Usage{}))
+
+	ended := spanRecorder.Ended()
+	require.Len(t, ended, 1)
+	assert.Equal(t, evergreen.S3CostTrackingOtelSpanName, ended[0].Name())
+	attrs := map[string]any{}
+	for _, kv := range ended[0].Attributes() {
+		attrs[string(kv.Key)] = kv.Value.AsInterface()
+	}
+	assert.Equal(t, "t1", attrs[evergreen.TaskIDOtelAttribute])
+	assert.Equal(t, "v1", attrs[evergreen.VersionIDOtelAttribute])
+}
+
 func TestGetManifestModuleWiki(t *testing.T) {
 	ctx := t.Context()
 	pRef := &ProjectRef{Owner: "foo", Repo: "bar"}
@@ -1092,6 +1114,23 @@ func TestGetManifestModuleWiki(t *testing.T) {
 	assert.Empty(t, m.Revision)
 	assert.Equal(t, "master", m.Branch)
 	assert.Empty(t, m.URL)
+}
+
+func TestGetManifestModulePinnedRefShouldNotNeedGitHub(t *testing.T) {
+	for name, ref := range map[string]string{
+		"FullSHA":  "cf46076567e4949f9fc68e0634139d4ac495c89b",
+		"ShortSHA": "cf46076",
+	} {
+		t.Run(name, func(t *testing.T) {
+			mod := Module{Name: "m", Owner: "nonexistent-owner", Repo: "nonexistent-repo", Branch: "main", Ref: ref}
+			m, err := getManifestModule(t.Context(), &ProjectRef{}, mod, evergreen.PatchVersionRequester, time.Time{})
+			require.NoError(t, err)
+			require.NotNil(t, m)
+			assert.Equal(t, ref, m.Revision)
+			assert.Equal(t, "https://api.github.com/repos/nonexistent-owner/nonexistent-repo/commits/"+ref, m.URL)
+			assert.Equal(t, manifest.ModuleSelectionPinnedRef, m.SelectionRule)
+		})
+	}
 }
 
 func TestConstructManifestRecordsSelectionRulesAndChangedModules(t *testing.T) {

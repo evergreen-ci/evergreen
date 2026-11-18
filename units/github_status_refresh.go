@@ -51,6 +51,7 @@ type githubStatusRefreshJob struct {
 	patch        *patch.Patch
 	builds       []build.Build
 	childPatches []patch.Patch
+	rateLimited  bool
 
 	FetchID string `bson:"fetch_id" json:"fetch_id" yaml:"fetch_id"`
 }
@@ -158,6 +159,7 @@ func (j *githubStatusRefreshJob) sendStatus(ctx context.Context, status *message
 
 	if err := send.SendWithError(ctx, j.sender, c); err != nil {
 		j.AddError(err)
+		j.rateLimited = isGitHubRateLimit(err)
 		return
 	}
 	grip.Info(ctx, message.Fields{
@@ -179,6 +181,9 @@ func (j *githubStatusRefreshJob) sendChildPatchStatuses(ctx context.Context) err
 	status := j.newGitHubStatus()
 
 	for _, childPatch := range j.childPatches {
+		if j.rateLimited {
+			return nil
+		}
 		projectIdentifier, err := model.GetIdentifierForProject(ctx, childPatch.Project)
 		if err != nil {
 			return errors.Wrap(err, "finding project identifier")
@@ -214,6 +219,9 @@ func (j *githubStatusRefreshJob) getGitHubStateAndDescriptionForPatch(ctx contex
 func (j *githubStatusRefreshJob) sendBuildStatuses(ctx context.Context) {
 	status := j.newGitHubStatus()
 	for _, b := range j.builds {
+		if j.rateLimited {
+			return
+		}
 		// Dormant builds were never scheduled, so nothing will ever run for
 		// them and no status could ever resolve; report nothing for them.
 		if b.IsDormant() {
@@ -259,6 +267,7 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 	if !shouldUpdate {
 		return
 	}
+	start := time.Now()
 	if err = j.fetch(ctx); err != nil {
 		j.AddError(err)
 		return
@@ -282,4 +291,8 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 
 	// For each build, send build status.
 	j.sendBuildStatuses(ctx)
+
+	if !j.HasErrors() {
+		j.AddError(patch.ClearGitHubStatusResync(ctx, j.FetchID, start))
+	}
 }
