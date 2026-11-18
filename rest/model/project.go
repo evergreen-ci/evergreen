@@ -611,6 +611,8 @@ type APIProjectRef struct {
 	DebugSpawnHostsDisabled *bool `json:"debug_spawn_hosts_disabled" extensions:"x-nullable"`
 	// Use bisect stepback instead of linear.
 	StepbackBisect *bool `json:"stepback_bisect" extensions:"x-nullable"`
+	// Step back mainline and push-triggered versions together.
+	StepbackPushTriggers *bool `json:"stepback_push_triggers" extensions:"x-nullable"`
 	// Enable setting project aliases from version-controlled project configs.
 	VersionControlEnabled *bool `json:"version_control_enabled" extensions:"x-nullable"`
 	// Disable stats caching.
@@ -728,6 +730,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		WaterfallDisabled:                utility.BoolPtrCopy(p.WaterfallDisabled),
 		StepbackDisabled:                 utility.BoolPtrCopy(p.StepbackDisabled),
 		StepbackBisect:                   utility.BoolPtrCopy(p.StepbackBisect),
+		StepbackPushTriggers:             utility.BoolPtrCopy(p.StepbackPushTriggers),
 		VersionControlEnabled:            utility.BoolPtrCopy(p.VersionControlEnabled),
 		DisabledStatsCache:               utility.BoolPtrCopy(p.DisabledStatsCache),
 		SourceCacheMode:                  sourceCacheModeFromPtr(p.SourceCacheMode),
@@ -841,6 +844,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.WaterfallDisabled = utility.BoolPtrCopy(projectRef.WaterfallDisabled)
 	p.StepbackDisabled = utility.BoolPtrCopy(projectRef.StepbackDisabled)
 	p.StepbackBisect = utility.BoolPtrCopy(projectRef.StepbackBisect)
+	p.StepbackPushTriggers = utility.BoolPtrCopy(projectRef.StepbackPushTriggers)
 	p.VersionControlEnabled = utility.BoolPtrCopy(projectRef.VersionControlEnabled)
 	p.DisabledStatsCache = utility.BoolPtrCopy(projectRef.DisabledStatsCache)
 	p.SourceCacheMode = sourceCacheModePtr(projectRef.SourceCacheMode)

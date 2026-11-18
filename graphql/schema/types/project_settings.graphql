@@ -83,6 +83,7 @@ input ProjectInput {
   spawnHostScriptPath: String
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
+  stepbackPushTriggers: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
   taskOwnership: TaskOwnershipSettingsInput
   testSelection: TestSelectionSettingsInput

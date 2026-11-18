@@ -325,7 +325,14 @@ func (t *buildTriggers) generate(ctx context.Context, sub *event.Subscription, p
 		return nil, nil
 	}
 
-	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
+	n, err := notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
+	if err != nil {
+		return nil, err
+	}
+	if isGitHubStatusSubscriber(sub.Subscriber.Type) && evergreen.IsGitHubPatchRequester(t.build.Requester) {
+		n.Metadata.PatchID = t.build.Version
+	}
+	return n, nil
 }
 
 func taskFormatFromCache(t task.Task) string {

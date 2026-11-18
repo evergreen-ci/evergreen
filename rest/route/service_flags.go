@@ -31,7 +31,6 @@ func (h *serviceFlagsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(model.APIServiceFlagsResponse{
-		DebugSpawnHostDisabled:      flags.DebugSpawnHostDisabled,
-		CrossFileYAMLAnchorsEnabled: flags.CrossFileYAMLAnchorsEnabled,
+		DebugSpawnHostDisabled: flags.DebugSpawnHostDisabled,
 	})
 }

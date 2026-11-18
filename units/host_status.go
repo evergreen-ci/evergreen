@@ -316,7 +316,7 @@ func (j *cloudHostReadyJob) logHostStatusMessage(ctx context.Context, h *host.Ho
 // marking it for termination and handling any other cleanup necessary for a
 // host that fails to start up.
 func (j *cloudHostReadyJob) prepareToTerminateHost(ctx context.Context, h *host.Host, terminationReason string, skipCloudHostTermination bool) error {
-	event.LogHostTerminatedExternally(ctx, h.Id, h.Status)
+	event.LogHostTerminatedExternally(ctx, h.Id, h.Status, terminationReason)
 
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrap(handleTerminatedHostSpawnedByTask(ctx, h), "handling host.create host that was terminating before it was running")

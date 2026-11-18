@@ -81,6 +81,13 @@ func FindOneRepoRef(ctx context.Context, identifier string) (*RepoRef, error) {
 	}))
 }
 
+// FindRepoRefsForDiscovery returns all repos with only their IDs, owners, repo names, and admins.
+func FindRepoRefsForDiscovery(ctx context.Context) ([]RepoRef, error) {
+	repos := []RepoRef{}
+	err := db.FindAllQ(ctx, RepoRefCollection, db.Query(bson.M{}).WithFields(RepoRefIdKey, RepoRefOwnerKey, RepoRefRepoKey, RepoRefAdminsKey), &repos)
+	return repos, err
+}
+
 // FindRepoRefsByRepoAndBranch finds RepoRefs with matching repo/branch
 // that are enabled and setup for PR testing
 func FindRepoRefByOwnerAndRepo(ctx context.Context, owner, repoName string) (*RepoRef, error) {
@@ -107,6 +114,13 @@ func (r *RepoRef) addPermissions(ctx context.Context, creator *user.DBUser) erro
 	}
 	if err := rm.AddScope(ctx, adminScope); err != nil {
 		return errors.Wrapf(err, "adding scope for repo project '%s'", r.Id)
+	}
+	if err := rm.AddScope(ctx, gimlet.Scope{
+		ID:        GetRepoOnlyScope(r.Id),
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{r.Id},
+	}); err != nil {
+		return errors.Wrap(err, "adding repo-only scope")
 	}
 
 	// will be used to request permissions at the repo level
@@ -141,7 +155,7 @@ func (r *RepoRef) MakeRestricted(ctx context.Context, branchProjects []ProjectRe
 
 	// if the branch project is now restricted, remove it from the unrestricted scope
 	for _, p := range branchProjects {
-		if !p.IsRestricted() {
+		if p.RepoRefId != r.Id || !p.IsRestricted() {
 			continue
 		}
 		if err := rm.RemoveResourceFromScope(ctx, scopeId, p.Id); err != nil {
@@ -162,7 +176,7 @@ func (r *RepoRef) MakeUnrestricted(ctx context.Context, branchProjects []Project
 	scopeId := GetUnrestrictedBranchProjectsScope(r.Id)
 	// if the branch project is now unrestricted, add it to the unrestricted scopes
 	for _, p := range branchProjects {
-		if p.IsRestricted() {
+		if p.RepoRefId != r.Id || p.IsRestricted() {
 			continue
 		}
 		if err := rm.AddResourceToScope(ctx, scopeId, p.Id); err != nil {
@@ -228,12 +242,12 @@ func (r *RepoRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []string
 
 // GetUnrestrictedBranchProjectsScope returns the scope ID that includes the unrestricted branches for this project.
 func GetUnrestrictedBranchProjectsScope(repoId string) string {
-	return fmt.Sprintf("unrestricted_branches_%s", repoId)
+	return repoUnrestrictedScopePrefix + repoId
 }
 
 // GetRepoAdminScope returns the scope ID that includes all branch projects, regardless of restricted/unrestricted.
 func GetRepoAdminScope(repoId string) string {
-	return fmt.Sprintf("admin_repo_%s", repoId)
+	return repoAdminScopePrefix + repoId
 }
 
 // GetRepoAdminRole returns the repo admin role ID for the given repo.

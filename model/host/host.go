@@ -117,7 +117,11 @@ type Host struct {
 	// server.
 	AgentStartTime  time.Time `bson:"agent_start_time" json:"agent_start_time"`
 	TerminationTime time.Time `bson:"termination_time" json:"termination_time"`
-	TaskCount       int       `bson:"task_count" json:"task_count"`
+	// TerminationReason is why the host was terminated.
+	TerminationReason string `bson:"termination_reason,omitempty" json:"termination_reason,omitempty"`
+	// DecommissionReason is why the host was most recently decommissioned.
+	DecommissionReason string `bson:"decommission_reason,omitempty" json:"decommission_reason,omitempty"`
+	TaskCount          int    `bson:"task_count" json:"task_count"`
 
 	LastTaskCompletedTime time.Time `bson:"last_task_completed_time" json:"last_task_completed_time"`
 	LastCommunicationTime time.Time `bson:"last_communication" json:"last_communication"`
@@ -668,6 +672,11 @@ const (
 	// higher the one for Linux because Windows hosts take longer to provision.
 	windowsProvisioningCutoff = 10 * time.Minute
 
+	// DecommissionedHostUnreachableCutoff is the threshold to wait for a
+	// decommissioned host to become reachable again before giving up and
+	// terminating it.
+	DecommissionedHostUnreachableCutoff = 5 * time.Minute
+
 	MaxTagKeyLength   = 128
 	MaxTagValueLength = 256
 
@@ -1002,8 +1011,12 @@ func (h *Host) SetDecommissioned(ctx context.Context, user string, decommissionI
 		}))
 		catcher := grip.NewBasicCatcher()
 		failedContainerIds := []string{}
+		containerReason := "parent is being decommissioned"
+		if logs != "" {
+			containerReason = fmt.Sprintf("%s (%s)", containerReason, logs)
+		}
 		for _, c := range containers {
-			err = c.setStatusAndFields(ctx, evergreen.HostDecommissioned, query, nil, nil, user, "parent is being decommissioned")
+			err = c.setStatusAndFields(ctx, evergreen.HostDecommissioned, query, bson.M{DecommissionReasonKey: containerReason}, nil, user, containerReason)
 			if err != nil && err.Error() != ErrorHostAlreadyTerminated {
 				catcher.Add(err)
 				failedContainerIds = append(failedContainerIds, c.Id)
@@ -1014,7 +1027,11 @@ func (h *Host) SetDecommissioned(ctx context.Context, user string, decommissionI
 			"host_ids": failedContainerIds,
 		}))
 	}
-	err := h.setStatusAndFields(ctx, evergreen.HostDecommissioned, query, nil, nil, user, logs)
+	prevStatus := h.Status
+	err := h.setStatusAndFields(ctx, evergreen.HostDecommissioned, query, bson.M{DecommissionReasonKey: logs}, nil, user, logs)
+	if err == nil && prevStatus != h.Status {
+		h.DecommissionReason = logs
+	}
 	// Shouldn't consider it an error if the host isn't found when checking task group,
 	// because a task group may have been set for the host.
 	if err != nil && !decommissionIfBusy && adb.ResultsNotFound(err) {
@@ -1407,18 +1424,20 @@ func (h *Host) ResetLastCommunicated(ctx context.Context) error {
 	return nil
 }
 
-// Terminate marks a host as terminated, sets the termination time, and unsets
-// the host volumes.
+// Terminate marks a host as terminated, sets the termination time and reason,
+// and unsets the host volumes.
 func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 	terminatedAt := time.Now()
 	if err := h.setStatusAndFields(ctx, evergreen.HostTerminated, nil, bson.M{
-		TerminationTimeKey: terminatedAt,
-		VolumesKey:         nil,
+		TerminationTimeKey:   terminatedAt,
+		TerminationReasonKey: reason,
+		VolumesKey:           nil,
 	}, nil, user, reason); err != nil {
 		return err
 	}
 
 	h.TerminationTime = terminatedAt
+	h.TerminationReason = reason
 	h.Volumes = nil
 
 	return nil
@@ -2332,14 +2351,15 @@ func (h *Host) TeardownTimeExceededMax() bool {
 }
 
 // DecommissionHostsWithDistroId marks all up hosts intended for running tasks
-// that have a matching distro ID as decommissioned.
-func DecommissionHostsWithDistroId(ctx context.Context, distroId string) error {
+// that have a matching distro ID as decommissioned for the given reason.
+func DecommissionHostsWithDistroId(ctx context.Context, distroId, reason string) error {
 	err := UpdateAll(
 		ctx,
 		ByDistroIDs(distroId),
 		bson.M{
 			"$set": bson.M{
-				StatusKey: evergreen.HostDecommissioned,
+				StatusKey:             evergreen.HostDecommissioned,
+				DecommissionReasonKey: reason,
 			},
 		},
 	)
@@ -2425,10 +2445,6 @@ func buildConditionalProvisioningTimeoutQuery(now time.Time, timeoutCondition bs
 }
 
 func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
-	// unreachableCutoff is the threshold to wait for an decommissioned host to
-	// become marked as reachable again before giving up and terminating it.
-	const unreachableCutoff = 5 * time.Minute
-
 	now := time.Now()
 
 	archKey := bsonutil.GetDottedKeyName(DistroKey, distro.ArchKey)
@@ -2468,7 +2484,7 @@ func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
 			},
 			{ // decommissioned hosts that have not checked in recently
 				StatusKey:                evergreen.HostDecommissioned,
-				LastCommunicationTimeKey: bson.M{"$lt": now.Add(-unreachableCutoff)},
+				LastCommunicationTimeKey: bson.M{"$lt": now.Add(-DecommissionedHostUnreachableCutoff)},
 			},
 		},
 	}

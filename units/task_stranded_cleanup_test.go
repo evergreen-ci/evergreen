@@ -80,11 +80,79 @@ func TestTaskStrandedCleanupJob(t *testing.T) {
 				if tCase.expectStranded {
 					assert.Equal(t, evergreen.TaskFailed, dbVT.Status)
 					assert.Equal(t, evergreen.TaskDescriptionStranded, dbVT.Details.Description)
+					assert.Equal(t, "runner task finished without setting a status for this virtual task", dbVT.Details.SystemFailureReason)
 					assert.True(t, dbVT.IsFinished())
 				} else {
 					assert.Equal(t, evergreen.TaskUndispatched, dbVT.Status)
 					assert.False(t, dbVT.IsFinished())
 				}
+			})
+		}
+	})
+	t.Run("TasksOnTerminatedHosts", func(t *testing.T) {
+		for tName, tCase := range map[string]struct {
+			terminationReason string
+			expectedReason    string
+		}{
+			"RecordsHostTerminationReason": {
+				terminationReason: "host was found in state 'stopped'",
+				expectedReason:    "host was terminated while running the task (host was found in state 'stopped')",
+			},
+			"RecordsGenericReasonWithoutHostTerminationReason": {
+				expectedReason: "host was terminated while running the task",
+			},
+		} {
+			t.Run(tName, func(t *testing.T) {
+				env := &mock.Environment{}
+				require.NoError(t, env.Configure(t.Context()))
+				colls := []string{task.Collection, task.OldCollection, build.Collection, model.VersionCollection, host.Collection}
+				require.NoError(t, db.ClearCollections(colls...))
+				t.Cleanup(func() {
+					assert.NoError(t, db.ClearCollections(colls...))
+				})
+
+				v := model.Version{
+					Id:     "version",
+					Status: evergreen.VersionStarted,
+				}
+				require.NoError(t, v.Insert(t.Context()))
+				b := build.Build{
+					Id:      "build",
+					Version: v.Id,
+					Status:  evergreen.BuildStarted,
+				}
+				require.NoError(t, b.Insert(t.Context()))
+
+				tsk := task.Task{
+					Id:        "task",
+					BuildId:   b.Id,
+					Version:   v.Id,
+					HostId:    "host",
+					Status:    evergreen.TaskStarted,
+					Activated: true,
+					Execution: 1,
+				}
+				require.NoError(t, tsk.Insert(t.Context()))
+
+				h := host.Host{
+					Id:                   "host",
+					Status:               evergreen.HostTerminated,
+					RunningTask:          tsk.Id,
+					RunningTaskExecution: tsk.Execution,
+					TerminationReason:    tCase.terminationReason,
+				}
+				require.NoError(t, h.Insert(t.Context()))
+
+				j := NewStrandedTaskCleanupJob(env, "id")
+				j.Run(t.Context())
+				require.NoError(t, j.Error())
+
+				dbTask, err := task.FindOneId(t.Context(), tsk.Id)
+				require.NoError(t, err)
+				require.NotZero(t, dbTask)
+				assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+				assert.Equal(t, evergreen.TaskDescriptionStranded, dbTask.Details.Description)
+				assert.Equal(t, tCase.expectedReason, dbTask.Details.SystemFailureReason)
 			})
 		}
 	})

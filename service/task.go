@@ -117,13 +117,14 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logType := getTaskLogTypeMapping(r.FormValue("type"))
-	it, err := tsk.GetTaskLogs(r.Context(), task.TaskLogGetOptions{LogType: logType})
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
 	if r.FormValue("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
+		it, err := tsk.GetTaskLogs(r.Context(), task.TaskLogGetOptions{LogType: logType})
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		defer it.Close()
+
 		gimlet.WriteText(r.Context(), w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
 			PrintTime:     r.FormValue("time") != "false",
 			TimeZone:      getUserTimeZone(MustHaveUser(r)),

@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"maps"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -24,6 +26,7 @@ const (
 
 var (
 	IdKey                        = bsonutil.MustHaveTag(DBUser{}, "Id")
+	OktaIDKey                    = bsonutil.MustHaveTag(DBUser{}, "OktaUserID")
 	FirstNameKey                 = bsonutil.MustHaveTag(DBUser{}, "FirstName")
 	LastNameKey                  = bsonutil.MustHaveTag(DBUser{}, "LastName")
 	DispNameKey                  = bsonutil.MustHaveTag(DBUser{}, "DispName")
@@ -281,14 +284,20 @@ func DeleteServiceUser(ctx context.Context, id string) error {
 }
 
 // GetOrCreateUser upserts a user with the given userId with the given display
-// name, email, access token, and refresh token and returns the updated user. If
-// no such user exists for that userId yet, it also sets the user's API key and
-// roles.
+// name, email, access token, and refresh token and returns the updated user.
+// Empty fields leave the user's existing values unchanged. If userId is empty,
+// the user is found by email instead. If no such user exists yet, it also sets
+// the user's API key and roles.
 func GetOrCreateUser(ctx context.Context, userId, displayName, email, accessToken, refreshToken string, roles []string) (*DBUser, error) {
+	if userId == "" && email == "" {
+		return nil, errors.New("user ID or email must be specified")
+	}
+
 	u := &DBUser{}
 	env := evergreen.GetEnvironment()
-	setFields := bson.M{
-		EmailAddressKey: email,
+	setFields := bson.M{}
+	if email != "" {
+		setFields[EmailAddressKey] = email
 	}
 	if displayName != "" {
 		setFields[DispNameKey] = displayName
@@ -300,13 +309,7 @@ func GetOrCreateUser(ctx context.Context, userId, displayName, email, accessToke
 		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey)] = refreshToken
 	}
 
-	setOnInsertFields := bson.M{
-		APIKeyKey: utility.RandomString(),
-		bsonutil.GetDottedKeyName(SettingsKey, UseSpruceOptionsKey, SpruceV1Key): true,
-	}
-	if len(roles) > 0 {
-		setOnInsertFields[RolesKey] = roles
-	}
+	setOnInsertFields := newUserSetOnInsertFields(roles)
 	filter := bson.M{IdKey: userId}
 	// If the userId is empty, we use the email address as the filter.
 	if userId == "" {
@@ -342,9 +345,136 @@ func GetOrCreateUser(ctx context.Context, userId, displayName, email, accessToke
 	return u, nil
 }
 
+// newUserSetOnInsertFields returns the fields to initialize when a new user is
+// created by an upsert.
+func newUserSetOnInsertFields(roles []string) bson.M {
+	setOnInsertFields := bson.M{
+		APIKeyKey: utility.RandomString(),
+		bsonutil.GetDottedKeyName(SettingsKey, UseSpruceOptionsKey, SpruceV1Key): true,
+	}
+	if len(roles) > 0 {
+		setOnInsertFields[RolesKey] = roles
+	}
+	return setOnInsertFields
+}
+
+// GetOrCreateUserWithOktaID returns the user linked to the given Okta ID,
+// updating its display name and email if they're non-empty. If no user is
+// linked to the Okta ID yet, it links the Okta ID to the user with the given
+// userID, creating that user if it doesn't exist. It errors rather than
+// overwriting a user that is already linked to a different Okta ID, so a
+// colliding userID cannot be used to log in as another user.
+func GetOrCreateUserWithOktaID(ctx context.Context, oktaID, userID, displayName, email string, roles []string) (*DBUser, error) {
+	if oktaID == "" {
+		return nil, errors.New("Okta ID must be specified")
+	}
+
+	env := evergreen.GetEnvironment()
+	setFields := bson.M{}
+	if displayName != "" {
+		setFields[DispNameKey] = displayName
+	}
+	if email != "" {
+		setFields[EmailAddressKey] = email
+	}
+
+	u, err := findAndUpdateUserByOktaID(ctx, env, oktaID, setFields)
+	if err != nil {
+		return nil, err
+	}
+	if u == nil {
+		u, err = linkOktaIDToUser(ctx, env, oktaID, userID, setFields, roles)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err := setSlackInformation(ctx, env, u); err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message":       "could not set Slack information for user",
+			"user_id":       u.Id,
+			"okta_id":       u.OktaUserID,
+			"email_address": u.EmailAddress,
+		}))
+	}
+
+	return u, nil
+}
+
+// findAndUpdateUserByOktaID applies the given fields to the user linked to the
+// Okta ID and returns the updated user. It returns nil if no user is linked to
+// the Okta ID.
+func findAndUpdateUserByOktaID(ctx context.Context, env evergreen.Environment, oktaID string, setFields bson.M) (*DBUser, error) {
+	filter := bson.M{OktaIDKey: oktaID}
+	coll := env.DB().Collection(Collection)
+	var res *mongo.SingleResult
+	if len(setFields) > 0 {
+		res = coll.FindOneAndUpdate(ctx, filter, bson.M{"$set": setFields}, options.FindOneAndUpdate().SetReturnDocument(options.After))
+	} else {
+		res = coll.FindOne(ctx, filter)
+	}
+	if err := res.Err(); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
+		return nil, errors.Wrapf(err, "finding user by Okta ID '%s'", oktaID)
+	}
+
+	u := &DBUser{}
+	if err := res.Decode(u); err != nil {
+		return nil, errors.Wrapf(err, "decoding user with Okta ID '%s'", oktaID)
+	}
+	return u, nil
+}
+
+// linkOktaIDToUser links the Okta ID to the user with the given userID if that
+// user is not linked to any Okta ID yet, creating the user if it doesn't
+// exist.
+func linkOktaIDToUser(ctx context.Context, env evergreen.Environment, oktaID, userID string, setFields bson.M, roles []string) (*DBUser, error) {
+	if userID == "" {
+		return nil, errors.Errorf("no user is linked to Okta ID '%s'", oktaID)
+	}
+
+	linkFields := bson.M{OktaIDKey: oktaID}
+	maps.Copy(linkFields, setFields)
+	res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,
+		bson.M{
+			IdKey:     userID,
+			OktaIDKey: bson.M{"$exists": false},
+		},
+		bson.M{
+			"$set":         linkFields,
+			"$setOnInsert": newUserSetOnInsertFields(roles),
+		},
+		options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After),
+	)
+	if err := res.Err(); err != nil {
+		if !db.IsDuplicateKey(err) {
+			return nil, errors.Wrapf(err, "linking Okta ID '%s' to user '%s'", oktaID, userID)
+		}
+		// A concurrent request may have already linked this Okta ID, in
+		// which case the user can be returned. Otherwise, the user ID belongs
+		// to a user linked to a different Okta ID.
+		u, findErr := findAndUpdateUserByOktaID(ctx, env, oktaID, setFields)
+		if findErr != nil {
+			return nil, findErr
+		}
+		if u != nil {
+			return u, nil
+		}
+		return nil, errors.Errorf("user '%s' is already linked to a different Okta ID", userID)
+	}
+
+	u := &DBUser{}
+	if err := res.Decode(u); err != nil {
+		return nil, errors.Wrapf(err, "decoding user '%s'", userID)
+	}
+	return u, nil
+}
+
 func setSlackInformation(ctx context.Context, env evergreen.Environment, u *DBUser) error {
-	if isSpiffeMonitoringUser(u.Id) {
-		// don't set slack information for spiffe monitoring users
+	if isSpiffeUser(u.Id) {
+		// SPIFFE users are service workloads, so they have no Slack account.
 		return nil
 	}
 	if u.Settings.SlackMemberId != "" {
@@ -387,12 +517,11 @@ func setSlackInformation(ctx context.Context, env evergreen.Environment, u *DBUs
 
 }
 
-const spiffeMonitoringRoute = "spiffe://cluster.local/ns/monitoring"
+const spiffeIDPrefix = "spiffe://"
 
-// isSpiffeServiceUser checks if the user is a spiffe monitoring user by checking
-// if it starts with spiffe://cluster.local/ns/monitoring
-func isSpiffeMonitoringUser(userId string) bool {
-	return strings.HasPrefix(userId, spiffeMonitoringRoute)
+// isSpiffeUser returns whether the user ID is a SPIFFE workload identity.
+func isSpiffeUser(userID string) bool {
+	return strings.HasPrefix(userID, spiffeIDPrefix)
 }
 
 // FindNeedsReauthorization finds all users that need to be reauthorized after

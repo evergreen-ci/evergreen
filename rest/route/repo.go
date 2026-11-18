@@ -18,6 +18,37 @@ import (
 	"github.com/pkg/errors"
 )
 
+type reposGetHandler struct{}
+
+// Factory creates an instance of the handler.
+//
+//	@Summary	List repo resources
+//	@Tags		repos
+//	@Router		/repos [get]
+//	@Security	Api-User || Api-Key
+//	@Success	200	{array}	model.APIRepo
+func (h *reposGetHandler) Factory() gimlet.RouteHandler { return &reposGetHandler{} }
+
+func (h *reposGetHandler) Parse(context.Context, *http.Request) error { return nil }
+
+// Run lists the metadata required to discover repo resources, without settings or secrets.
+func (h *reposGetHandler) Run(ctx context.Context) gimlet.Responder {
+	repos, err := dbModel.FindRepoRefsForDiscovery(ctx)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding repo resources"))
+	}
+	result := []model.APIRepo{}
+	for _, repo := range repos {
+		// Repos saved without admins decode to nil, which would serialize as null.
+		admins := repo.Admins
+		if admins == nil {
+			admins = []string{}
+		}
+		result = append(result, model.APIRepo{ID: repo.Id, Name: repo.Owner + "/" + repo.Repo, Admins: admins})
+	}
+	return gimlet.NewJSONResponse(result)
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // GET /rest/v2/repos/{repo_id}

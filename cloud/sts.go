@@ -16,6 +16,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	debugExternalIDPrefix     = "debug-"
+	untrackedExternalIDPrefix = "untracked-"
+)
+
+// ReservedProjectIDPrefixes are prefixes that the AssumeRole external ID adds
+// before a project ID. A project whose ID starts with one of these could
+// produce the same external ID, project IDs must not use them.
+var ReservedProjectIDPrefixes = []string{debugExternalIDPrefix, untrackedExternalIDPrefix}
+
 // STSManager is an interface which handles STS operations.
 // It's main purpose is to expose a friendly API for our own API server.
 type STSManager interface {
@@ -104,7 +114,7 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID, hostID string, 
 	if opts.IsSourceCache {
 		externalID = evergreen.SourceCacheExternalID
 	} else {
-		externalID = createExternalID(t, p, opts.UseDebug || dbHost.IsDebug)
+		externalID = CreateExternalID(t, p, opts.UseDebug || dbHost.IsDebug)
 	}
 	creds, err := s.assumeRole(ctx, externalID, createRoleSessionName(t), opts)
 	if err != nil {
@@ -155,21 +165,23 @@ func (s *stsManagerImpl) GetCallerIdentityARN(ctx context.Context) (string, erro
 	return *output.Arn, nil
 }
 
-func createExternalID(task *task.Task, projectRef *model.ProjectRef, isDebug bool) string {
-	// The external ID is used as a trust boundary for the AssumeRole call.
-	// It is an unconfigurable computed value from the task's properties
-	// to avoid the confused deputy problem since Evergreen
-	// assumes many roles on behalf of tasks.
+// CreateExternalID returns the STS external ID used to assume roles on behalf
+// of the given task.
+// The external ID is used as a trust boundary for the AssumeRole call. It is an
+// unconfigurable computed value from the task's properties to avoid the
+// confused deputy problem since Evergreen assumes many roles on behalf of
+// tasks.
+func CreateExternalID(task *task.Task, projectRef *model.ProjectRef, isDebug bool) string {
 	externalID := createExternalIDHelper(task, projectRef)
 	if isDebug {
-		return fmt.Sprintf("debug-%s", externalID)
+		return debugExternalIDPrefix + externalID
 	}
 	return externalID
 }
 
 func createExternalIDHelper(task *task.Task, projectRef *model.ProjectRef) string {
 	if projectRef.IsUntracked() {
-		return fmt.Sprintf("untracked-%s-%s", projectRef.RepoRefId, task.Requester)
+		return fmt.Sprintf("%s%s-%s", untrackedExternalIDPrefix, projectRef.RepoRefId, task.Requester)
 	}
 	return fmt.Sprintf("%s-%s", task.Project, task.Requester)
 

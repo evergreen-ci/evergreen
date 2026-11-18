@@ -19,6 +19,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -347,6 +348,115 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	return tmpDir, nil
 }
 
+var fullCommitSHARegexp = regexp.MustCompile("(?i)^[0-9a-f]{40}$")
+
+// IsFullCommitSHA returns whether the ref is a full 40-character commit SHA.
+func IsFullCommitSHA(ref string) bool {
+	return fullCommitSHARegexp.MatchString(ref)
+}
+
+// GitHubCommitURL returns the GitHub API URL for a commit, in the same format
+// that the GitHub API returns for the commit.
+func GitHubCommitURL(owner, repo, sha string) string {
+	return fmt.Sprintf("https://api.github.com/repos/%s/%s/commits/%s", owner, repo, sha)
+}
+
+// GitLsRemote returns the commit SHA that the first of the given refs that
+// exists in the repo points to, using git rather than the GitHub API. Refs
+// must be full ref names (e.g. "refs/heads/main", "refs/tags/v1") or "HEAD".
+// Annotated tags resolve to the commit they point to. It returns an error if
+// none of the refs exist.
+func GitLsRemote(ctx context.Context, owner, repo string, refs ...string) (string, error) {
+	ctx, span := tracer.Start(ctx, "GitLsRemote", trace.WithAttributes(
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, strings.Join(refs, ",")),
+	))
+	defer span.End()
+
+	ctx, cancel := context.WithTimeout(ctx, GitOperationTimeout)
+	defer cancel()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "creating GitHub app installation token")
+	}
+
+	patterns := make([]string, 0, 2*len(refs))
+	for _, ref := range refs {
+		patterns = append(patterns, ref)
+		if strings.HasPrefix(ref, "refs/tags/") {
+			patterns = append(patterns, peeledRef(ref))
+		}
+	}
+
+	// Pass "--" so git never interprets a user-provided ref as an option.
+	args := append([]string{"ls-remote", "--", FormGitURLForApp(owner, repo, token)}, patterns...)
+	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd.WaitDelay = gitOperationWaitDelay
+	var stdout, stderr strings.Builder
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message":          "git ls-remote failed",
+			"owner":            owner,
+			"repo":             repo,
+			"refs":             refs,
+			"stdout":           stdout.String(),
+			"stderr":           stderr.String(),
+			"is_context_error": ctx.Err() != nil,
+		}))
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(ctx.Err())
+		catcher.Wrapf(err, "running git ls-remote in repo '%s/%s'", owner, repo)
+		err = catcher.Resolve()
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return "", err
+	}
+
+	sha, ok := parseLsRemote(stdout.String(), refs)
+	if !ok {
+		return "", errors.Errorf("refs %v not found in repo '%s/%s'", refs, owner, repo)
+	}
+	return sha, nil
+}
+
+// peeledRef returns the name git ls-remote uses for the commit that an
+// annotated tag points to.
+func peeledRef(ref string) string {
+	return ref + "^{}"
+}
+
+// parseLsRemote returns the commit SHA for the first of the refs found in git
+// ls-remote output. Each line of the output is a SHA and a ref name separated
+// by a tab. Annotated tags have a second line with a "^{}" suffix that gives
+// the commit the tag points to, e.g.:
+//
+//	9fceb02d0ae598e95dc970b74767f19372d61af8	refs/heads/main
+//	7b2e1f3a6c9d4e8f0a1b2c3d4e5f6a7b8c9d0e1f	refs/tags/v1
+//	9fceb02d0ae598e95dc970b74767f19372d61af8	refs/tags/v1^{}
+func parseLsRemote(output string, refs []string) (string, bool) {
+	shas := map[string]string{}
+	for line := range strings.SplitSeq(output, "\n") {
+		sha, name, ok := strings.Cut(strings.TrimSpace(line), "\t")
+		if ok {
+			shas[name] = sha
+		}
+	}
+	for _, ref := range refs {
+		if sha, ok := shas[peeledRef(ref)]; ok {
+			return sha, true
+		}
+		if sha, ok := shas[ref]; ok {
+			return sha, true
+		}
+	}
+	return "", false
+}
+
 // GitCreateWorktree creates a new git worktree in worktreeDir based on gitDir.
 // It does not perform a checkout. Callers are assumed to have already cloned
 // the repo into gitDir and HEAD is assumed to be already pointing to the
@@ -457,23 +567,44 @@ func GitRestoreFile(ctx context.Context, owner, repo, revision, gitDir string, f
 	return contents, nil
 }
 
-// validateFileIsWithinDirectory ensures that the given file path is
-// contained within the specified directory.
-func validateFileIsWithinDirectory(dir, file string) error {
+// ValidatePathWithinDirectory ensures that the given relative path resolves
+// to a location contained within the specified directory.
+func ValidatePathWithinDirectory(dir, path string) error {
 	// Normalize the path (e.g. removes redundant separators, resolves ".").
-	cleanPath := filepath.Clean(file)
+	cleanPath := filepath.Clean(path)
 
+	if filepath.IsAbs(cleanPath) {
+		return errors.Errorf("path '%s' must be a relative path, not absolute", path)
+	}
+
+	fullPath := filepath.Join(dir, cleanPath)
+
+	// Use filepath.Rel to verify fullPath is within dir to rule out any other
+	// complex path manipulations.
+	relPath, err := filepath.Rel(dir, fullPath)
+	if err != nil {
+		return errors.Wrap(err, "verifying that the path is relative to the directory")
+	}
+
+	// If the relative path points to a parent directory, it may escape the
+	// directory.
+	if relPath == ".." || strings.HasPrefix(relPath, ".."+string(filepath.Separator)) {
+		return errors.Errorf("path '%s' escapes directory using '..'", path)
+	}
+
+	return nil
+}
+
+// validateFileIsWithinDirectory ensures that the given file path is contained
+// within the specified directory and is safe to pass to git as a pathspec.
+func validateFileIsWithinDirectory(dir, file string) error {
 	// Reject values that git could interpret as an option or a magic pathspec
 	// rather than a literal filename.
-	if strings.HasPrefix(cleanPath, "-") {
+	if strings.HasPrefix(filepath.Clean(file), "-") {
 		return errors.Errorf("file '%s' cannot begin with '-'", file)
 	}
 	if strings.HasPrefix(file, ":") {
 		return errors.Errorf("file '%s' cannot begin with ':'", file)
-	}
-
-	if filepath.IsAbs(cleanPath) {
-		return errors.Errorf("file '%s' must be a relative path, not absolute", file)
 	}
 
 	// Reject parent-directory components to prevent attempts to escape the directory.
@@ -483,22 +614,7 @@ func validateFileIsWithinDirectory(dir, file string) error {
 		return errors.Errorf("file '%s' cannot traverse directories using '..'", file)
 	}
 
-	fullFilePath := filepath.Join(dir, cleanPath)
-
-	// Use filepath.Rel to verify fullFilePath is a filepath within dir to rule
-	// out any other complex path manipulations.
-	relPath, err := filepath.Rel(dir, fullFilePath)
-	if err != nil {
-		return errors.Wrap(err, "verifying that the file is relative to the directory")
-	}
-
-	// If the relative path points to a parent directory, it may escape the
-	// directory.
-	if relPath == ".." || strings.HasPrefix(relPath, ".."+string(filepath.Separator)) {
-		return errors.Errorf("file '%s' escapes directory using '..'", file)
-	}
-
-	return nil
+	return ValidatePathWithinDirectory(dir, file)
 }
 
 // validateFileIsNotSymlink checks that the specified file is not a symlink.

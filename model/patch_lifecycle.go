@@ -467,11 +467,6 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 		return nil, nil, errors.Wrap(err, "fetching project options for patch")
 	}
 	opts.cacheEnabled = projectTranslationCacheEnabled(settings)
-	svcFlags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "getting service flags")
-	}
-	opts.CrossFileYAMLAnchorsEnabled = svcFlags.CrossFileYAMLAnchorsEnabled || p.CrossFileYAMLAnchorsEnabled
 
 	projectFileBytes, err := getPatchedProjectYAML(ctx, projectRef, opts, p)
 	if err != nil {
@@ -548,13 +543,14 @@ func GetPatchedProjectConfig(ctx context.Context, p *patch.Patch) (string, error
 
 	// Parse the config directly instead of going through LoadProjectInto to
 	// avoid paying for project translation, which isn't needed for the config.
-	intermediateProject, decodeErr, err := createIntermediateProject(projectFileBytes, opts.UnmarshalStrict, nil)
+	registry := &anchorRegistry{}
+	intermediateProject, decodeErr, err := createIntermediateProject(projectFileBytes, opts.UnmarshalStrict, registry)
 	if err != nil {
 		return "", errors.Wrapf(err, LoadProjectError)
 	}
 	logDecodeErrorWithOpts(ctx, projectRef.Id, "", "GetPatchedProjectConfig", decodeErr, opts)
 	if len(intermediateProject.Include) > 0 {
-		if err := mergeIncludes(ctx, p.Project, intermediateProject, nil, opts); err != nil {
+		if err := mergeIncludes(ctx, p.Project, intermediateProject, registry, opts); err != nil {
 			return "", errors.Wrap(err, "merging included files")
 		}
 	}
@@ -876,6 +872,13 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 		AuthorEmail:          authorEmail,
 	}
 
+	if err := ValidatePatchModuleRepos(ctx, p, projectRef, project.Modules); err != nil {
+		if IsUntrustedModuleReposError(err) {
+			return nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: err.Error()}
+		}
+		return nil, err
+	}
+
 	manifestCtx, manifestSpan := tracer.Start(ctx, "construct-manifest")
 	mfst, err := constructManifest(manifestCtx, patchVersion, projectRef, project.Modules)
 	manifestSpan.End()
@@ -990,6 +993,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, transl
 				BuildVariant:     vt.Variant,
 				BuildId:          build.Id,
 				DisplayName:      build.DisplayName,
+				Tags:             build.Tags,
 				ActivationStatus: ActivationStatus{Activated: true},
 			},
 		)
@@ -1215,6 +1219,7 @@ func getLoadProjectOptsForPatch(ctx context.Context, p *patch.Patch) (*ProjectRe
 		PatchOpts: &PatchOpts{
 			patch: p,
 		},
+		moduleRepoChecker: newPatchModuleRepoChecker(projectRef, p),
 	}
 
 	autoUpdateRevisions, err := prefetchAutoUpdateModuleRevisions(ctx, p, projectRef, &opts)
@@ -1252,6 +1257,14 @@ func prefetchAutoUpdateModuleRevisions(ctx context.Context, p *patch.Patch, proj
 	autoUpdateRevisions := make(map[string]string)
 	for _, module := range projectModulesOnly.Modules {
 		if module.AutoUpdate {
+			owner, repo, err := module.GetOwnerAndRepo()
+			if err != nil {
+				continue
+			}
+			// Patch creation reports modules that use untrusted repos.
+			if err := opts.moduleRepoChecker.check(ctx, module.Name, owner, repo); err != nil {
+				continue
+			}
 			mfstModule, err := getManifestModule(ctx, projectRef, module, evergreen.PatchVersionRequester, p.IngestTime)
 			if err != nil {
 				grip.Warning(ctx, message.WrapError(err, message.Fields{

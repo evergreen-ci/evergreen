@@ -295,6 +295,12 @@ func (s *githubSuite) TestGetGithubFile() {
 	s.IsType(FileNotFoundError{}, err)
 	s.EqualError(err, "Requested file at doesntexist.txt not found")
 
+	_, err = GetGithubFile(s.ctx, "evergreen-ci", "evergreen",
+		"self-tests.yml", "1111111111111111111111111111111111111111", nil)
+	s.Error(err)
+	s.True(IsRevisionNotFound(err))
+	s.False(IsFileNotFound(err))
+
 	file, err := GetGithubFile(s.ctx, "evergreen-ci", "evergreen",
 		"self-tests.yml", "105bbb4b34e7da59c42cb93d92954710b1f101ee", nil)
 	s.NoError(err)
@@ -455,6 +461,25 @@ func (s *githubSuite) TestGetGithubPullRequestDiff() {
 func (s *githubSuite) TestGetBranchProtectionRules() {
 	_, err := GetEvergreenBranchProtectionRules(s.ctx, "evergreen-ci", "evergreen", "main")
 	s.NoError(err)
+}
+
+func (s *githubSuite) TestGetCommitComparisonStatus() {
+	// In the sample repo, newerCommit is a descendant of olderCommit.
+	const (
+		olderCommit = "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
+		newerCommit = "cf46076567e4949f9fc68e0634139d4ac495c89b"
+	)
+	for _, tc := range []struct {
+		base, head, expected string
+	}{
+		{base: olderCommit, head: newerCommit, expected: "ahead"},
+		{base: newerCommit, head: olderCommit, expected: "behind"},
+		{base: olderCommit, head: olderCommit, expected: "identical"},
+	} {
+		status, err := GetCommitComparisonStatus(s.ctx, "evergreen-ci", "sample", tc.base, tc.head)
+		s.Require().NoError(err)
+		s.Equal(tc.expected, status, "comparing '%s' to '%s'", tc.base, tc.head)
+	}
 }
 
 func TestVerifyGithubAPILimitHeader(t *testing.T) {

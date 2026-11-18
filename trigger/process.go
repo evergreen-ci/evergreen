@@ -311,7 +311,7 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 	for _, ref := range downstreamProjects {
 
 		for _, trigger := range ref.Triggers {
-			if trigger.Level != model.ProjectTriggerLevelPush || trigger.Project != projectId {
+			if trigger.Level != evergreen.ProjectTriggerLevelPush || trigger.Project != projectId {
 				continue
 			}
 
@@ -321,7 +321,7 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 				args := ProcessorArgs{
 					DownstreamProject:            ref,
 					ConfigFile:                   trigger.ConfigFile,
-					TriggerType:                  model.ProjectTriggerLevelPush,
+					TriggerType:                  evergreen.ProjectTriggerLevelPush,
 					TriggerID:                    trigger.Project,
 					DefinitionID:                 trigger.DefinitionID,
 					Alias:                        trigger.Alias,

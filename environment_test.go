@@ -145,6 +145,31 @@ func (s *EnvironmentSuite) TestInitSenders() {
 	}
 }
 
+func (s *EnvironmentSuite) TestCreateNotificationQueueLeavesWebhookSenderSynchronous() {
+	s.env.settings = &Settings{
+		Notify: NotifyConfig{
+			SES:                     SESConfig{SenderAddress: "sender_address"},
+			BufferTargetPerInterval: 10,
+			BufferIntervalSeconds:   1,
+		},
+		Amboy: AmboyConfig{PoolSizeLocal: 2, LocalStorage: 10},
+	}
+	s.Require().NoError(s.env.initThirdPartySenders(s.T().Context(), noop.NewTracerProvider().Tracer("")))
+	rawWebhookSender := s.env.senders[SenderEvergreenWebhook]
+	rawGenericSender := s.env.senders[SenderGeneric]
+	s.Require().NotNil(rawWebhookSender)
+	s.Require().NotNil(rawGenericSender)
+
+	s.Require().NoError(s.env.createNotificationQueue(s.T().Context(), noop.NewTracerProvider().Tracer("")))
+
+	// The webhook sender must stay unwrapped so that delivery failures reach the notification send job.
+	// Wrapped senders only report enqueueing, so failures reach nothing but the fallback error handler.
+	s.Same(rawWebhookSender, s.env.senders[SenderEvergreenWebhook])
+	s.NotSame(rawGenericSender, s.env.senders[SenderGeneric])
+	_, reportsErrors := s.env.senders[SenderEvergreenWebhook].(send.ErrorSender)
+	s.True(reportsErrors, "Webhook sender should report delivery errors synchronously.")
+}
+
 func TestGetGitHubSenderConcurrentAccessShouldNotRace(t *testing.T) {
 	e := &envState{
 		ctx:           t.Context(),

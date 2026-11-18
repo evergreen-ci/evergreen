@@ -2,8 +2,10 @@ package log
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"io"
+	"time"
 
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -18,6 +20,8 @@ type chunkIterator struct {
 	lineCount      int
 	chunkLineCount int
 	next           chan *chunkReader
+	done           chan struct{}
+	cancelWorker   context.CancelFunc
 	reader         *chunkReader
 	item           LogLine
 	catcher        grip.Catcher
@@ -25,14 +29,17 @@ type chunkIterator struct {
 	closed         bool
 }
 
+const chunkDownloadTimeout = 60 * time.Second
+
 type chunkIteratorOptions struct {
-	bucket    pail.Bucket
-	chunks    []chunkInfo
-	parser    LineParser
-	start     *int64
-	end       *int64
-	lineLimit int
-	tailN     int
+	bucket          pail.Bucket
+	chunks          []chunkInfo
+	parser          LineParser
+	start           *int64
+	end             *int64
+	lineLimit       int
+	tailN           int
+	downloadTimeout time.Duration
 }
 
 // newChunkIterator returns a LogIterator that iterates over lines of a log
@@ -48,12 +55,20 @@ func newChunkIterator(ctx context.Context, opts chunkIteratorOptions) *chunkIter
 	if opts.lineLimit > 0 {
 		opts.chunks = filterChunksByLimit(opts.chunks, opts.lineLimit)
 	}
+	if opts.downloadTimeout == 0 {
+		opts.downloadTimeout = chunkDownloadTimeout
+	}
 
+	// The worker's context is cancelable so that closing the iterator can
+	// abort any chunk download it has in flight.
+	ctx, cancel := context.WithCancel(ctx)
 	it := &chunkIterator{
-		opts:       opts,
-		lineOffset: lineOffset,
-		next:       make(chan *chunkReader, 1),
-		catcher:    grip.NewBasicCatcher(),
+		opts:         opts,
+		lineOffset:   lineOffset,
+		next:         make(chan *chunkReader, 1),
+		done:         make(chan struct{}),
+		cancelWorker: cancel,
+		catcher:      grip.NewBasicCatcher(),
 	}
 	go it.worker(ctx)
 
@@ -138,16 +153,52 @@ func (it *chunkIterator) worker(ctx context.Context) {
 	}()
 
 	for _, chunk := range it.opts.chunks {
-		r, err := it.opts.bucket.Get(ctx, chunk.key)
+		getCtx, cancel := context.WithTimeout(ctx, it.opts.downloadTimeout)
+		r, err := it.opts.bucket.Get(getCtx, chunk.key)
 		if err != nil {
+			cancel()
+			if it.isClosed() {
+				// Closing the iterator cancels the context, so a download
+				// aborted by Close is a clean shutdown rather than an error.
+				return
+			}
 			it.catcher.Wrap(err, "getting chunk from bucket")
 			return
 		}
 
+		// Read the chunk's data before closing.
+		data, err := io.ReadAll(r)
+		closeErr := r.Close()
+		cancel()
+		if err != nil {
+			if it.isClosed() {
+				return
+			}
+			it.catcher.Wrap(err, "reading downloaded chunk from bucket")
+			return
+		}
+		if closeErr != nil {
+			if it.isClosed() {
+				return
+			}
+			it.catcher.Wrap(closeErr, "closing downloaded chunk from bucket")
+			return
+		}
+
+		cr := newChunkReader(io.NopCloser(bytes.NewReader(data)), chunk.numLines)
+
 		select {
-		case it.next <- newChunkReader(r, chunk.numLines):
+		case it.next <- cr:
+		case <-it.done:
+			it.closeUnreadChunk(cr)
+			return
 		case <-ctx.Done():
+			if it.isClosed() {
+				it.closeUnreadChunk(cr)
+				return
+			}
 			it.catcher.Add(ctx.Err())
+			it.closeUnreadChunk(cr)
 			return
 		}
 	}
@@ -165,10 +216,35 @@ func (it *chunkIterator) Close() error {
 	}
 	it.closed = true
 
+	close(it.done)
+	it.cancelWorker()
+
 	if it.reader != nil {
 		return it.reader.Close()
 	}
 	return nil
+}
+
+// isClosed returns whether the consumer has closed the iterator.
+func (it *chunkIterator) isClosed() bool {
+	select {
+	case <-it.done:
+		return true
+	default:
+		return false
+	}
+}
+
+// closeUnreadChunk releases a fetched chunk that the consumer will never
+// read, along with any chunk the worker already buffered ahead of it.
+func (it *chunkIterator) closeUnreadChunk(r *chunkReader) {
+	_ = r.Close()
+
+	select {
+	case buffered := <-it.next:
+		_ = buffered.Close()
+	default:
+	}
 }
 
 func filterChunksByTimeRange(chunks []chunkInfo, start, end *int64) []chunkInfo {

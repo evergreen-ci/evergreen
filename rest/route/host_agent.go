@@ -599,7 +599,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, num
 					"build_variant":      nextTask.BuildVariant,
 				})
 
-				err = nextTask.MarkSystemFailed(ctx, "Marking disallowed single task distro task as system failed")
+				err = nextTask.MarkSystemFailed(ctx, "Marking disallowed single task distro task as system failed", "task is not in the allowlist for single task distros")
 				if err != nil {
 					errMsg = message.Fields{
 						"message":       "could not mark disallowed single task distro task as system failed",
@@ -1179,7 +1179,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	}
 
 	if t.IsStuckTask() {
-		if err := model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h); err != nil {
+		if err := model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h, fmt.Sprintf("agent re-requested the same task %d times", evergreen.MaxTaskDispatchAttempts)); err != nil {
 			grip.Error(ctx, message.WrapError(err, getMessage("ending and resetting system failed task")))
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
@@ -1289,6 +1289,8 @@ func (h *hostAgentEndTask) Parse(ctx context.Context, r *http.Request) error {
 		grip.Error(ctx, message)
 		return errors.Wrap(err, message)
 	}
+	// Only the app server may set a system failure reason.
+	h.details.SystemFailureReason = ""
 	return nil
 }
 

@@ -75,7 +75,8 @@
           "activated": true,
           "build_id": "evergreen_version2_build",
           "build_variant": "enterprise-ubuntu1604-64",
-          "display_name": "02 Ubuntu 16.04"
+          "display_name": "02 Ubuntu 16.04",
+          "tags": ["linux"]
         }
       ],
       "builds": ["evergreen_version2_build"]
@@ -257,6 +258,8 @@
       "branch": "spruce",
       "build_variant": "enterprise-ubuntu1604-64",
       "build_variant_display_name": "Ubuntu 16.04",
+      "build_variant_tags": ["linux"],
+      "tags": ["owner-a"],
       "build_id": "evergreen_version2_build",
       "create_time": {
         "$date": "2020-01-01T00:00:05Z"
@@ -276,6 +279,8 @@
       "branch": "spruce",
       "build_variant": "enterprise-ubuntu1604-64",
       "build_variant_display_name": "Ubuntu 16.04",
+      "build_variant_tags": ["linux"],
+      "tags": ["owner-b"],
       "build_id": "evergreen_version2_build",
       "create_time": {
         "$date": "2020-01-01T00:00:05Z"

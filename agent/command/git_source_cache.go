@@ -74,6 +74,10 @@ var (
 	sourceCacheTagFetchDurationAttribute   = sourceCacheAttribute("tag_fetch_duration_ms")
 	sourceCacheTagRefreshFailedAttribute   = sourceCacheAttribute("tag_refresh_failed")
 	sourceCacheTagRefreshTimedOutAttribute = sourceCacheAttribute("tag_refresh_timed_out")
+	sourceCacheTagTriggeredAttribute       = sourceCacheAttribute("tag_triggered")
+	sourceCacheTagRefreshAttemptsAttribute = sourceCacheAttribute("tag_refresh_attempts")
+
+	sourceCacheIslandDisconnectedAttribute = sourceCacheAttribute("pr_fetch_island_disconnected")
 )
 
 func sourceCacheAttribute(name string) string {
@@ -236,7 +240,7 @@ func (sc *sourceCache) restore(ctx context.Context, comm client.Communicator, lo
 		}
 		switch classifyCacheDownloadErr(downloadErr) {
 		case cacheDownloadMaybeMiss:
-			logger.Task().Warningf(ctx, "git source cache: got access-denied downloading '%s/%s', treating as a miss.", sc.cfg.Name, remoteKey)
+			logger.Task().Infof(ctx, "git source cache: no cached source is available for this lookup yet, so the source is being fetched from GitHub.")
 			miss = true
 			return false, nil
 		case cacheDownloadMiss:

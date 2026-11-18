@@ -87,6 +87,19 @@ type VirtualTaskArtifact struct {
 	Name       string `json:"name"`
 	URL        string `json:"url"`
 	Visibility string `json:"visibility,omitempty"`
+
+	// Fields for S3 artifacts with signed visibility.
+	Bucket  string `json:"bucket,omitempty"`
+	FileKey string `json:"file_key,omitempty"`
+	// AWSKeyVarName and AWSSecretVarName name the project variables holding the
+	// static credentials used to presign a signed artifact.
+	AWSKeyVarName    string `json:"aws_key_var_name,omitempty"`
+	AWSSecretVarName string `json:"aws_secret_var_name,omitempty"`
+	// AWSRoleARN is a role assumed to presign a signed artifact.
+	AWSRoleARN string `json:"aws_role_arn,omitempty"`
+	// PresignDuration is how long a presigned URL stays valid, in Go duration
+	// syntax. It is only supported with static credentials.
+	PresignDuration string `json:"presign_duration,omitempty"`
 }
 
 // CompleteVirtualTasksResponse contains the per-task outcomes of a push completion.
@@ -166,6 +179,10 @@ type TaskEndDetail struct {
 	ExecutionPlatform    string                  `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
 	// ExternalExecutionMetadata is only set for push-completed virtual tasks.
 	ExternalExecutionMetadata *ExternalExecutionMetadata `bson:"external_execution_metadata,omitempty" json:"external_execution_metadata,omitempty"`
+	// SystemFailureReason is a human-readable explanation of why the task's
+	// host or agent was lost. It is only set by the app server for system
+	// failures.
+	SystemFailureReason string `bson:"system_failure_reason,omitempty" json:"system_failure_reason,omitempty"`
 }
 
 // ExternalExecutionMetadata identifies the external execution that produced a
@@ -369,6 +386,9 @@ type SourceCacheRestoreKey struct {
 	// PRCheckout is true when the artifact's tree is not at the revision the task
 	// will test, so the agent must check out the PR over the restored tree.
 	PRCheckout bool `json:"pr_checkout"`
+	// TagTriggered is true when a git tag push triggered the build, so the
+	// restored tree must see the tag or the agent falls back to a clone.
+	TagTriggered bool `json:"tag_triggered"`
 }
 
 // SourceCacheCredentialsResponse carries source cache credentials and the exact

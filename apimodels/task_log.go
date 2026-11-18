@@ -45,6 +45,8 @@ func GetSeverityMapping(s level.Priority) string {
 
 // ReadLogToSlice returns a slice of log message pointers from a log iterator.
 func ReadLogToSlice(it log.LogIterator) ([]*LogMessage, error) {
+	defer it.Close()
+
 	var lines []*LogMessage
 	for it.Next() {
 		item := it.Item()

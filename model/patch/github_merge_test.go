@@ -214,3 +214,69 @@ func TestExtractBaseBranchFromHeadRef(t *testing.T) {
 		})
 	}
 }
+
+func TestFindUnprocessedGithubMergeIntents(t *testing.T) {
+	require.NoError(t, db.Clear(IntentCollection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.Clear(IntentCollection))
+	})
+
+	recent := time.Now().UTC().Round(time.Millisecond)
+	old := recent.Add(-2 * time.Hour)
+	tooOld := recent.Add(-10 * time.Hour)
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubMergeIntent{
+		DocumentID: "recent",
+		IntentType: GithubMergeIntentType,
+		HeadSHA:    "recent_sha",
+		CreatedAt:  recent,
+	}))
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubMergeIntent{
+		DocumentID: "old",
+		IntentType: GithubMergeIntentType,
+		HeadSHA:    "old_sha",
+		CreatedAt:  old,
+	}))
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubMergeIntent{
+		DocumentID: "too_old",
+		IntentType: GithubMergeIntentType,
+		HeadSHA:    "too_old_sha",
+		CreatedAt:  tooOld,
+	}))
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubMergeIntent{
+		DocumentID: "processed",
+		IntentType: GithubMergeIntentType,
+		HeadSHA:    "processed_sha",
+		CreatedAt:  recent,
+		Processed:  true,
+	}))
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubIntent{
+		DocumentID: "pr",
+		IntentType: GithubIntentType,
+		HeadHash:   "pr_sha",
+		CreatedAt:  recent,
+	}))
+
+	intents, err := FindUnprocessedGithubMergeIntents(t.Context(), recent.Add(-6*time.Hour))
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []UnprocessedMergeIntent{
+		{ID: "recent", HeadSHA: "recent_sha", CreatedAt: recent},
+		{ID: "old", HeadSHA: "old_sha", CreatedAt: old},
+	}, intents)
+}
+
+func TestRemoveIntent(t *testing.T) {
+	require.NoError(t, db.Clear(IntentCollection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.Clear(IntentCollection))
+	})
+
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubMergeIntent{DocumentID: "remove", IntentType: GithubMergeIntentType}))
+	require.NoError(t, db.Insert(t.Context(), IntentCollection, githubMergeIntent{DocumentID: "keep", IntentType: GithubMergeIntentType}))
+
+	require.NoError(t, RemoveIntent(t.Context(), "remove"))
+
+	var intents []githubMergeIntent
+	require.NoError(t, db.FindAllQ(t.Context(), IntentCollection, db.Query(bson.M{}), &intents))
+	require.Len(t, intents, 1)
+	assert.Equal(t, "keep", intents[0].DocumentID)
+}

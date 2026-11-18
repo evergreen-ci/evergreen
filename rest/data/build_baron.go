@@ -42,10 +42,11 @@ func BbFileTicket(ctx context.Context, taskId string, execution int, username st
 	}
 	if ok && webHook.Endpoint != "" {
 		resp, err := fileTicketCustomHook(ctx, taskId, execution, webHook)
-		if err == nil {
-			resp.Body.Close()
+		if err != nil {
+			return http.StatusInternalServerError, errors.Wrap(err, "filing ticket via custom webhook")
 		}
-		return resp.StatusCode, err
+		resp.Body.Close()
+		return resp.StatusCode, nil
 	}
 
 	// If there is no custom webhook, use the build baron settings to file a

@@ -10,14 +10,14 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.16
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.302.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.7
-	github.com/aws/smithy-go v1.28.5
+	github.com/aws/smithy-go v1.28.7
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.8.2
 	github.com/dustin/go-humanize v1.1.0
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
 	github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7
-	github.com/evergreen-ci/gimlet v0.0.0-20261021143728-b6aef89a6e39
+	github.com/evergreen-ci/gimlet v0.0.0-20261104154935-616d956ff018
 	github.com/evergreen-ci/pail v0.0.0-20260902154906-60ffdb29341d
 	github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6
 	github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154
@@ -26,7 +26,7 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.4.0
-	github.com/jpillora/backoff v1.0.0
+	github.com/jpillora/backoff v1.1.0
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/mitchellh/go-homedir v1.1.0
@@ -69,7 +69,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
-	github.com/andybalholm/brotli v1.2.0 // indirect
+	github.com/andybalholm/brotli v1.2.7 // indirect
 	github.com/andygrunwald/go-jira v1.17.0
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.23 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.24 // indirect
