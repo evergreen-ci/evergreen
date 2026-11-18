@@ -650,9 +650,8 @@ type TaskQueueDistro struct {
 	TaskCount int    `json:"taskCount"`
 }
 
-// TaskSelection describes which tasks in a Version a bulk operation applies to. Exactly one of taskIds or filter must be
-// set. A filter selects every matching task across all pages, so its limit, page, and sorts are ignored. excludeTaskIds
-// removes tasks from the filter's matches and has no effect when taskIds is set.
+// TaskSelection describes which tasks in a Version a bulk operation applies to. Exactly one of (taskIds) or (filter, excludeTaskIds)
+// must be set.
 type TaskSelection struct {
 	TaskIds        []string           `json:"taskIds,omitempty"`
 	Filter         *TaskFilterOptions `json:"filter,omitempty"`
