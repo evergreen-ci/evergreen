@@ -55,6 +55,24 @@
       }
     },
     {
+      "query_file": "trailing_inactive_versions.graphql",
+      "result": {
+        "data": {
+          "project": {
+            "commits": {
+              "versions": [
+                { "id": "trailing-inactive-version-4", "order": 4 }
+              ],
+              "pagination": {
+                "hasNextPage": false,
+                "nextPageOrder": 4
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "limit_above_maximum.graphql",
       "result": {
         "errors": [

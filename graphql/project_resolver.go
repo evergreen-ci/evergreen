@@ -13,7 +13,7 @@ import (
 
 // Commits is the resolver for the commits field.
 func (r *projectResolver) Commits(ctx context.Context, obj *restModel.APIProjectRef, options ProjectCommitsOptions) (*ProjectCommits, error) {
-	projectID := utility.FromStringPtr(obj.Identifier)
+	projectID := utility.FromStringPtr(obj.Id)
 	if err := checkProjectAccess(ctx, projectID, ProjectPermissionTasks, AccessLevelView); err != nil {
 		return nil, err
 	}
@@ -26,14 +26,19 @@ func (r *projectResolver) Commits(ctx context.Context, obj *restModel.APIProject
 	maxOrderOpt := utility.FromIntPtr(options.MaxOrder)
 
 	opts := model.WaterfallOptions{
-		Limit:      limit,
+		Limit:      limit + 1,
 		MaxOrder:   maxOrderOpt,
 		Requesters: []string{evergreen.RepotrackerVersionRequester},
 	}
 
-	activeVersions, err := model.GetActiveWaterfallVersions(ctx, projectID, opts)
+	activeVersions, err := model.GetActiveWaterfallVersions(ctx, projectID, opts, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting active waterfall versions: %s", err.Error()))
+	}
+
+	hasNextPage := len(activeVersions) > limit
+	if hasNextPage {
+		activeVersions = activeVersions[:limit]
 	}
 
 	versionPtrs := make([]*model.Version, 0, len(activeVersions))
@@ -55,7 +60,7 @@ func (r *projectResolver) Commits(ctx context.Context, obj *restModel.APIProject
 		Versions: versionPtrs,
 		Pagination: &ProjectCommitsPagination{
 			NextPageOrder: nextPageOrder,
-			HasNextPage:   nextPageOrder > 1,
+			HasNextPage:   hasNextPage,
 		},
 	}, nil
 }
