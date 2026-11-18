@@ -1204,13 +1204,12 @@ func startVersionCompletionSpan(ctx context.Context, v *Version, project string,
 
 // emitTagMakespanSpans publishes one span per task tag carrying the tag's
 // version makespan, so Honeycomb can track makespans of filtered task sets
-// without special-casing individual tags. Makespans must be computed
-// server-side because sampled task spans cannot be aggregated reliably.
+// without special-casing individual tags.
 func emitTagMakespanSpans(ctx context.Context, tagMakespans map[string]time.Duration) {
 	for tag, makespan := range tagMakespans {
 		_, span := tracer.Start(ctx, evergreen.VersionTagMakespanOtelSpanName, trace.WithAttributes(
-			attribute.String(evergreen.VersionTagOtelAttribute, tag),
-			attribute.Int(evergreen.VersionTagMakespanSecondsOtelAttribute, int(makespan.Seconds())),
+			attribute.String(evergreen.VersionTaskTagOtelAttribute, tag),
+			attribute.Int(evergreen.VersionTaskTagMakespanSecondsOtelAttribute, int(makespan.Seconds())),
 		))
 		span.End()
 	}

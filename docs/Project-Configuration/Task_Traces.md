@@ -59,10 +59,10 @@ Honeycomb query on the tag.
 Each span carries these attributes (in addition to all the usual version
 attributes such as `evergreen.version.id` and `evergreen.project.identifier`):
 
-| Attribute                                | Description                                                    |
-| ---------------------------------------- | -------------------------------------------------------------- |
-| `evergreen.version.tag`                  | The task tag the makespan is calculated for                    |
-| `evergreen.version.tag.makespan_seconds` | The makespan of the version's finished tasks carrying that tag |
+| Attribute                                     | Description                                                    |
+| --------------------------------------------- | -------------------------------------------------------------- |
+| `evergreen.version.task_tag`                  | The task tag the makespan is calculated for                    |
+| `evergreen.version.task_tag.makespan_seconds` | The makespan of the version's finished tasks carrying that tag |
 
 Makespans are calculated server-side from the finished tasks' recorded
 timings. Display-only tasks and tasks that did not run are excluded, and
@@ -78,9 +78,10 @@ project over time, run:
 
 ```text
 WHERE name = version-tag-makespan
-WHERE evergreen.version.tag = release_critical
+WHERE evergreen.project.identifier = <project identifier>
+WHERE evergreen.version.task_tag = release_critical
 GROUP BY evergreen.version.id
-MAX(evergreen.version.tag.makespan_seconds)
+MAX(evergreen.version.task_tag.makespan_seconds)
 ```
 
 ## Tag Validation Tracking
