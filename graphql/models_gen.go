@@ -592,6 +592,7 @@ type TaskFiles struct {
 // TaskFilterOptions defines the parameters that are used when fetching tasks from a Version.
 type TaskFilterOptions struct {
 	BaseStatuses               []string     `json:"baseStatuses,omitempty"`
+	ExcludeTaskIds             []string     `json:"excludeTaskIds,omitempty"`
 	IncludeNeverActivatedTasks *bool        `json:"includeNeverActivatedTasks,omitempty"`
 	Limit                      *int         `json:"limit,omitempty"`
 	Page                       *int         `json:"page,omitempty"`
@@ -659,12 +660,11 @@ type TaskQueueDistro struct {
 	TaskCount int    `json:"taskCount"`
 }
 
-// TaskSelection describes which tasks in a Version a bulk operation applies to. Exactly one of (taskIds) or (filter, excludeTaskIds)
-// must be set.
+// TaskSelection describes which tasks in a Version a bulk operation applies to. Exactly one of taskIds or filter must be
+// set.
 type TaskSelection struct {
-	TaskIds        []string           `json:"taskIds,omitempty"`
-	Filter         *TaskFilterOptions `json:"filter,omitempty"`
-	ExcludeTaskIds []string           `json:"excludeTaskIds,omitempty"`
+	TaskIds []string           `json:"taskIds,omitempty"`
+	Filter  *TaskFilterOptions `json:"filter,omitempty"`
 }
 
 // TaskTestResult is the return value for the task.Tests resolver.

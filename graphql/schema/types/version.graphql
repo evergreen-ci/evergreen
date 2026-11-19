@@ -13,6 +13,7 @@ TaskFilterOptions defines the parameters that are used when fetching tasks from 
 """
 input TaskFilterOptions {
   baseStatuses: [String!] = []
+  excludeTaskIds: [String!] = []
   includeNeverActivatedTasks: Boolean = false
   limit: Int = 0
   page: Int = 0
@@ -23,13 +24,12 @@ input TaskFilterOptions {
 }
 
 """
-TaskSelection describes which tasks in a Version a bulk operation applies to. Exactly one of (taskIds) or (filter, excludeTaskIds)
-must be set.
+TaskSelection describes which tasks in a Version a bulk operation applies to. Exactly one of taskIds or filter must be
+set.
 """
 input TaskSelection {
   taskIds: [String!]
   filter: TaskFilterOptions
-  excludeTaskIds: [String!] = []
 }
 
 """

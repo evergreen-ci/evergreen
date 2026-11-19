@@ -126,9 +126,8 @@ func TestResolveTaskSelection(t *testing.T) {
 
 	t.Run("TaskSelectionWithFilter", func(t *testing.T) {
 		for testName, testCase := range map[string]struct {
-			filter         *TaskFilterOptions
-			excludeTaskIDs []string
-			expectedIDs    []string
+			filter      *TaskFilterOptions
+			expectedIDs []string
 		}{
 			"ReturnsAllMatchingTasksInVersion": {
 				filter:      failedFilter,
@@ -139,9 +138,8 @@ func TestResolveTaskSelection(t *testing.T) {
 				expectedIDs: []string{"failed1", "failed2", "failed3", "succeeded1"},
 			},
 			"OmitsExcludedTasks": {
-				filter:         failedFilter,
-				excludeTaskIDs: []string{"failed2"},
-				expectedIDs:    []string{"failed1", "failed3"},
+				filter:      &TaskFilterOptions{Statuses: []string{evergreen.TaskFailed}, ExcludeTaskIds: []string{"failed2"}},
+				expectedIDs: []string{"failed1", "failed3"},
 			},
 			"IgnoresLimitAndPage": {
 				filter:      &TaskFilterOptions{Statuses: []string{evergreen.TaskFailed}, Limit: utility.ToIntPtr(1), Page: utility.ToIntPtr(1)},
@@ -152,7 +150,7 @@ func TestResolveTaskSelection(t *testing.T) {
 			},
 		} {
 			t.Run(testName, func(t *testing.T) {
-				resolved, taskErrors, err := resolveTaskSelection(t.Context(), "v1", TaskSelection{Filter: testCase.filter, ExcludeTaskIds: testCase.excludeTaskIDs})
+				resolved, taskErrors, err := resolveTaskSelection(t.Context(), "v1", TaskSelection{Filter: testCase.filter})
 				require.NoError(t, err)
 				taskIDs := make([]string, 0, len(resolved))
 				for _, t := range resolved {

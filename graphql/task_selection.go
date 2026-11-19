@@ -33,7 +33,7 @@ func resolveTaskSelection(ctx context.Context, versionID string, selection TaskS
 		}
 		return resolveTasksByIDs(ctx, versionID, selection.TaskIds)
 	}
-	return resolveTasksByFilter(ctx, versionID, selection.Filter, selection.ExcludeTaskIds)
+	return resolveTasksByFilter(ctx, versionID, selection.Filter)
 }
 
 func resolveTasksByIDs(ctx context.Context, versionID string, taskIDs []string) ([]task.Task, []*TaskError, error) {
@@ -56,7 +56,7 @@ func resolveTasksByIDs(ctx context.Context, versionID string, taskIDs []string) 
 	return tasks, taskErrors, nil
 }
 
-func resolveTasksByFilter(ctx context.Context, versionID string, f *TaskFilterOptions, excludeTaskIDs []string) ([]task.Task, []*TaskError, error) {
+func resolveTasksByFilter(ctx context.Context, versionID string, f *TaskFilterOptions) ([]task.Task, []*TaskError, error) {
 	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return nil, nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
@@ -71,21 +71,9 @@ func resolveTasksByFilter(ctx context.Context, versionID string, f *TaskFilterOp
 	}
 	opts.FieldsToProject = taskSelectionFields
 
-	matched, _, err := task.GetTasksByVersion(ctx, versionID, opts)
+	tasks, _, err := task.GetTasksByVersion(ctx, versionID, opts)
 	if err != nil {
 		return nil, nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for version '%s': %s", versionID, err.Error()))
-	}
-
-	// A user can apply a filter but then unselect specific tasks. Here we remove any tasks the user has excluded.
-	excluded := make(map[string]bool, len(excludeTaskIDs))
-	for _, id := range excludeTaskIDs {
-		excluded[id] = true
-	}
-	tasks := make([]task.Task, 0, len(matched))
-	for _, t := range matched {
-		if !excluded[t.Id] {
-			tasks = append(tasks, t)
-		}
 	}
 	return tasks, []*TaskError{}, nil
 }

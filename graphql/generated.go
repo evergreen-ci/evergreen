@@ -92508,6 +92508,9 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 	if _, present := asMap["baseStatuses"]; !present {
 		asMap["baseStatuses"] = []any{}
 	}
+	if _, present := asMap["excludeTaskIds"]; !present {
+		asMap["excludeTaskIds"] = []any{}
+	}
 	if _, present := asMap["includeNeverActivatedTasks"]; !present {
 		asMap["includeNeverActivatedTasks"] = false
 	}
@@ -92521,7 +92524,7 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 		asMap["statuses"] = []any{}
 	}
 
-	fieldsInOrder := [...]string{"baseStatuses", "includeNeverActivatedTasks", "limit", "page", "sorts", "statuses", "taskName", "variant"}
+	fieldsInOrder := [...]string{"baseStatuses", "excludeTaskIds", "includeNeverActivatedTasks", "limit", "page", "sorts", "statuses", "taskName", "variant"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -92535,6 +92538,13 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 				return it, err
 			}
 			it.BaseStatuses = data
+		case "excludeTaskIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("excludeTaskIds"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExcludeTaskIds = data
 		case "includeNeverActivatedTasks":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeNeverActivatedTasks"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -92982,11 +92992,7 @@ func (ec *executionContext) unmarshalInputTaskSelection(ctx context.Context, obj
 		asMap[k] = v
 	}
 
-	if _, present := asMap["excludeTaskIds"]; !present {
-		asMap["excludeTaskIds"] = []any{}
-	}
-
-	fieldsInOrder := [...]string{"taskIds", "filter", "excludeTaskIds"}
+	fieldsInOrder := [...]string{"taskIds", "filter"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -93007,13 +93013,6 @@ func (ec *executionContext) unmarshalInputTaskSelection(ctx context.Context, obj
 				return it, err
 			}
 			it.Filter = data
-		case "excludeTaskIds":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("excludeTaskIds"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ExcludeTaskIds = data
 		}
 	}
 

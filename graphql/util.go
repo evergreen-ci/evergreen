@@ -1823,10 +1823,11 @@ func requiresDBRead(ctx context.Context, availableFields []string) bool {
 // getTasksByVersionOptions converts task filter options into the query options for fetching a version's tasks.
 func getTasksByVersionOptions(ctx context.Context, v *model.Version, f TaskFilterOptions) (task.GetTasksByVersionOptions, error) {
 	opts := task.GetTasksByVersionOptions{
-		Statuses:     getValidTaskStatusesFilter(f.Statuses),
-		BaseStatuses: getValidTaskStatusesFilter(f.BaseStatuses),
-		Variants:     []string{utility.FromStringPtr(f.Variant)},
-		TaskNames:    []string{utility.FromStringPtr(f.TaskName)},
+		Statuses:       getValidTaskStatusesFilter(f.Statuses),
+		BaseStatuses:   getValidTaskStatusesFilter(f.BaseStatuses),
+		Variants:       []string{utility.FromStringPtr(f.Variant)},
+		TaskNames:      []string{utility.FromStringPtr(f.TaskName)},
+		ExcludeTaskIDs: f.ExcludeTaskIds,
 		// If the version is mainline, include never-activated tasks regardless of the user's preference.
 		IncludeNeverActivatedTasks: utility.FromBoolPtr(f.IncludeNeverActivatedTasks) || !evergreen.IsPatchRequester(v.Requester),
 	}
