@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
+	"github.com/evergreen-ci/utility/ttlcache"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,6 +28,7 @@ func TestValidatePatchModuleRepos(t *testing.T) {
 	t.Cleanup(func() {
 		isGitHubRepoPublic, gitHubUserHasReadPermission = origPublic, origRead
 	})
+	resetModuleRepoTrustCaches(t)
 	isGitHubRepoPublic = func(_ context.Context, owner, repo string) (bool, error) {
 		if owner+"/"+repo == "secretorg/github-error" {
 			return false, errors.New("GitHub is down")
@@ -138,4 +140,52 @@ func TestValidatePatchModuleRepos(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "secretorg/secret-repo")
 	})
+}
+
+func TestModuleRepoTrustCaching(t *testing.T) {
+	origPublic, origRead := isGitHubRepoPublic, gitHubUserHasReadPermission
+	t.Cleanup(func() {
+		isGitHubRepoPublic, gitHubUserHasReadPermission = origPublic, origRead
+	})
+
+	t.Run("RepoPublicLookupShouldBeReusedAcrossCalls", func(t *testing.T) {
+		resetModuleRepoTrustCaches(t)
+		calls := 0
+		isGitHubRepoPublic = func(_ context.Context, owner, repo string) (bool, error) {
+			calls++
+			return true, nil
+		}
+		for range 3 {
+			public, err := cachedIsGitHubRepoPublic(t.Context(), "SomeOrg", "public-repo")
+			require.NoError(t, err)
+			assert.True(t, public)
+		}
+		assert.Equal(t, 1, calls)
+	})
+	t.Run("ReadPermissionShouldBeCachedPerUser", func(t *testing.T) {
+		resetModuleRepoTrustCaches(t)
+		calls := 0
+		gitHubUserHasReadPermission = func(_ context.Context, owner, repo, username string) (bool, error) {
+			calls++
+			return username == "reader", nil
+		}
+		for range 2 {
+			canRead, err := cachedGitHubUserHasReadPermission(t.Context(), "secretorg", "repo", "reader")
+			require.NoError(t, err)
+			assert.True(t, canRead)
+			canRead, err = cachedGitHubUserHasReadPermission(t.Context(), "secretorg", "repo", "other-user")
+			require.NoError(t, err)
+			assert.False(t, canRead)
+		}
+		assert.Equal(t, 2, calls)
+	})
+}
+
+func resetModuleRepoTrustCaches(t *testing.T) {
+	origPublicCache, origReadCache := repoPublicCache, repoReadPermissionCache
+	t.Cleanup(func() {
+		repoPublicCache, repoReadPermissionCache = origPublicCache, origReadCache
+	})
+	repoPublicCache = ttlcache.NewInMemory[bool]()
+	repoReadPermissionCache = ttlcache.NewInMemory[bool]()
 }

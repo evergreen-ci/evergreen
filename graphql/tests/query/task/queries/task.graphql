@@ -15,6 +15,7 @@
       adjustedS3ArtifactStorageCost
       adjustedS3LogPutCost
       adjustedS3LogStorageCost
+      adjustedEngFlowCost
       total
     }
   }

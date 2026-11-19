@@ -30,6 +30,7 @@ type SchedulerConfig struct {
 	GenerateTaskFactor               int64   `bson:"generate_task_factor" json:"generate_task_factor" mapstructure:"generate_task_factor"`
 	NumDependentsFactor              float64 `bson:"num_dependents_factor" json:"num_dependents_factor" mapstructure:"num_dependents_factor"`
 	StepbackTaskFactor               int64   `bson:"stepback_task_factor" json:"stepback_task_factor" mapstructure:"stepback_task_factor"`
+	GitTagFactor                     int64   `bson:"git_tag_factor" json:"git_tag_factor" mapstructure:"git_tag_factor"`
 	TranslateProjectConcurrencyLimit int     `bson:"translate_project_concurrency_limit" json:"translate_project_concurrency_limit" mapstructure:"translate_project_concurrency_limit"`
 	TranslateProjectCacheBytesLimit  int64   `bson:"translate_project_cache_bytes_limit" json:"translate_project_cache_bytes_limit" mapstructure:"translate_project_cache_bytes_limit"`
 	TranslateProjectCacheTTLSeconds  int64   `bson:"translate_project_cache_ttl_seconds" json:"translate_project_cache_ttl_seconds" mapstructure:"translate_project_cache_ttl_seconds"`
@@ -63,6 +64,7 @@ func (c *SchedulerConfig) Set(ctx context.Context) error {
 			"generate_task_factor":                c.GenerateTaskFactor,
 			"num_dependents_factor":               c.NumDependentsFactor,
 			"stepback_task_factor":                c.StepbackTaskFactor,
+			"git_tag_factor":                      c.GitTagFactor,
 			"translate_project_concurrency_limit": c.TranslateProjectConcurrencyLimit,
 			"translate_project_cache_bytes_limit": c.TranslateProjectCacheBytesLimit,
 			"translate_project_cache_ttl_seconds": c.TranslateProjectCacheTTLSeconds,
@@ -169,6 +171,9 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	}
 	if c.StepbackTaskFactor < 0 || c.StepbackTaskFactor > 100 {
 		return errors.New("stepback task factor must be between 0 and 100")
+	}
+	if c.GitTagFactor < 0 || c.GitTagFactor > 100 {
+		return errors.New("git tag factor must be between 0 and 100")
 	}
 	if c.TranslateProjectConcurrencyLimit < 0 {
 		return errors.New("translate project concurrency limit cannot be negative")

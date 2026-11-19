@@ -30,7 +30,8 @@
             "expected_runtime_factor": { "$numberLong": "10" },
             "generate_task_factor": { "$numberLong": "50" },
             "num_dependents_factor": 5,
-            "stepback_task_factor": { "$numberLong": "10" }
+            "stepback_task_factor": { "$numberLong": "10" },
+            "git_tag_factor": { "$numberLong": "30" }
           },
           "after": {
             "task_finder": "legacy",
@@ -50,7 +51,8 @@
             "expected_runtime_factor": { "$numberLong": "10" },
             "generate_task_factor": { "$numberLong": "50" },
             "num_dependents_factor": 5,
-            "stepback_task_factor": { "$numberLong": "10" }
+            "stepback_task_factor": { "$numberLong": "10" },
+            "git_tag_factor": { "$numberLong": "30" }
           }
         }
       }

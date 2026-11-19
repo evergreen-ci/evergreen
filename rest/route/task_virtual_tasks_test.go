@@ -206,6 +206,15 @@ func TestCompleteVirtualTasks(t *testing.T) {
 			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeFailed, results[0].Outcome)
 			assert.Contains(t, results[0].Reason, "cannot combine aws_role_arn with presign_duration")
 		},
+		"NegativeEstimatedCostUSDFails": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
+			completion := successfulCompletion()
+			completion.ExternalMetadata = &apimodels.ExternalExecutionMetadata{EstimatedCostUSD: -5}
+			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{completion}}
+
+			results := requireResults(t, h.Run(ctx), 1)
+			assert.Equal(t, apimodels.VirtualTaskCompletionOutcomeFailed, results[0].Outcome)
+			assert.Contains(t, results[0].Reason, "estimated_cost_usd must be a finite non-negative number")
+		},
 		"PushCompletesVirtualTaskWithResultsAndArtifacts": func(ctx context.Context, t *testing.T, h *completeVirtualTasksHandler, env evergreen.Environment) {
 			createdAt := time.Now().UTC().Round(time.Millisecond)
 			h.body = apimodels.CompleteVirtualTasksRequest{Tasks: []apimodels.VirtualTaskCompletion{
@@ -221,8 +230,11 @@ func TestCompleteVirtualTasks(t *testing.T) {
 						{Name: "test.log", URL: "https://example.com/test.log", Visibility: artifact.Public},
 					},
 					ExternalMetadata: &apimodels.ExternalExecutionMetadata{
-						EngFlowInvocationID: "inv-xyz",
-						ShardID:             "shard-3",
+						EngFlowInvocationID:  "inv-xyz",
+						ShardID:              "shard-3",
+						EstimatedCostUSD:     0.38,
+						WorkerHours:          2.4,
+						RateUSDPerWorkerHour: 0.157,
 					},
 				},
 			}}
@@ -247,6 +259,8 @@ func TestCompleteVirtualTasks(t *testing.T) {
 			require.NotNil(t, vt.Details.ExternalExecutionMetadata)
 			assert.Equal(t, "inv-xyz", vt.Details.ExternalExecutionMetadata.EngFlowInvocationID)
 			assert.Equal(t, "shard-3", vt.Details.ExternalExecutionMetadata.ShardID)
+			assert.Equal(t, 0.38, vt.Details.ExternalExecutionMetadata.EstimatedCostUSD)
+			assert.Equal(t, 0.38, vt.TaskCost.AdjustedEngFlowCost, "the producer's estimate should be stored as the task's EngFlow cost component")
 			assert.NotNil(t, vt.TaskOutputInfo, "the task output info should be set so pushed results can be located")
 			assert.True(t, vt.HasTestResults)
 			assert.True(t, vt.ResultsFailed)

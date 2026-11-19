@@ -44,14 +44,6 @@ input TaskPriority {
   priority: Int!
 }
 
-"""
-ExecutionTasksFilterOptions is an input for the task.executionTasksFull field.
-It's used to filter a display task's execution tasks.
-"""
-input ExecutionTasksFilterOptions {
-  statuses: [String!] = []
-}
-
 input PrevTaskOptions {
   skipOnParentCompleted: Boolean
 }
@@ -115,7 +107,7 @@ type Task {
   executionPlatform: ExecutionPlatform!
   executionSteps: [TaskExecutionStep!]
   executionTasks: [String!]
-  executionTasksFull(options: ExecutionTasksFilterOptions): [Task!]
+  executionTasksFull: [Task!]
   expectedDuration: Duration
   failedTestCount: Int!
   files: TaskFiles!
@@ -400,6 +392,7 @@ type Cost {
   adjustedS3ArtifactStorageCost: Float
   adjustedS3LogPutCost: Float
   adjustedS3LogStorageCost: Float
+  adjustedEngFlowCost: Float
 }
 
 input QuarantineTestInput {
