@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
@@ -29,6 +30,7 @@ func init() {
 
 type mergeQueueRemovalDetailJob struct {
 	job.Base  `bson:"job_base" json:"job_base" yaml:"job_base"`
+	ProjectID string    `bson:"project_id" json:"project_id" yaml:"project_id"`
 	Org       string    `bson:"org" json:"org" yaml:"org"`
 	Repo      string    `bson:"repo" json:"repo" yaml:"repo"`
 	HeadRef   string    `bson:"head_ref" json:"head_ref" yaml:"head_ref"`
@@ -50,8 +52,9 @@ func makeMergeQueueRemovalDetailJob() *mergeQueueRemovalDetailJob {
 
 // NewMergeQueueRemovalDetailJob creates a job that looks up why GitHub removed a merge group's PR
 // from the merge queue and records it in a span.
-func NewMergeQueueRemovalDetailJob(org, repo, headRef, headSHA, reason string, removedAt time.Time) amboy.Job {
+func NewMergeQueueRemovalDetailJob(projectID, org, repo, headRef, headSHA, reason string, removedAt time.Time) amboy.Job {
 	j := makeMergeQueueRemovalDetailJob()
+	j.ProjectID = projectID
 	j.Org = org
 	j.Repo = repo
 	j.HeadRef = headRef
@@ -72,15 +75,25 @@ func NewMergeQueueRemovalDetailJob(org, repo, headRef, headSHA, reason string, r
 func (j *mergeQueueRemovalDetailJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	projectRef, err := model.FindBranchProjectRef(ctx, j.ProjectID)
+	if err != nil {
+		j.AddRetryableError(errors.Wrapf(err, "finding project ref '%s'", j.ProjectID))
+		return
+	}
+	if projectRef == nil {
+		j.AddError(errors.Errorf("project ref '%s' not found", j.ProjectID))
+		return
+	}
+
 	event, err := thirdparty.GetLatestMergeQueueRemovalEvent(ctx, j.Org, j.Repo, j.HeadRef)
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "getting merge queue removal event"))
 		return
 	}
-	j.handleRemovalEvent(ctx, event)
+	j.handleRemovalEvent(ctx, projectRef.Identifier, event)
 }
 
-func (j *mergeQueueRemovalDetailJob) handleRemovalEvent(ctx context.Context, event *thirdparty.MergeQueueRemovalEvent) {
+func (j *mergeQueueRemovalDetailJob) handleRemovalEvent(ctx context.Context, projectIdentifier string, event *thirdparty.MergeQueueRemovalEvent) {
 	if event != nil && event.CreatedAt.Before(j.RemovedAt.Add(-mergeQueueRemovalEventMatchWindow)) {
 		event = nil
 	}
@@ -92,5 +105,5 @@ func (j *mergeQueueRemovalDetailJob) handleRemovalEvent(ctx context.Context, eve
 		return
 	}
 
-	patch.EmitMergeQueueRemovalDetailSpan(ctx, j.Org, j.Repo, j.HeadRef, j.HeadSHA, j.Reason, event)
+	patch.EmitMergeQueueRemovalDetailSpan(ctx, projectIdentifier, j.Org, j.Repo, j.HeadRef, j.HeadSHA, j.Reason, event)
 }

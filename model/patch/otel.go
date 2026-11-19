@@ -39,7 +39,6 @@ const (
 	MergeQueueAttrRemovalEventFound               = "evergreen.merge_queue.removal_event_found"
 	MergeQueueAttrRemovalReasonDetail             = "evergreen.merge_queue.removal_reason_detail"
 	MergeQueueAttrRemovalActor                    = "evergreen.merge_queue.removal_actor"
-	MergeQueueAttrRemovalEnqueuer                 = "evergreen.merge_queue.removal_enqueuer"
 	MergeQueueAttrHasTestFailure                  = "evergreen.merge_queue.has_test_failure"
 	MergeQueueAttrHasSystemFailure                = "evergreen.merge_queue.has_system_failure"
 	MergeQueueAttrHasSetupFailure                 = "evergreen.merge_queue.has_setup_failure"

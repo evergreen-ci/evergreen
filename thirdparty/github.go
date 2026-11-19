@@ -2364,11 +2364,10 @@ func postGitHubGraphQL(ctx context.Context, client *http.Client, query string, v
 }
 
 // MergeQueueRemovalEvent is a GitHub RemovedFromMergeQueueEvent, which records the specific reason
-// a PR left the merge queue (e.g. a merge conflict or failed checks) and who removed it.
+// a PR left the merge queue and who removed it.
 type MergeQueueRemovalEvent struct {
 	Reason    string
 	Actor     string
-	Enqueuer  string
 	CreatedAt time.Time
 }
 
@@ -2381,9 +2380,6 @@ type mergeQueueRemovalEventResponse struct {
 					Actor  struct {
 						Login string `json:"login"`
 					} `json:"actor"`
-					Enqueuer struct {
-						Login string `json:"login"`
-					} `json:"enqueuer"`
 					CreatedAt time.Time `json:"createdAt"`
 				} `json:"nodes"`
 			} `json:"timelineItems"`
@@ -2392,8 +2388,7 @@ type mergeQueueRemovalEventResponse struct {
 }
 
 // GetLatestMergeQueueRemovalEvent returns the most recent RemovedFromMergeQueueEvent for the PR
-// that the merge queue head ref belongs to. It returns nil if the PR has never been removed from
-// the merge queue.
+// that the merge queue head ref belongs to.
 func GetLatestMergeQueueRemovalEvent(ctx context.Context, owner, repo, headRef string) (*MergeQueueRemovalEvent, error) {
 	caller := "GetLatestMergeQueueRemovalEvent"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -2421,7 +2416,7 @@ func GetLatestMergeQueueRemovalEvent(ctx context.Context, owner, repo, headRef s
 			pullRequest(number: $number) {
 				timelineItems(itemTypes: [REMOVED_FROM_MERGE_QUEUE_EVENT], last: 1) {
 					nodes {
-						... on RemovedFromMergeQueueEvent { reason actor { login } enqueuer { login } createdAt }
+						... on RemovedFromMergeQueueEvent { reason actor { login } createdAt }
 					}
 				}
 			}
@@ -2439,7 +2434,6 @@ func GetLatestMergeQueueRemovalEvent(ctx context.Context, owner, repo, headRef s
 	return &MergeQueueRemovalEvent{
 		Reason:    nodes[0].Reason,
 		Actor:     nodes[0].Actor.Login,
-		Enqueuer:  nodes[0].Enqueuer.Login,
 		CreatedAt: nodes[0].CreatedAt,
 	}, nil
 }

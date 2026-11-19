@@ -809,8 +809,8 @@ func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *g
 	model.EmitMergeQueueCompletionMetricsFromWebhook(ctx, updatedPatchIDs)
 
 	// Start a new job to collect metrics about the item if it wasn't merged.
-	if len(updatedPatches) > 0 && reason != thirdparty.MergeQueueReasonMerged {
-		removalDetailJob := units.NewMergeQueueRemovalDetailJob(org, repo, event.GetMergeGroup().GetHeadRef(), headSHA, reason, gh.receivedAt)
+	if rootPatchIdx := slices.IndexFunc(updatedPatches, func(p patch.Patch) bool { return !p.IsChild() }); rootPatchIdx >= 0 && reason != thirdparty.MergeQueueReasonMerged {
+		removalDetailJob := units.NewMergeQueueRemovalDetailJob(updatedPatches[rootPatchIdx].Project, org, repo, event.GetMergeGroup().GetHeadRef(), headSHA, reason, gh.receivedAt)
 		grip.Warning(ctx, message.WrapError(amboy.EnqueueUniqueJob(ctx, gh.queue, removalDetailJob), message.Fields{
 			"source":   "GitHub hook",
 			"msg_id":   gh.msgID,

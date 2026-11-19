@@ -283,8 +283,9 @@ func (g *githubMergeIntent) GetAlias() string {
 
 // EmitMergeQueueRemovalDetailSpan emits a span describing the specific reason GitHub removed a
 // merge group's PR from the merge queue. A nil event means GitHub recorded no removal for the PR.
-func EmitMergeQueueRemovalDetailSpan(ctx context.Context, org, repo, headRef, headSHA, reason string, event *thirdparty.MergeQueueRemovalEvent) {
+func EmitMergeQueueRemovalDetailSpan(ctx context.Context, projectIdentifier, org, repo, headRef, headSHA, reason string, event *thirdparty.MergeQueueRemovalEvent) {
 	attrs := append(BuildMergeQueueSpanAttributes(org, repo, extractBaseBranchFromHeadRef(headRef), headSHA, thirdparty.BuildGithubHeadPRURL(org, repo, headRef)),
+		attribute.String(MergeQueueAttrProjectID, projectIdentifier),
 		attribute.String(MergeQueueAttrRemovalReason, reason),
 		attribute.Bool(MergeQueueAttrRemovalEventFound, event != nil),
 	)
@@ -292,7 +293,6 @@ func EmitMergeQueueRemovalDetailSpan(ctx context.Context, org, repo, headRef, he
 		attrs = append(attrs,
 			attribute.String(MergeQueueAttrRemovalReasonDetail, event.Reason),
 			attribute.String(MergeQueueAttrRemovalActor, event.Actor),
-			attribute.String(MergeQueueAttrRemovalEnqueuer, event.Enqueuer),
 		)
 	}
 	_, span := tracer.Start(ctx, MergeQueueRemovalDetailSpan, trace.WithAttributes(attrs...))

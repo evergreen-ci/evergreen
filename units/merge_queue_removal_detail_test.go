@@ -34,11 +34,11 @@ func TestMergeQueueRemovalDetailJobHandleRemovalEvent(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			j, ok := NewMergeQueueRemovalDetailJob("mongodb", "mongo", "refs/heads/gh-readonly-queue/main/pr-515-abc", "abc123", thirdparty.MergeQueueReasonInvalidated, removedAt).(*mergeQueueRemovalDetailJob)
+			j, ok := NewMergeQueueRemovalDetailJob("my-project", "mongodb", "mongo", "refs/heads/gh-readonly-queue/main/pr-515-abc", "abc123", thirdparty.MergeQueueReasonInvalidated, removedAt).(*mergeQueueRemovalDetailJob)
 			require.True(t, ok)
 			j.UpdateRetryInfo(amboy.JobRetryOptions{CurrentAttempt: &tCase.currentAttempt})
 
-			j.handleRemovalEvent(t.Context(), tCase.event)
+			j.handleRemovalEvent(t.Context(), "my-project", tCase.event)
 
 			assert.Equal(t, tCase.expectRetry, j.RetryInfo().NeedsRetry)
 		})

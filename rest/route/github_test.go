@@ -577,7 +577,7 @@ func TestHandleMergeGroupDestroyedCancelsPatches(t *testing.T) {
 	require.NotNil(t, v)
 	assert.False(t, utility.FromBoolPtr(v.Activated))
 
-	_, ok := q.Get(ctx, units.NewMergeQueueRemovalDetailJob(org, repo, headRef, headSHA, reason, time.Time{}).ID())
+	_, ok := q.Get(ctx, units.NewMergeQueueRemovalDetailJob(projectID, org, repo, headRef, headSHA, reason, time.Time{}).ID())
 	assert.True(t, ok)
 }
 
