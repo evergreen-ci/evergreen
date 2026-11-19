@@ -20,13 +20,11 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -550,12 +548,9 @@ func TestHandleMergeGroupDestroyedCancelsPatches(t *testing.T) {
 	}
 	assert.NoError(t, db.Insert(ctx, patch.Collection, patchDoc))
 
-	q := queue.NewLocalLimitedSize(1, 10)
-	require.NoError(t, q.Start(ctx))
 	gh := &githubHookApi{
 		msgID:     "test-msg-id",
 		eventType: "merge_group",
-		queue:     q,
 	}
 
 	event := &github.MergeGroupEvent{
@@ -576,40 +571,6 @@ func TestHandleMergeGroupDestroyedCancelsPatches(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, v)
 	assert.False(t, utility.FromBoolPtr(v.Activated))
-
-	_, ok := q.Get(ctx, units.NewMergeQueueRemovalDetailJob(projectID, org, repo, headRef, headSHA, reason, time.Time{}).ID())
-	assert.True(t, ok)
-}
-
-func TestHandleMergeGroupDestroyedMergedShouldNotEnqueueRemovalDetailJob(t *testing.T) {
-	ctx := t.Context()
-	require.NoError(t, db.ClearCollections(patch.Collection))
-	t.Cleanup(func() { require.NoError(t, db.ClearCollections(patch.Collection)) })
-
-	org := "mongodb"
-	repo := "mongo"
-	headSHA := "abc123"
-	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
-	reason := thirdparty.MergeQueueReasonMerged
-
-	require.NoError(t, db.Insert(ctx, patch.Collection, patch.Patch{
-		Id:              mgobson.NewObjectId(),
-		GithubMergeData: thirdparty.GithubMergeGroup{Org: org, Repo: repo, HeadSHA: headSHA},
-	}))
-
-	q := queue.NewLocalLimitedSize(1, 10)
-	require.NoError(t, q.Start(ctx))
-	gh := &githubHookApi{msgID: "test-msg-id", eventType: "merge_group", queue: q}
-
-	resp := gh.handleMergeGroupDestroyed(ctx, &github.MergeGroupEvent{
-		Org:        &github.Organization{Login: &org},
-		Repo:       &github.Repository{Name: &repo},
-		MergeGroup: &github.MergeGroup{HeadSHA: &headSHA, HeadRef: &headRef},
-		Reason:     &reason,
-	})
-	require.NotNil(t, resp)
-	assert.Equal(t, 200, resp.Status())
-	assert.Zero(t, q.Stats(ctx).Total)
 }
 
 func TestRefreshPatchStatusReturnsJobError(t *testing.T) {
