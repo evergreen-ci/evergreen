@@ -264,6 +264,7 @@ type Project {
   branch: String!
   buildBaronSettings: BuildBaronSettings!
   commitQueue: CommitQueueParams!
+  commits(options: ProjectCommitsOptions!): ProjectCommits!
   deactivatePrevious: Boolean
   debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean
