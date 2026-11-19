@@ -205,7 +205,13 @@ func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 	project := MustHaveProject(r)
 
-	gimlet.WriteJSON(r.Context(), w, project.BuildVariants)
+	// Only return the names, since generated variants and their tasks can
+	// have private variable values in other fields.
+	variants := make([]model.BuildVariant, 0, len(project.BuildVariants))
+	for _, bv := range project.BuildVariants {
+		variants = append(variants, model.BuildVariant{Name: bv.Name, DisplayName: bv.DisplayName})
+	}
+	gimlet.WriteJSON(r.Context(), w, variants)
 }
 
 // validateProjectConfig returns a slice containing a list of any errors
