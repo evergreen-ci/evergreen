@@ -808,6 +808,19 @@ func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *g
 
 	model.EmitMergeQueueCompletionMetricsFromWebhook(ctx, updatedPatchIDs)
 
+	if len(updatedPatches) > 0 && reason != thirdparty.MergeQueueReasonMerged {
+		removalDetailJob := units.NewMergeQueueRemovalDetailJob(org, repo, event.GetMergeGroup().GetHeadRef(), headSHA, reason, gh.receivedAt)
+		// The removal detail is best-effort telemetry, so failing to enqueue it should not fail the webhook.
+		grip.Warning(ctx, message.WrapError(amboy.EnqueueUniqueJob(ctx, gh.queue, removalDetailJob), message.Fields{
+			"source":   "GitHub hook",
+			"msg_id":   gh.msgID,
+			"org":      org,
+			"repo":     repo,
+			"head_sha": headSHA,
+			"message":  "could not enqueue merge queue removal detail job",
+		}))
+	}
+
 	logFields := message.Fields{
 		"source":   "GitHub hook",
 		"msg_id":   gh.msgID,
