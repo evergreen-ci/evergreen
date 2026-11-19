@@ -244,6 +244,11 @@ belongs to a mainline commit, periodic build, or trigger version, or when the
 task was activated by a user with project admin permissions. Patches and PRs
 activated by non-admin users will not have access to these variables.
 
+Note that access is determined by who activated the task, not who authored
+the code being run. If a project admin schedules or restarts a task in a
+patch created by another user, that task runs the patch author's code but
+still receives admin-only variables.
+
 ### Aliases
 
 Aliases can be used for patch testing, merge queue testing, GitHub PRs,
