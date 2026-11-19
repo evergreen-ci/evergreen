@@ -2316,13 +2316,12 @@ func GetMergeQueueFrontEntry(ctx context.Context, owner, repo, baseBranch string
 	}
 
 	node := nodes[0]
-	// Merge group refs follow this naming scheme according to GitHub docs.
+	// Merge group refs naming scheme.
 	headRef = fmt.Sprintf("refs/heads/gh-readonly-queue/%s/pr-%d-%s", baseBranch, node.PullRequest.Number, node.BaseCommit.Oid)
 	return headRef, node.HeadCommit.Oid, true, nil
 }
 
-// postGitHubGraphQL sends a query to GitHub's GraphQL API and decodes the response's data field
-// into data.
+// postGitHubGraphQL sends a query to GitHub's GraphQL API and decodes returned data.
 func postGitHubGraphQL(ctx context.Context, client *http.Client, query string, variables map[string]any, data any) error {
 	reqBody, err := json.Marshal(map[string]any{"query": query, "variables": variables})
 	if err != nil {
