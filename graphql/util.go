@@ -1777,11 +1777,8 @@ func redactParameters(ctx context.Context, projectId string, parameters []patch.
 			Key:   utility.ToStringPtr(param.Key),
 			Value: utility.ToStringPtr(param.Value),
 		}
-		for _, pattern := range redactKeys {
-			if strings.Contains(strings.ToLower(param.Key), pattern) {
-				redactedParam.Value = utility.ToStringPtr(evergreen.RedactedValue)
-				break
-			}
+		if evergreen.MatchesRedactKeys(param.Key, redactKeys) {
+			redactedParam.Value = utility.ToStringPtr(evergreen.RedactedValue)
 		}
 		if projVars != nil {
 			for varKey, varValue := range projVars.Vars {

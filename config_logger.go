@@ -2,6 +2,8 @@ package evergreen
 
 import (
 	"context"
+	"slices"
+	"strings"
 
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -32,6 +34,16 @@ func (c LoggerConfig) Info() send.LevelInfo {
 		Default:   level.FromString(c.DefaultLevel),
 		Threshold: level.FromString(c.ThresholdLevel),
 	}
+}
+
+// MatchesRedactKeys returns whether the key contains any of the redact key
+// patterns. Values for matching keys are hidden the same way as private
+// variables.
+func MatchesRedactKeys(key string, redactKeys []string) bool {
+	lowerKey := strings.ToLower(key)
+	return slices.ContainsFunc(redactKeys, func(pattern string) bool {
+		return strings.Contains(lowerKey, pattern)
+	})
 }
 
 func (c *LoggerConfig) SectionId() string { return "logger_config" }

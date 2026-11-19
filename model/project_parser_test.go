@@ -5186,3 +5186,149 @@ tasks:
 	assert.Equal(t, 1, pp.Modules[0].CloneDepth)
 	assert.Zero(t, pp.Modules[1].CloneDepth)
 }
+
+func TestRedactSecrets(t *testing.T) {
+	loadStored := func(t *testing.T, yml []byte) *ParserProject {
+		pp, decodeErr, err := createIntermediateProject(yml, false, &anchorRegistry{})
+		require.NoError(t, err)
+		require.NoError(t, decodeErr)
+		raw, err := bson.Marshal(pp)
+		require.NoError(t, err)
+		stored := &ParserProject{}
+		require.NoError(t, bson.Unmarshal(raw, stored))
+		return stored
+	}
+
+	t.Run("SecretsAreRedactedFromCommandsFunctionsAndVariants", func(t *testing.T) {
+		yml := `
+functions:
+  login:
+    command: shell.exec
+    params:
+      script: |
+        echo "short_secret_but_longer" | login
+tasks:
+  - name: generated
+    ps: diagnostics --token short_secret
+    commands:
+      - command: subprocess.exec
+        params:
+          binary: deploy
+          args: ["--token", "short_secret", "--key", "line one\nline \"two\""]
+          port: 123456
+buildvariants:
+  - name: bv
+    expansions:
+      api_key: short_secret
+      overlapping: abcdefgh
+    tasks:
+      - name: generated
+        ps: diagnostics --key short_secret_but_longer
+`
+		pp := loadStored(t, []byte(yml))
+		require.NoError(t, pp.RedactSecrets(map[string]string{
+			"short":  "short_secret",
+			"long":   "short_secret_but_longer",
+			"ssh":    "line one\nline \"two\"",
+			"pin":    "123456",
+			"front":  "abcd",
+			"back":   "cdefgh",
+			"unused": "not_in_project",
+		}))
+
+		raw, err := bson.Marshal(pp)
+		require.NoError(t, err)
+		out, err := yaml.Marshal(pp)
+		require.NoError(t, err)
+		for _, serialized := range []string{string(raw), string(out)} {
+			assert.NotContains(t, serialized, "short_secret")
+			assert.NotContains(t, serialized, "line one")
+			assert.NotContains(t, serialized, "123456")
+		}
+
+		require.Len(t, pp.Tasks, 1)
+		require.Len(t, pp.Tasks[0].Commands, 1)
+		cmd := pp.Tasks[0].Commands[0]
+		assert.Equal(t, []any{"--token", "<REDACTED:short>", "--key", "<REDACTED:ssh>"}, cmd.Params["args"])
+		assert.Equal(t, "<REDACTED:pin>", cmd.Params["port"])
+		assert.Contains(t, cmd.ParamsYAML, "<REDACTED:ssh>")
+		require.NotNil(t, pp.Functions["login"])
+		require.NotNil(t, pp.Functions["login"].SingleCommand)
+		assert.Contains(t, pp.Functions["login"].SingleCommand.Params["script"], `echo "<REDACTED:long>" | login`)
+		require.Len(t, pp.BuildVariants, 1)
+		assert.Equal(t, "<REDACTED:short>", pp.BuildVariants[0].Expansions["api_key"])
+		assert.Equal(t, "ab<REDACTED:back>", pp.BuildVariants[0].Expansions["overlapping"])
+		require.NotNil(t, pp.Tasks[0].Ps)
+		assert.Equal(t, "diagnostics --token <REDACTED:short>", *pp.Tasks[0].Ps)
+		require.Len(t, pp.BuildVariants[0].Tasks, 1)
+		require.NotNil(t, pp.BuildVariants[0].Tasks[0].PS)
+		assert.Equal(t, "diagnostics --key <REDACTED:long>", *pp.BuildVariants[0].Tasks[0].PS)
+	})
+
+	t.Run("NamesAndReferencesAreNotRedacted", func(t *testing.T) {
+		yml := `
+modules:
+  - name: tools
+    owner: mongodb
+    repo: mongo-tools
+    branch: master
+functions:
+  setup:
+    command: shell.exec
+    params:
+      script: echo foo
+tasks:
+  - name: compile
+    commands:
+      - func: setup
+        vars:
+          org: mongodb
+buildvariants:
+  - name: ubuntu
+    display_name: Ubuntu mongodb
+    run_on: [ubuntu2204-small]
+    modules: [tools]
+    tasks:
+      - name: compile
+`
+		pp := loadStored(t, []byte(yml))
+		require.NoError(t, pp.RedactSecrets(map[string]string{"org": "mongo", "foo": "foo", "x": "e", "key": "script"}))
+
+		require.Len(t, pp.Modules, 1)
+		assert.Equal(t, "mongodb", pp.Modules[0].Owner)
+		assert.Equal(t, "mongo-tools", pp.Modules[0].Repo)
+		assert.Equal(t, "master", pp.Modules[0].Branch)
+		require.Len(t, pp.Tasks, 1)
+		assert.Equal(t, "compile", pp.Tasks[0].Name)
+		require.Len(t, pp.Tasks[0].Commands, 1)
+		assert.Equal(t, "setup", pp.Tasks[0].Commands[0].Function)
+		assert.Equal(t, "<REDACTED:org>db", pp.Tasks[0].Commands[0].Vars["org"])
+		require.Len(t, pp.BuildVariants, 1)
+		assert.Equal(t, "ubuntu", pp.BuildVariants[0].Name)
+		assert.Equal(t, "Ubuntu <REDACTED:org>db", pp.BuildVariants[0].DisplayName)
+
+		setup := pp.Functions["setup"]
+		require.NotNil(t, setup)
+		require.NotNil(t, setup.SingleCommand)
+		assert.Equal(t, "shell.exec", setup.SingleCommand.Command)
+		assert.Equal(t, "<REDACTED:x>cho <REDACTED:foo>", setup.SingleCommand.Params["script"])
+		assert.Contains(t, setup.SingleCommand.ParamsYAML, "script:")
+	})
+
+	t.Run("ProjectWithoutSecretsIsUnchanged", func(t *testing.T) {
+		yml, err := os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "matrix_deps.yml"))
+		require.NoError(t, err)
+		pp := loadStored(t, yml)
+		before, err := bson.Marshal(pp)
+		require.NoError(t, err)
+
+		require.NoError(t, pp.RedactSecrets(map[string]string{"unused": "not_in_project"}))
+
+		after, err := bson.Marshal(pp)
+		require.NoError(t, err)
+		var beforeDoc, afterDoc bson.M
+		require.NoError(t, bson.Unmarshal(before, &beforeDoc))
+		require.NoError(t, bson.Unmarshal(after, &afterDoc))
+		assert.Equal(t, beforeDoc, afterDoc)
+	})
+}

@@ -3,7 +3,6 @@ package internal
 import (
 	"context"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -281,16 +280,8 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 
 	// Add keys matching redact patterns to private vars.
 	for key := range opts.ExpansionsAndVars.Vars {
-		if ok := opts.ExpansionsAndVars.PrivateVars[key]; ok {
-			// Skip since the key is already private.
-			continue
-		}
-
-		for _, pattern := range opts.ExpansionsAndVars.RedactKeys {
-			if strings.Contains(strings.ToLower(key), pattern) {
-				opts.ExpansionsAndVars.PrivateVars[key] = true
-				break
-			}
+		if evergreen.MatchesRedactKeys(key, opts.ExpansionsAndVars.RedactKeys) {
+			opts.ExpansionsAndVars.PrivateVars[key] = true
 		}
 	}
 

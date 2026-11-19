@@ -679,6 +679,22 @@ func TestRedactPrivateVars(t *testing.T) {
 	assert.NotEqual("", projectVars.Vars["a"], "original vars should not be modified")
 }
 
+func TestSecretVarsReturnsPrivateAndRedactKeyMatches(t *testing.T) {
+	projectVars := &ProjectVars{
+		Vars: map[string]string{
+			"private":      "private_value",
+			"GITHUB_TOKEN": "token_value",
+			"public":       "public_value",
+			"empty":        "",
+		},
+		PrivateVars: map[string]bool{"private": true, "empty": true},
+	}
+	assert.Equal(t, map[string]string{
+		"private":      "private_value",
+		"GITHUB_TOKEN": "token_value",
+	}, projectVars.SecretVars([]string{"token"}))
+}
+
 func TestAWSVars(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))

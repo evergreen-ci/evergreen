@@ -92,6 +92,10 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONInternalError(r.Context(), w, fmt.Sprintf("cannot get parser project for patch '%s' because patch has no associated parser project and version is nil", projCtx.Patch.Id.Hex()))
 		return
 	}
+	if err = redactProjectSecrets(r.Context(), &settings, projCtx.Patch.Project, pp); err != nil {
+		gimlet.WriteJSONInternalError(r.Context(), w, err)
+		return
+	}
 
 	projBytes, err := yaml.Marshal(pp)
 	if err != nil {

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -966,14 +965,8 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 		expansionsAndVars.PrivateVars = map[string]bool{}
 	}
 	for key := range expansionsAndVars.Vars {
-		if expansionsAndVars.PrivateVars[key] {
-			continue
-		}
-		for _, pattern := range expansionsAndVars.RedactKeys {
-			if strings.Contains(strings.ToLower(key), pattern) {
-				expansionsAndVars.PrivateVars[key] = true
-				break
-			}
+		if evergreen.MatchesRedactKeys(key, expansionsAndVars.RedactKeys) {
+			expansionsAndVars.PrivateVars[key] = true
 		}
 	}
 

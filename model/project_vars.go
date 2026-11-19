@@ -806,6 +806,22 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	return res
 }
 
+// SecretVars returns the non-empty variables that are hidden in task logs: the
+// private variables and the variables whose lowercased names contain any of
+// the redact key patterns.
+func (projectVars *ProjectVars) SecretVars(redactKeys []string) map[string]string {
+	secrets := map[string]string{}
+	for k, v := range projectVars.Vars {
+		if v == "" {
+			continue
+		}
+		if projectVars.PrivateVars[k] || evergreen.MatchesRedactKeys(k, redactKeys) {
+			secrets[k] = v
+		}
+	}
+	return secrets
+}
+
 // MergeWithRepoVars merges the project and repo variables
 func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 	if projectVars.Vars == nil {
