@@ -1627,8 +1627,12 @@ func (r *mutationResolver) ScheduleVersionTasks(ctx context.Context, versionID s
 	if len(taskIDsToSchedule) == 0 {
 		return result, nil
 	}
+	tasksToSchedule, err := findAllTasksByIds(ctx, taskIDsToSchedule...)
+	if err != nil {
+		return nil, err
+	}
 	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
-	scheduled, err := setManyTasksScheduled(ctx, logURL, true, taskIDsToSchedule...)
+	scheduled, err := setTasksScheduled(ctx, logURL, true, tasksToSchedule)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("scheduling tasks: %s", err.Error()))
 	}

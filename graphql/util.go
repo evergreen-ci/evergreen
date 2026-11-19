@@ -140,7 +140,6 @@ func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, err
 }
 
 func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskIDs ...string) ([]*restModel.APITask, error) {
-	usr := mustHaveUser(ctx)
 	tasks, err := findAllTasksByIds(ctx, taskIDs...)
 	if err != nil {
 		return nil, err
@@ -150,12 +149,21 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 			return nil, InputValidationError.Send(ctx, "Merge queue tasks cannot be manually scheduled.")
 		}
 	}
-	if err = model.SetActiveState(ctx, usr.Username(), isActive, tasks...); err != nil {
+	return setTasksScheduled(ctx, url, isActive, tasks)
+}
+
+func setTasksScheduled(ctx context.Context, url string, isActive bool, tasks []task.Task) ([]*restModel.APITask, error) {
+	usr := mustHaveUser(ctx)
+	if err := model.SetActiveState(ctx, usr.Username(), isActive, tasks...); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
 	// Get the modified tasks back out of the db
-	tasks, err = findAllTasksByIds(ctx, taskIDs...)
+	taskIDs := make([]string, 0, len(tasks))
+	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.Id)
+	}
+	tasks, err := findAllTasksByIds(ctx, taskIDs...)
 	if err != nil {
 		return nil, err
 	}
