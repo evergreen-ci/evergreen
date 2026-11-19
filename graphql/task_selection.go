@@ -10,7 +10,10 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
-const maxSelectedTaskIDs = 1000
+const (
+	maxSelectedTaskIDs = 1000
+	maxTasksToSchedule = 1000
+)
 
 var taskSelectionFields = []string{
 	task.IdKey,
