@@ -43,7 +43,7 @@ func (d *DetectDeprecatedFields) InterceptResponse(ctx context.Context, next gra
 		found:     make(map[string]string),
 		fragments: make(map[string]bool),
 	}
-	deprecationVisitor.walkSelections(rc.Operation.SelectionSet)
+	deprecationVisitor.recursivelyWalkSelections(rc.Operation.SelectionSet)
 
 	deprecated := make([]deprecatedField, 0, len(deprecationVisitor.found))
 	for field, reason := range deprecationVisitor.found {
@@ -74,30 +74,30 @@ func (v *deprecationVisitor) recordIfDeprecated(pathToField string, directives a
 	v.found[pathToField] = reason
 }
 
-func (v *deprecationVisitor) walkSelections(sels ast.SelectionSet) {
+func (v *deprecationVisitor) recursivelyWalkSelections(sels ast.SelectionSet) {
 	for _, sel := range sels {
 		switch s := sel.(type) {
 		case *ast.InlineFragment:
-			v.walkSelections(s.SelectionSet)
+			v.recursivelyWalkSelections(s.SelectionSet)
 		case *ast.FragmentSpread:
 			if s.Definition == nil || v.fragments[s.Name] {
 				continue
 			}
 			v.fragments[s.Name] = true
-			v.walkSelections(s.Definition.SelectionSet)
+			v.recursivelyWalkSelections(s.Definition.SelectionSet)
 		// Base case that covers top-level queries, mutations, and fields.
 		case *ast.Field:
 			if s.Definition == nil || s.ObjectDefinition == nil {
 				return
 			}
 			v.recordIfDeprecated(fmt.Sprintf("%s.%s", s.ObjectDefinition.Name, s.Name), s.Definition.Directives)
-			v.walkFieldArguments(s)
-			v.walkSelections(s.SelectionSet)
+			v.recursivelyWalkFieldArguments(s)
+			v.recursivelyWalkSelections(s.SelectionSet)
 		}
 	}
 }
 
-func (v *deprecationVisitor) walkFieldArguments(field *ast.Field) {
+func (v *deprecationVisitor) recursivelyWalkFieldArguments(field *ast.Field) {
 	for _, arg := range field.Arguments {
 		argDef := field.Definition.Arguments.ForName(arg.Name)
 		if argDef == nil {
@@ -106,12 +106,12 @@ func (v *deprecationVisitor) walkFieldArguments(field *ast.Field) {
 		v.recordIfDeprecated(fmt.Sprintf("%s.%s.%s", field.ObjectDefinition.Name, field.Name, arg.Name), argDef.Directives)
 		value, err := arg.Value.Value(v.variables)
 		if err == nil {
-			v.walkInputValue(argDef.Type, value)
+			v.recursivelyWalkInputValue(argDef.Type, value)
 		}
 	}
 }
 
-func (v *deprecationVisitor) walkInputValue(expectedType *ast.Type, value any) {
+func (v *deprecationVisitor) recursivelyWalkInputValue(expectedType *ast.Type, value any) {
 	switch typedValue := value.(type) {
 	case map[string]any:
 		inputType := v.schema.Types[expectedType.Name()]
@@ -124,11 +124,11 @@ func (v *deprecationVisitor) walkInputValue(expectedType *ast.Type, value any) {
 				continue
 			}
 			v.recordIfDeprecated(fmt.Sprintf("%s.%s", inputType.Name, fieldName), fieldDeclaration.Directives)
-			v.walkInputValue(fieldDeclaration.Type, fieldValue)
+			v.recursivelyWalkInputValue(fieldDeclaration.Type, fieldValue)
 		}
 	case []any:
 		for _, item := range typedValue {
-			v.walkInputValue(expectedType, item)
+			v.recursivelyWalkInputValue(expectedType, item)
 		}
 	}
 }
