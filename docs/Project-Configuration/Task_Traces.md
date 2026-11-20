@@ -50,11 +50,13 @@ In the `WHERE` section there's two attributes present. One says "show errors" an
 ## Version Makespans by Tag
 
 When a version finishes, Evergreen publishes one span named
-`version-tag-makespan` for each task tag on the version, carrying the makespan
-(the time between the earliest task start and the latest task finish) of the
-tasks that share that tag. This makes it possible to track the makespan of a
-filtered set of tasks (for example, a workload tagged as high-value) with a
-Honeycomb query on the tag.
+`version-tag-makespan` for each task tag listed in the project's
+`version_makespan_tags` [configuration](Project-Configuration-Files#version-makespan-tags),
+carrying the makespan (the time between the earliest task start and the latest
+task finish) of the tasks that share that tag. This makes it possible to track
+the makespan of a filtered set of tasks (for example, a workload tagged as
+high-value) with a Honeycomb query on the tag. No makespans are published for
+projects that do not configure any tags.
 
 Each span carries these attributes (in addition to all the usual version
 attributes such as `evergreen.version.id` and `evergreen.project.identifier`):

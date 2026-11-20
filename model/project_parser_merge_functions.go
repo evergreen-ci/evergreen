@@ -277,6 +277,13 @@ func (pp *ParserProject) mergeProjectConfigFields(toMerge *ParserProject) {
 	}
 
 	var redefined []string
+	if len(other.VersionMakespanTags) > 0 {
+		if len(pcf.VersionMakespanTags) > 0 {
+			redefined = append(redefined, "version_makespan_tags")
+		} else {
+			pcf.VersionMakespanTags = other.VersionMakespanTags
+		}
+	}
 	if other.BuildBaronSettings != nil {
 		if pcf.BuildBaronSettings != nil {
 			redefined = append(redefined, "build_baron_settings")

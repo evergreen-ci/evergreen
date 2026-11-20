@@ -4103,10 +4103,19 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
-// GetMakespansByTag returns the makespan of the tasks sharing each tag.
-// Display-only tasks and tasks with missing or invalid timings are excluded.
-// Tags with no eligible task are omitted.
-func GetMakespansByTag(tasks []Task) map[string]time.Duration {
+// GetMakespansByTag returns the makespan of the tasks sharing each tag in
+// monitoredTags. Display-only tasks and tasks with missing or invalid timings
+// are excluded, and tags with no eligible task are omitted.
+func GetMakespansByTag(tasks []Task, monitoredTags []string) map[string]time.Duration {
+	if len(monitoredTags) == 0 {
+		return nil
+	}
+
+	monitored := make(map[string]struct{}, len(monitoredTags))
+	for _, tag := range monitoredTags {
+		monitored[tag] = struct{}{}
+	}
+
 	earliestStarts := map[string]time.Time{}
 	latestFinishes := map[string]time.Time{}
 	for _, t := range tasks {
@@ -4115,6 +4124,9 @@ func GetMakespansByTag(tasks []Task) map[string]time.Duration {
 			continue
 		}
 		for _, tag := range t.Tags {
+			if _, ok := monitored[tag]; !ok {
+				continue
+			}
 			if start, ok := earliestStarts[tag]; !ok || t.StartTime.Before(start) {
 				earliestStarts[tag] = t.StartTime
 			}
@@ -4124,9 +4136,11 @@ func GetMakespansByTag(tasks []Task) map[string]time.Duration {
 		}
 	}
 
-	makespans := make(map[string]time.Duration, len(earliestStarts))
-	for tag, start := range earliestStarts {
-		makespans[tag] = latestFinishes[tag].Sub(start)
+	makespans := make(map[string]time.Duration, len(monitoredTags))
+	for _, tag := range monitoredTags {
+		if start, ok := earliestStarts[tag]; ok {
+			makespans[tag] = latestFinishes[tag].Sub(start)
+		}
 	}
 	return makespans
 }

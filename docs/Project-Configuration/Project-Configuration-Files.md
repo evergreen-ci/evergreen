@@ -353,7 +353,7 @@ file.
 [Version-controlled project settings configurations](Project-and-Distro-Settings#version-control) may be defined
 in included files as well as the main config file. Alias lists (e.g. `patch_aliases`, `github_pr_aliases`) are
 combined across all files in include order, with the main config file's entries first. Settings structs
-(`build_baron_settings`, `workstation_config`) may only be defined in one file;
+(`build_baron_settings`, `workstation_config`) and the `version_makespan_tags` list may only be defined in one file;
 defining them in multiple files is a validation error.
 
 ```yaml
@@ -361,6 +361,21 @@ include:
   - filename: other.yml
   - filename: small.yml ## path to file inside the module's repo
     module: module_name
+```
+
+### Version Makespan Tags
+
+The `version_makespan_tags` list selects the task tags whose version
+makespans Evergreen publishes as Honeycomb spans when a version finishes,
+so that the makespan of a filtered set of tasks (for example, workloads
+tagged as high-value) can be tracked over time. By default, no makespans
+are published. See
+[version makespans by tag](Task-Traces#version-makespans-by-tag) for the
+published fields and how to query them.
+
+```yaml
+version_makespan_tags:
+  - monitored_high_value_workload
 ```
 
 #### YAML Anchors

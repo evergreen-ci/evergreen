@@ -2179,7 +2179,7 @@ func TestGetMakespansByTag(t *testing.T) {
 			monitored("bar", time.Hour, 30*time.Minute),
 		}
 
-		makespans := GetMakespansByTag(tasks)
+		makespans := GetMakespansByTag(tasks, []string{"foo", "bar"})
 		assert.Equal(t, map[string]time.Duration{
 			"foo": 70 * time.Minute,
 			"bar": 30 * time.Minute,
@@ -2191,11 +2191,21 @@ func TestGetMakespansByTag(t *testing.T) {
 		task1.Tags = append(task1.Tags, "bar")
 		task2 := monitored("bar", 90*time.Minute, 15*time.Minute)
 
-		makespans := GetMakespansByTag([]Task{task1, task2})
+		makespans := GetMakespansByTag([]Task{task1, task2}, []string{"foo", "bar"})
 		assert.Equal(t, map[string]time.Duration{
 			"foo": time.Hour,
 			"bar": 105 * time.Minute,
 		}, makespans)
+	})
+
+	t.Run("UnmonitoredTagsAreOmitted", func(t *testing.T) {
+		tasks := []Task{
+			monitored("foo", 0, time.Hour),
+			monitored("bar", 0, 30*time.Minute),
+		}
+
+		makespans := GetMakespansByTag(tasks, []string{"bar"})
+		assert.Equal(t, map[string]time.Duration{"bar": 30 * time.Minute}, makespans)
 	})
 
 	t.Run("DisplayAndInvalidTasksAreExcluded", func(t *testing.T) {
@@ -2210,20 +2220,27 @@ func TestGetMakespansByTag(t *testing.T) {
 		makespans := GetMakespansByTag([]Task{
 			monitored("foo", 0, 30*time.Minute),
 			display, unfinished, notStarted, invalid,
-		})
+		}, []string{"foo"})
 		assert.Equal(t, map[string]time.Duration{"foo": 30 * time.Minute}, makespans)
 	})
 
 	t.Run("NoEligibleTasksOmitsTag", func(t *testing.T) {
-		makespans := GetMakespansByTag(nil)
+		makespans := GetMakespansByTag(nil, []string{"foo"})
 		assert.Empty(t, makespans)
 
 		notTagged := Task{
 			StartTime:  start,
 			FinishTime: start.Add(time.Hour),
 		}
-		makespans = GetMakespansByTag([]Task{notTagged})
+		makespans = GetMakespansByTag([]Task{notTagged}, []string{"foo"})
 		assert.Empty(t, makespans)
+	})
+
+	t.Run("NoMonitoredTagsReturnsNil", func(t *testing.T) {
+		tasks := []Task{monitored("foo", 0, time.Hour)}
+
+		assert.Nil(t, GetMakespansByTag(tasks, nil))
+		assert.Nil(t, GetMakespansByTag(tasks, []string{}))
 	})
 }
 

@@ -1112,7 +1112,12 @@ func startVersionCompletionSpan(ctx context.Context, v *Version, project string,
 		return nil, errors.Wrap(err, "getting time spent")
 	}
 	timeTaken, makespan := task.GetTimeSpent(tasks)
-	tagMakespans := task.GetMakespansByTag(tasks)
+
+	monitoredTags, err := versionMakespanTags(ctx, v)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting version makespan tags")
+	}
+	tagMakespans := task.GetMakespansByTag(tasks, monitoredTags)
 
 	highestExecutionTask, err := v.GetHighestTaskExecution(ctx)
 	if err != nil {
@@ -1200,6 +1205,19 @@ func startVersionCompletionSpan(ctx context.Context, v *Version, project string,
 	emitTagMakespanSpans(spanCtx, tagMakespans)
 
 	return span, nil
+}
+
+// versionMakespanTags returns the task tags configured in the version's
+// project configuration whose makespans should be published.
+func versionMakespanTags(ctx context.Context, v *Version) ([]string, error) {
+	pc, err := FindProjectConfigById(ctx, v.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding project config for version '%s'", v.Id)
+	}
+	if pc == nil {
+		return nil, nil
+	}
+	return pc.VersionMakespanTags, nil
 }
 
 // emitTagMakespanSpans publishes one span per task tag carrying the tag's
