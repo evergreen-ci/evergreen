@@ -50,18 +50,15 @@ func (s *localTestResultsService) AppendTestResultMetadata(ctx context.Context, 
 	return errors.Wrap(err, "appending DB test results")
 }
 
-// AppendQuarantinedTests upserts the task run's test results record, appending
-// the given tests to its quarantined-tests snapshot and incrementing the
-// snapshot count by the full number of tests, even when the stored snapshot is
-// capped.
-func (s *localTestResultsService) AppendQuarantinedTests(ctx context.Context, tr testresult.DbTaskTestResults, quarantinedTests []testresult.QuarantinedTest) error {
-	update := appendQuarantinedTestsUpdate(tr.Info, quarantinedTests)
+// AppendTestSelectionResults upserts the task run's test results record with
+// the test selection results update.
+func (s *localTestResultsService) AppendTestSelectionResults(ctx context.Context, tr testresult.DbTaskTestResults, update TestSelectionResultsUpdate) error {
 	id := dbTaskTestResultsID{
 		TaskID:    tr.Info.TaskID,
 		Execution: tr.Info.Execution,
 	}
-	_, err := s.env.DB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: id}, update, options.Update().SetUpsert(true))
-	return errors.Wrap(err, "appending quarantined tests to DB test results")
+	_, err := s.env.DB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: id}, appendTestSelectionResultsUpdate(tr.Info, update), options.Update().SetUpsert(true))
+	return errors.Wrap(err, "appending test selection results to DB test results")
 }
 
 func (s *localTestResultsService) GetTaskTestResultsStats(ctx context.Context, taskOpts []Task) (testresult.TaskTestResultsStats, error) {
@@ -91,21 +88,8 @@ func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, getO
 	filter := bson.M{testresult.IdKey: bson.M{"$in": ids}}
 	opts := options.Find()
 	opts.SetSort(bson.D{{Name: TestResultTaskIDKey, Value: 1}, {Name: TestResultExecutionKey, Value: 1}})
-	if len(getOpts.Fields) > 0 {
-		projection := bson.M{}
-		for _, field := range getOpts.Fields {
-			projection[field] = 1
-		}
-		if getOpts.QuarantinedTestsLimit != nil {
-			if *getOpts.QuarantinedTestsLimit == 0 {
-				delete(projection, testresult.QuarantinedTestsKey)
-			} else if *getOpts.QuarantinedTestsLimit > 0 {
-				projection[testresult.QuarantinedTestsKey] = bson.M{"$slice": *getOpts.QuarantinedTestsLimit}
-			}
-		}
+	if projection := testResultsProjection(getOpts); projection != nil {
 		opts.SetProjection(projection)
-	} else if !getOpts.IncludeQuarantinedTests {
-		opts.SetProjection(bson.M{testresult.QuarantinedTestsKey: 0})
 	}
 
 	var allDBTaskResults []localDbTaskTestResults

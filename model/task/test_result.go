@@ -52,12 +52,12 @@ func AppendTestResultMetadata(ctx context.Context, t *Task, env evergreen.Enviro
 	return svc.AppendTestResultMetadata(ctx, failedTestSample, failedCount, totalResults, record)
 }
 
-// AppendQuarantinedTests records tests skipped by test selection because they
-// were quarantined in TSS on the test results record for the given task run.
-// A record is created if the task has not attached any test results yet.
-// Tests already present in the snapshot are skipped. It returns the
-// number of tests newly added to the snapshot.
-func AppendQuarantinedTests(ctx context.Context, t *Task, env evergreen.Environment, quarantinedTests []testresult.QuarantinedTest) (int, error) {
+// AppendTestSelectionResults records the outcome of a test selection request on
+// the test results record for the given task run: the tests it skipped because
+// they were quarantined in TSS. A record is created if the task has not
+// attached any test results yet. Tests already recorded are skipped. It
+// returns the number of quarantined tests newly added to the snapshot.
+func AppendTestSelectionResults(ctx context.Context, t *Task, env evergreen.Environment, quarantinedTests []testresult.QuarantinedTest) (int, error) {
 	if len(quarantinedTests) == 0 {
 		return 0, nil
 	}
@@ -99,7 +99,7 @@ func AppendQuarantinedTests(ctx context.Context, t *Task, env evergreen.Environm
 		ID:   info.ID(),
 		Info: info,
 	}
-	if err = svc.AppendQuarantinedTests(ctx, record, newTests); err != nil {
+	if err = svc.AppendTestSelectionResults(ctx, record, TestSelectionResultsUpdate{QuarantinedTests: newTests}); err != nil {
 		return 0, err
 	}
 	return len(newTests), nil
