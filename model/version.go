@@ -564,12 +564,6 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		total.OnDemandS3LogStorageCost = results[0].TotalOnDemandS3LogStorageCost
 		total.AdjustedS3LogStorageCost = results[0].TotalAdjustedS3LogStorageCost
 
-		usage.Artifacts.PutRequests = results[0].TotalS3ArtifactPutRequests
-		usage.Artifacts.UploadBytes = results[0].TotalS3ArtifactUploadBytes
-		usage.Artifacts.Count = results[0].TotalS3ArtifactCount
-		usage.Logs.PutRequests = results[0].TotalS3LogPutRequests
-		usage.Logs.UploadBytes = results[0].TotalS3LogUploadBytes
-
 		predicted.OnDemandEC2Cost = results[0].PredictedOnDemand
 		predicted.AdjustedEC2Cost = results[0].PredictedAdjusted
 		predicted.OnDemandEBSThroughputCost = results[0].PredictedOnDemandEBSThroughput
@@ -584,6 +578,12 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		predicted.AdjustedS3ArtifactStorageCost = results[0].PredictedAdjustedS3ArtifactStorageCost
 		predicted.OnDemandS3LogStorageCost = results[0].PredictedOnDemandS3LogStorageCost
 		predicted.AdjustedS3LogStorageCost = results[0].PredictedAdjustedS3LogStorageCost
+
+		usage.Artifacts.PutRequests = results[0].TotalS3ArtifactPutRequests
+		usage.Artifacts.UploadBytes = results[0].TotalS3ArtifactUploadBytes
+		usage.Artifacts.Count = results[0].TotalS3ArtifactCount
+		usage.Logs.PutRequests = results[0].TotalS3LogPutRequests
+		usage.Logs.UploadBytes = results[0].TotalS3LogUploadBytes
 	}
 
 	if err := VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
@@ -638,8 +638,9 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 	return nil
 }
 
-// refreshFinishedVersionCosts re-aggregates the version's costs if the version has already finished,
-// so that S3 usage reported after the version finished is included.
+// refreshFinishedVersionCosts recalculates the version's costs if the version
+// has already finished, so that S3 usage reported after the version finished is
+// included (e.g. for teardown group).
 func refreshFinishedVersionCosts(ctx context.Context, versionID string) error {
 	v, err := VersionFindOne(ctx, VersionById(versionID).WithFields(VersionIdKey, VersionStatusKey))
 	if err != nil {
@@ -652,9 +653,8 @@ func refreshFinishedVersionCosts(ctx context.Context, versionID string) error {
 }
 
 // TrackVersionS3CostForTask emits an OTel span for this task's S3 cost and
-// usage. If the version has already finished, it also re-aggregates the
-// version's costs to include this task's S3 cost and usage (e.g. for teardown
-// group, which runs after a task is finished). source should be
+// usage. If the version has already finished, it also recalculates the
+// version's costs to include this task's S3 cost and usage. source should be
 // evergreen.TaskSucceeded when the agent ran teardown (full data) or
 // evergreen.TaskSystemFailed when the agent was dead and data is from the last
 // intermediate report.
