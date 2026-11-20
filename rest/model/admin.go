@@ -2173,7 +2173,7 @@ type APIServiceFlags struct {
 	PodDiagnosticsDisabled             bool `json:"pod_diagnostics_disabled"`
 	RetryFailedLogMoveEnabled          bool `json:"retry_failed_log_move_enabled"`
 	ProjectTranslationCacheEnabled     bool `json:"project_translation_cache_enabled"`
-	GithubStatusResyncDisabled         bool `json:"github_status_resync_disabled"`
+	GitHubStatusResyncEnabled          bool `json:"github_status_resync_enabled"`
 	ContainerIsolationEnabled          bool `json:"container_isolation_enabled"`
 	SourceCacheAllProjectsEnabled      bool `json:"source_cache_all_projects_enabled"`
 	LiveArtifactCredentialsDisabled    bool `json:"live_artifact_credentials_disabled"`
@@ -2654,7 +2654,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.PodDiagnosticsDisabled = v.PodDiagnosticsDisabled
 		as.RetryFailedLogMoveEnabled = v.RetryFailedLogMoveEnabled
 		as.ProjectTranslationCacheEnabled = v.ProjectTranslationCacheEnabled
-		as.GithubStatusResyncDisabled = v.GithubStatusResyncDisabled
+		as.GitHubStatusResyncEnabled = v.GitHubStatusResyncEnabled
 		as.ContainerIsolationEnabled = v.ContainerIsolationEnabled
 		as.SourceCacheAllProjectsEnabled = v.SourceCacheAllProjectsEnabled
 		as.LiveArtifactCredentialsDisabled = v.LiveArtifactCredentialsDisabled
@@ -2713,7 +2713,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		PodDiagnosticsDisabled:               as.PodDiagnosticsDisabled,
 		RetryFailedLogMoveEnabled:            as.RetryFailedLogMoveEnabled,
 		ProjectTranslationCacheEnabled:       as.ProjectTranslationCacheEnabled,
-		GithubStatusResyncDisabled:           as.GithubStatusResyncDisabled,
+		GitHubStatusResyncEnabled:            as.GitHubStatusResyncEnabled,
 		ContainerIsolationEnabled:            as.ContainerIsolationEnabled,
 		SourceCacheAllProjectsEnabled:        as.SourceCacheAllProjectsEnabled,
 		LiveArtifactCredentialsDisabled:      as.LiveArtifactCredentialsDisabled,

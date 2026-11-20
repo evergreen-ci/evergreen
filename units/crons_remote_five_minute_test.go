@@ -33,6 +33,8 @@ func TestGitHubStatusResyncJobs(t *testing.T) {
 		LastFailedAt: now,
 	}))
 	ts := time.Date(2026, 11, 9, 12, 5, 0, 0, time.UTC)
+	enabled := evergreen.ServiceFlags{GitHubStatusResyncEnabled: true}
+	require.NoError(t, evergreen.SetServiceFlags(t.Context(), enabled))
 
 	t.Run("ReturnsDuePatchesUpToCapWithMergeQueueFirst", func(t *testing.T) {
 		jobs, err := githubStatusResyncJobs(t.Context(), ts)
@@ -57,13 +59,13 @@ func TestGitHubStatusResyncJobs(t *testing.T) {
 		assert.NotEqual(t, jobs[0].ID(), nextRunJobs[0].ID())
 	})
 	for tName, flags := range map[string]evergreen.ServiceFlags{
-		"ResyncDisabledReturnsNoJobs":    {GithubStatusResyncDisabled: true},
-		"StatusAPIDisabledReturnsNoJobs": {GithubStatusAPIDisabled: true},
+		"ResyncNotEnabledReturnsNoJobs":  {},
+		"StatusAPIDisabledReturnsNoJobs": {GitHubStatusResyncEnabled: true, GithubStatusAPIDisabled: true},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, evergreen.SetServiceFlags(t.Context(), flags))
 			t.Cleanup(func() {
-				assert.NoError(t, evergreen.SetServiceFlags(context.Background(), evergreen.ServiceFlags{}))
+				assert.NoError(t, evergreen.SetServiceFlags(context.Background(), enabled))
 			})
 
 			jobs, err := githubStatusResyncJobs(t.Context(), ts)

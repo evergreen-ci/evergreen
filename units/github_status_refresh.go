@@ -43,13 +43,17 @@ func NewGithubStatusRefreshJob(p *patch.Patch) amboy.Job {
 }
 
 // NewGithubStatusResyncRefreshJob returns a job that resends the GitHub
-// statuses of a patch whose statuses failed to send. The job ID is unique per
-// patch and run time.
+// statuses of a patch whose statuses failed to send. It only resends finished
+// statuses, so it can't overwrite a newer status with a stale pending one. Only
+// one resync job can be queued per patch at a time.
 func NewGithubStatusResyncRefreshJob(patchID string, ts time.Time) amboy.Job {
 	job := makeGithubStatusRefreshJob()
 	job.FetchID = patchID
+	job.IsResync = true
 
 	job.SetID(fmt.Sprintf("%s:resync-%s-%s", githubStatusRefreshJobName, patchID, ts.Format(TSFormat)))
+	job.SetScopes([]string{fmt.Sprintf("%s:resync-%s", githubStatusRefreshJobName, patchID)})
+	job.SetEnqueueAllScopes(true)
 	return job
 }
 
@@ -64,7 +68,8 @@ type githubStatusRefreshJob struct {
 	childPatches []patch.Patch
 	rateLimited  bool
 
-	FetchID string `bson:"fetch_id" json:"fetch_id" yaml:"fetch_id"`
+	FetchID  string `bson:"fetch_id" json:"fetch_id" yaml:"fetch_id"`
+	IsResync bool   `bson:"is_resync" json:"is_resync" yaml:"is_resync"`
 }
 
 func makeGithubStatusRefreshJob() *githubStatusRefreshJob {
@@ -91,6 +96,9 @@ func (j *githubStatusRefreshJob) shouldUpdate(ctx context.Context) (bool, error)
 		})
 		return false, nil
 
+	}
+	if j.IsResync && !flags.GitHubStatusResyncEnabled {
+		return false, nil
 	}
 	return true, nil
 }
@@ -161,6 +169,11 @@ func (j *githubStatusRefreshJob) newGitHubStatus() *message.GithubStatus {
 }
 
 func (j *githubStatusRefreshJob) sendStatus(ctx context.Context, status *message.GithubStatus) {
+	// A pending status read here may already be out of date by the time it's
+	// sent, so resyncs leave pending statuses to the regular notifications.
+	if j.IsResync && status.State == message.GithubStatePending {
+		return
+	}
 	c := message.MakeGithubStatusMessageWithRepo(*status)
 	if !c.Loggable() {
 		j.AddError(errors.Errorf("status message is invalid: %+v", status))

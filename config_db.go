@@ -97,7 +97,7 @@ var (
 	podDiagnosticsDisabledKey               = bsonutil.MustHaveTag(ServiceFlags{}, "PodDiagnosticsDisabled")
 	retryFailedLogMoveEnabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "RetryFailedLogMoveEnabled")
 	projectTranslationCacheEnabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "ProjectTranslationCacheEnabled")
-	githubStatusResyncDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "GithubStatusResyncDisabled")
+	githubStatusResyncEnabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "GitHubStatusResyncEnabled")
 	secondaryReadsDisabledKey               = bsonutil.MustHaveTag(ServiceFlags{}, "SecondaryReadsDisabled")
 	apiRateLimiterDisabledKey               = bsonutil.MustHaveTag(ServiceFlags{}, "APIRateLimiterDisabled")
 	graphqlComplexityLimiterDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "GraphQLComplexityLimiterDisabled")

@@ -106,7 +106,7 @@ func githubStatusResyncJobs(ctx context.Context, ts time.Time) ([]amboy.Job, err
 	}
 	// Statuses that can't be sent while the GitHub status API is disabled stay
 	// marked so they're resent once it's turned back on.
-	if flags.GithubStatusResyncDisabled || flags.GithubStatusAPIDisabled {
+	if !flags.GitHubStatusResyncEnabled || flags.GithubStatusAPIDisabled {
 		return nil, nil
 	}
 
