@@ -70,6 +70,9 @@ type TestResult struct {
 	// IsManuallyQuarantined indicates whether this test is currently manually
 	// quarantined in the test selection service.
 	IsManuallyQuarantined bool `json:"-" bson:"-"`
+	// CanQuarantine indicates whether test selection checked this test during
+	// its task run, which is required for quarantining it to have an effect.
+	CanQuarantine bool `json:"-" bson:"-"`
 }
 
 // TestLogInfo describes a metadata for a test result's log stored using

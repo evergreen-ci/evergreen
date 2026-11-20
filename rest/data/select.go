@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -521,12 +520,14 @@ func GetVariantQuarantineStatus(ctx context.Context, projectID, bvName string) (
 	return tasks, nil
 }
 
-// DecorateQuarantineStatus populates IsManuallyQuarantined on each test result
-// in place. No-ops when test selection is disabled. Display tasks always fan
-// out to their execution tasks; the display task's TestSelectionEnabled flag
-// is treated as a hint because it can be stale relative to its execution
-// tasks, so the fan-out re-checks each execution task's state directly.
-func DecorateQuarantineStatus(ctx context.Context, t *task.Task, results []testresult.TestResult) error {
+// DecorateQuarantineStatus populates CanQuarantine and IsManuallyQuarantined
+// on each test result in place. A test can only be quarantined if test
+// selection checked it during its task run, because only those tests are
+// affected by quarantine, so only those tests are looked up in TSS. Display
+// tasks are checked per execution task run. Task runs with no recorded checked
+// tests, such as ones from before they were recorded, fall back to allowing
+// every test to be quarantined if test selection was enabled for the task.
+func DecorateQuarantineStatus(ctx context.Context, env evergreen.Environment, t *task.Task, results []testresult.TestResult) error {
 	if len(results) == 0 {
 		return nil
 	}
@@ -535,79 +536,64 @@ func DecorateQuarantineStatus(ctx context.Context, t *task.Task, results []testr
 	}
 	ctx, cancel := context.WithTimeout(ctx, testSelectionDecorationTimeout)
 	defer cancel()
-	if t.DisplayOnly {
-		return decorateDisplayTaskQuarantineStatus(ctx, t.Id, t.DisplayName, results)
-	}
-	displayTaskName, err := t.GetDisplayTaskName(ctx)
-	if err != nil {
-		return errors.Wrap(err, "fetching display task name")
-	}
-	testNames := make([]string, 0, len(results))
-	for _, r := range results {
-		testNames = append(testNames, r.GetDisplayTestName())
-	}
-	statuses, err := GetTestsQuarantineStatus(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, testNames)
-	if err != nil {
-		return errors.Wrap(err, "fetching test quarantine statuses")
-	}
-	for i := range results {
-		results[i].IsManuallyQuarantined = statuses[results[i].GetDisplayTestName()]
-	}
-	return nil
-}
 
-// decorateDisplayTaskQuarantineStatus groups results by their execution task ID
-// and fetches quarantine status once per execution task. Execution tasks
-// without test selection enabled, and tests whose execution task can't be
-// loaded, are left with the default IsManuallyQuarantined value.
-func decorateDisplayTaskQuarantineStatus(ctx context.Context, displayTaskID, displayTaskName string, results []testresult.TestResult) error {
-	resultIndicesByExecTaskID := map[string][]int{}
+	type taskRunKey struct {
+		taskID    string
+		execution int
+	}
+	resultIndicesByTaskRun := map[taskRunKey][]int{}
 	for i, r := range results {
-		if r.TaskID == "" {
-			continue
-		}
-		resultIndicesByExecTaskID[r.TaskID] = append(resultIndicesByExecTaskID[r.TaskID], i)
+		key := taskRunKey{taskID: r.TaskID, execution: r.Execution}
+		resultIndicesByTaskRun[key] = append(resultIndicesByTaskRun[key], i)
 	}
-	if len(resultIndicesByExecTaskID) == 0 {
-		return nil
-	}
-	execTaskIDs := make([]string, 0, len(resultIndicesByExecTaskID))
-	for id := range resultIndicesByExecTaskID {
-		execTaskIDs = append(execTaskIDs, id)
-	}
-	execTasks, err := task.FindAll(ctx, db.Query(task.ByIds(execTaskIDs)))
+	allTasks, err := t.GetTestResultsTasks(ctx)
 	if err != nil {
-		return errors.Wrap(err, "fetching execution tasks")
+		return errors.Wrap(err, "getting test results tasks")
 	}
-	foundExecTaskIDs := make(map[string]bool, len(execTasks))
-	for _, execTask := range execTasks {
-		foundExecTaskIDs[execTask.Id] = true
-	}
-	var missingExecTaskIDs []string
-	for _, id := range execTaskIDs {
-		if !foundExecTaskIDs[id] {
-			missingExecTaskIDs = append(missingExecTaskIDs, id)
+	// Only look up the task runs in the results.
+	var tasks []task.Task
+	testSelectionEnabled := map[taskRunKey]bool{}
+	for _, tsk := range allTasks {
+		key := taskRunKey{taskID: tsk.Id, execution: tsk.Execution}
+		if _, ok := resultIndicesByTaskRun[key]; ok {
+			tasks = append(tasks, tsk)
+			testSelectionEnabled[key] = tsk.TestSelectionEnabled
 		}
 	}
-	grip.WarningWhen(ctx, len(missingExecTaskIDs) > 0, message.Fields{
-		"message":               "execution tasks not found when decorating display task quarantine status; their test results will be left undecorated",
-		"display_task_id":       displayTaskID,
-		"missing_exec_task_ids": missingExecTaskIDs,
-	})
+	taskRuns, err := task.GetTestSelectionCheckedTests(ctx, env, tasks)
+	if err != nil {
+		return errors.Wrap(err, "getting tests checked by test selection")
+	}
+
 	eg, ctx := errgroup.WithContext(ctx)
-	for _, execTask := range execTasks {
-		if !execTask.TestSelectionEnabled {
+	for _, taskRun := range taskRuns {
+		key := taskRunKey{taskID: taskRun.Info.TaskID, execution: taskRun.Info.Execution}
+		// Without recorded checked tests, there's no way to tell which tests
+		// test selection checked.
+		checkedTests := taskRun.TestSelectionCheckedTests
+		legacyTaskRun := checkedTests == nil
+		if legacyTaskRun && !testSelectionEnabled[key] {
 			continue
 		}
-		indices := slices.Clone(resultIndicesByExecTaskID[execTask.Id])
-		eg.Go(func() error {
-			testNames := make([]string, 0, len(indices))
-			for _, i := range indices {
-				testNames = append(testNames, results[i].GetDisplayTestName())
+		var indices []int
+		var testNames []string
+		for _, i := range resultIndicesByTaskRun[key] {
+			name := results[i].GetDisplayTestName()
+			if !legacyTaskRun && !checkedTests.Contains(name) {
+				continue
 			}
-			statuses, err := GetTestsQuarantineStatus(ctx, execTask.Project, execTask.BuildVariant, execTask.DisplayName, displayTaskName, testNames)
+			results[i].CanQuarantine = true
+			indices = append(indices, i)
+			testNames = append(testNames, name)
+		}
+		if len(indices) == 0 {
+			continue
+		}
+		info := taskRun.Info
+		eg.Go(func() error {
+			statuses, err := GetTestsQuarantineStatus(ctx, info.Project, info.Variant, info.TaskName, info.DisplayTaskName, testNames)
 			if err != nil {
-				return errors.Wrapf(err, "fetching test quarantine statuses for execution task '%s'", execTask.Id)
+				return errors.Wrapf(err, "fetching test quarantine statuses for task '%s'", info.TaskID)
 			}
 			for _, i := range indices {
 				results[i].IsManuallyQuarantined = statuses[results[i].GetDisplayTestName()]

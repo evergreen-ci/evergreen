@@ -122,6 +122,7 @@ var (
 	HasTestResultsKey             = bsonutil.MustHaveTag(Task{}, "HasTestResults")
 	ResultsFailedKey              = bsonutil.MustHaveTag(Task{}, "ResultsFailed")
 	NumQuarantinedTestsSkippedKey = bsonutil.MustHaveTag(Task{}, "NumQuarantinedTestsSkipped")
+	TestSelectionEnabledKey       = bsonutil.MustHaveTag(Task{}, "TestSelectionEnabled")
 	IsGithubCheckKey              = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
 	HostCreateDetailsKey          = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
