@@ -448,6 +448,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		GenerateTaskFactor:            20,
 		NumDependentsFactor:           10,
 		StepbackTaskFactor:            40,
+		GitTagFactor:                  30,
 	}
 	releaseConfig := evergreen.ReleaseModeConfig{
 		TargetTimeSecondsOverride: 1200,
@@ -477,6 +478,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	//nolint:testifylint // We expect it to be exactly 10.
 	assert.EqualValues(t, 10, resolved0.NumDependentsFactor)
 	assert.EqualValues(t, 40, resolved0.StepbackTaskFactor)
+	assert.EqualValues(t, 30, resolved0.GitTagFactor)
 
 	d1 := Distro{
 		Id: "distro1",

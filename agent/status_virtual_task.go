@@ -35,6 +35,7 @@ type virtualTaskTestResultsResponse struct {
 type virtualTaskTestResultsResult struct {
 	TaskID      string                            `json:"task_id"`
 	TestResults *apimodels.VirtualTaskTestResults `json:"test_results,omitempty"`
+	SkipReason  string                            `json:"skip_reason,omitempty"`
 	Error       string                            `json:"error,omitempty"`
 }
 
@@ -133,8 +134,12 @@ func (tc *taskContext) uploadEntryTestResults(ctx context.Context, prep apimodel
 		result.Error = "virtual task was not prepared for test result upload"
 		return result
 	}
-	if prep.Outcome != apimodels.VirtualTaskCompletionOutcomeSuccess || prep.Reason != "" {
+	if prep.Outcome != apimodels.VirtualTaskCompletionOutcomeSuccess {
 		result.Error = errors.Errorf("cannot upload test results for virtual task '%s': %s", task.TaskID, prep.Reason).Error()
+		return result
+	}
+	if prep.Reason != "" {
+		result.SkipReason = prep.Reason
 		return result
 	}
 

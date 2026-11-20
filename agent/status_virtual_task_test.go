@@ -111,14 +111,16 @@ func TestTaskContextUploadVirtualTaskTestResults(t *testing.T) {
 			assert.Contains(t, resp.Results[0].Error, "task is not a virtual task")
 			assert.Nil(t, resp.Results[0].TestResults)
 		},
-		"PrepareNoopReportsPerTaskError": func(ctx context.Context, t *testing.T, tc *taskContext, comm *client.Mock) {
+		"PrepareNoopReportsSkipWithoutError": func(ctx context.Context, t *testing.T, tc *taskContext, comm *client.Mock) {
 			comm.PrepareVirtualTasksResponse = &apimodels.PrepareVirtualTasksResponse{Results: []apimodels.VirtualTaskPreparationResult{
 				{TaskID: "virtual_task", Outcome: apimodels.VirtualTaskCompletionOutcomeSuccess, Reason: "task is already running"},
 			}}
 			resp, err := tc.uploadVirtualTaskTestResults(ctx, comm, request)
 			require.NoError(t, err)
 			require.Len(t, resp.Results, 1)
-			assert.Contains(t, resp.Results[0].Error, "task is already running")
+			assert.Equal(t, "task is already running", resp.Results[0].SkipReason)
+			assert.Empty(t, resp.Results[0].Error)
+			assert.Nil(t, resp.Results[0].TestResults)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

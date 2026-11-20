@@ -354,6 +354,7 @@ The response contains one result per virtual task:
 | ------------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | task_id      | string | The Evergreen task ID of the virtual task.                                                                                          |
 | test_results | object | Set on success. The uploaded test results' metadata: `stats` (`total_count` and `failed_count`), `failed_sample`, and `created_at`. |
+| skip_reason  | string | Set if the task was skipped because it no longer needs test results, e.g. it's already running or finished. This is not an error.   |
 | error        | string | Set if the task's test results could not be uploaded.                                                                               |
 
 Example in a command:
@@ -380,6 +381,8 @@ Some notes to keep in mind:
 - Because tasks can have a mix of successes/errors within a single request, callers should refer to the `error` field
   to determine if there's any errors uploading test results for individual tasks instead of relying solely on a 200
   status code.
+- A task with `skip_reason` set doesn't need to be push-completed. This happens if the virtual task was activated or
+  restarted to run on a host, or if the requested execution doesn't match the task's latest execution.
 - Callers are expected to [push-complete](Virtual-Tasks#push-completing-a-virtual-task-through-the-rest-api) each
   virtual task itself after uploading the test results to set the final status. During push-completion, callers should
   pass the returned `test_results` response as the push-completion's `test_results`.

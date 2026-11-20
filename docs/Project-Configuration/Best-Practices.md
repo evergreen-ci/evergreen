@@ -53,13 +53,14 @@ Tasks on more popular distros are often run quicker than tasks on less popular o
 
 ## Secrets in Project Variables
 
-If possible, prefer to use private variables instead of public variables to store secrets. Using private variables
-ensures that the plaintext secret is not visible in user-facing endpoints and the UI, which reduces the possibility of
-someone accidentally being able to view the plaintext value that shouldn't have access. Also, private variables are
-always redacted from task logs, making it less likely that the secret will be leaked accidentally (e.g. by echoing the
-secret in a script). If you use a public variable for a secret, Evergreen may still attempt to redact it if it contains
-a suspicious pattern (e.g. if it looks like a GitHub API key), but that automatic redaction logic is more of a last
-resort, best effort mechanism and by nature will never be perfectly reliable.
+If a variable's value should not be visible in plaintext, use a private or admin-only variable rather than a public
+one, since public variables are visible on the projects page and by API routes. Keep in mind that private variables
+are redacted from user-facing endpoints, the UI, and task logs, but are still delivered to every patch on the project,
+including patches submitted by non-admin users. Only admin-only variables are withheld from non-admin patches. Choose
+the tier based on which builds need the value: if a token or credential is only needed for mainline or admin-activated
+builds, admin only is the better fit; if patch builds also need it, private provides redaction but not restricted
+availability. For more details on each tier, see
+[project variables](Project-and-Distro-Settings.md#variables).
 
 If you wish to securely provide access to the plaintext secret value to other people, it's recommended to use an
 external secrets management service such as 1Password rather than relying on setting an Evergreen public variable with a

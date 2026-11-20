@@ -98,6 +98,7 @@ input SchedulerConfigInput {
   generateTaskFactor: Int!
   numDependentsFactor: Float!
   stepbackTaskFactor: Int!
+  gitTagFactor: Int!
   translateProjectConcurrencyLimit: Int
   translateProjectCacheBytesLimit: Int
   translateProjectCacheTTLSeconds: Int
@@ -123,6 +124,7 @@ type SchedulerConfig {
   generateTaskFactor: Int
   numDependentsFactor: Float
   stepbackTaskFactor: Int
+  gitTagFactor: Int
   translateProjectConcurrencyLimit: Int
   translateProjectCacheBytesLimit: Int
   translateProjectCacheTTLSeconds: Int
