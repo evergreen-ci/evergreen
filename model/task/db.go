@@ -1965,6 +1965,8 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "getting tasks by version pipeline")
 	}
+
+	// If there's no sort or filter that relies on base tasks, fetch these later in the pipeline
 	baseForSelection := needsBaseForSelection(opts)
 	if baseForSelection {
 		pipeline = append(pipeline, populateBaseTaskPipeline(opts.BaseVersionID)...)
