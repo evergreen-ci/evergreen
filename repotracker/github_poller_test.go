@@ -209,23 +209,23 @@ func TestGetRemoteConfig(t *testing.T) {
 
 			Convey("The config file at the requested revision should be "+
 				"exactly what is returned", func() {
-				projectInfo, err := ghp.GetRemoteConfig(ctx, firstRevision)
+				projectInfo, err := ghp.GetRemoteConfig(ctx, firstRevision, nil)
 				require.NoError(t, err, "Error fetching github "+
 					"configuration file")
 				So(projectInfo.Project, ShouldNotBeNil)
 				So(len(projectInfo.Project.Tasks), ShouldEqual, 0)
-				projectInfo, err = ghp.GetRemoteConfig(ctx, secondRevision)
+				projectInfo, err = ghp.GetRemoteConfig(ctx, secondRevision, nil)
 				require.NoError(t, err, "Error fetching github "+
 					"configuration file")
 				So(projectInfo.Project, ShouldNotBeNil)
 				So(len(projectInfo.Project.Tasks), ShouldEqual, 1)
 			})
 			Convey("an invalid revision should return an error", func() {
-				_, err := ghp.GetRemoteConfig(ctx, badRevision)
+				_, err := ghp.GetRemoteConfig(ctx, badRevision, nil)
 				So(err, ShouldNotBeNil)
 			})
 			Convey("an invalid project configuration should error out", func() {
-				_, err := ghp.GetRemoteConfig(ctx, lastRevision)
+				_, err := ghp.GetRemoteConfig(ctx, lastRevision, nil)
 				So(err, ShouldNotBeNil)
 			})
 		})

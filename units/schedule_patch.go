@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -68,7 +69,11 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 	}
 	_, err = model.FinalizePatch(newCxt, p, p.GetRequester(), project)
 	if err != nil {
-		return http.StatusInternalServerError, errors.Wrap(err, "finalizing patch")
+		statusCode := http.StatusInternalServerError
+		if errResp, ok := errors.Cause(err).(gimlet.ErrorResponse); ok {
+			statusCode = errResp.StatusCode
+		}
+		return statusCode, errors.Wrap(err, "finalizing patch")
 	}
 
 	if p.IsGithubPRPatch() {

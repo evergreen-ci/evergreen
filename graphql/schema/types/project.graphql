@@ -157,11 +157,15 @@ input TestSelectionSettingsInput {
   allowed: Boolean
   defaultEnabled: Boolean
   mainlineDefaultEnabled: Boolean
+  quarantineJiraTicketsRequired: Boolean
 }
 
 input TaskOwnershipSettingsInput {
   defaultMothraTeam: String
   defaultMothraTeamForBreakingCommit: String
+  generatedTaskValidationPrefix: String
+  trackGeneratedTaskTagValidation: Boolean
+  blockTaskGenerationOnTagValidation: Boolean
 }
 
 input WorkstationSetupCommandInput {
@@ -302,6 +306,7 @@ type Project {
   spawnHostScriptPath: String!
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
+  stepbackPushTriggers: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
   taskOwnership: TaskOwnershipSettings
   testSelection: TestSelectionSettings
@@ -360,11 +365,15 @@ type TestSelectionSettings {
   allowed: Boolean
   defaultEnabled: Boolean
   mainlineDefaultEnabled: Boolean
+  quarantineJiraTicketsRequired: Boolean
 }
 
 type TaskOwnershipSettings {
   defaultMothraTeam: String
   defaultMothraTeamForBreakingCommit: String
+  generatedTaskValidationPrefix: String
+  trackGeneratedTaskTagValidation: Boolean
+  blockTaskGenerationOnTagValidation: Boolean
 }
 
 """
@@ -408,5 +417,6 @@ type ProjectLite {
   spawnHostScriptPath: String!
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
+  stepbackPushTriggers: Boolean
   versionControlEnabled: Boolean
 }

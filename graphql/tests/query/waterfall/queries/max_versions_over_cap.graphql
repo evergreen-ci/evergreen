@@ -1,0 +1,5 @@
+{
+  waterfall(options: { projectIdentifier: "spruce", maxVersions: 301 }) {
+    pagination { hasNextPage }
+  }
+}

@@ -16,7 +16,26 @@
               "task": {
                 "id": "1"
               },
-              "version": null
+              "version": null,
+              "baseVersion": {
+                "id": "spruce_a7906eed65f88ae436ddb5c19096969f198a9efe_mainline",
+                "author": "John Smith",
+                "message": "EVG-13229: Project Patches Page (#555)"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "upstream_project_no_base_version.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "id": "spruce_b2c3d4e5f60718293a4b5c6d7e8f9012345678a1_task_trigger",
+            "upstreamProject": {
+              "triggerID": "1",
+              "baseVersion": null
             }
           }
         }

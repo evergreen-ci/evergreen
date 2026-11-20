@@ -5,8 +5,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestArtifactModels(t *testing.T) {
@@ -78,4 +80,37 @@ func TestAPIFileBuildFromService(t *testing.T) {
 	apiFile.GetLogURL(env, "t1", 1)
 	assert.Equal("https://localhost:4173/taskFile/t1/1/some%20complex%2Ffile%20name", utility.FromStringPtr(apiFile.URLParsley))
 
+}
+
+func TestAPIFileGetLogURLOnlyForStreamableContentType(t *testing.T) {
+	env := testutil.NewEnvironment(t.Context(), t)
+
+	for name, testCase := range map[string]struct {
+		contentType    string
+		expectsParsley bool
+	}{
+		"StreamableTypeGetsRawLink": {
+			contentType:    "text/plain",
+			expectsParsley: true,
+		},
+		"AmbiguousMultiValuedTypeGetsNoRawLink": {
+			contentType: "text/plain,text/html",
+		},
+		"UnstreamableTypeGetsNoRawLink": {
+			contentType: "text/html",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			file := artifact.File{
+				Name:        "file1",
+				Link:        "l1",
+				Visibility:  "public",
+				ContentType: testCase.contentType,
+			}
+			apiFile := APIFile{}
+			apiFile.BuildFromService(file)
+			apiFile.GetLogURL(env, "t1", 1)
+			require.Equal(t, testCase.expectsParsley, apiFile.URLParsley != nil)
+		})
+	}
 }

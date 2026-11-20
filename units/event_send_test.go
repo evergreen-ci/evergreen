@@ -13,11 +13,14 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type eventNotificationSuite struct {
@@ -40,19 +43,41 @@ type eventNotificationSuite struct {
 type eventSendEnvironment struct {
 	*mock.Environment
 	githubSender send.Sender
+	sender       send.Sender
 }
 
 func (e *eventSendEnvironment) GetGitHubSender(string, string, evergreen.CreateInstallationTokenFunc) (send.Sender, error) {
 	return e.githubSender, nil
 }
 
-type eventSendErrorSender struct {
-	send.Sender
-	err error
+func (e *eventSendEnvironment) GetSender(key evergreen.SenderKey) (send.Sender, error) {
+	if e.sender != nil {
+		return e.sender, nil
+	}
+	return e.Environment.GetSender(key)
 }
 
+type eventSendErrorSender struct {
+	send.Sender
+	err   error
+	sends int
+}
+
+// SendWithError returns the configured error without sending.
 func (s *eventSendErrorSender) SendWithError(context.Context, message.Composer) error {
+	s.sends++
 	return s.err
+}
+
+type eventSendCaptureSender struct {
+	send.Sender
+	raw any
+}
+
+// SendWithError captures the message instead of sending it.
+func (s *eventSendCaptureSender) SendWithError(_ context.Context, m message.Composer) error {
+	s.raw = m.Raw()
+	return nil
 }
 
 func TestEventNotificationJob(t *testing.T) {
@@ -73,11 +98,12 @@ func (s *eventNotificationSuite) SetupTest() {
 	s.env = &mock.Environment{}
 	s.NoError(s.env.Configure(s.ctx))
 
-	s.NoError(db.ClearCollections(notification.Collection, evergreen.ConfigCollection))
+	s.NoError(db.ClearCollections(notification.Collection, notification.FailedWebhookCollection, event.SubscriptionsCollection, evergreen.ConfigCollection, patch.GitHubStatusResyncCollection))
 
 	s.notifications = []notification.Notification{
 		{
-			ID: "webhook",
+			ID:      "webhook",
+			Project: "evergreen",
 			Subscriber: event.Subscriber{
 				Type: event.EvergreenWebhookSubscriberType,
 				Target: event.WebhookSubscriber{
@@ -154,6 +180,7 @@ func (s *eventNotificationSuite) SetupTest() {
 				URL:     "https://example.com",
 				State:   message.GithubStateFailure,
 			},
+			Metadata: notification.NotificationMetadata{PatchID: "patch-id"},
 		},
 	}
 	s.webhook = &s.notifications[0]
@@ -202,6 +229,13 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 	}
 
 	s.NotZero(s.notificationHasError(s.ctx, s.webhook.ID, "sender is disabled, not sending notification"))
+
+	// A disabled sender is also a non-delivery, so the webhook failure is
+	// recorded for recovery.
+	failedWebhooks, err := notification.FindFailedWebhooks(s.ctx, []string{"evergreen"})
+	s.NoError(err)
+	s.Require().Len(failedWebhooks, 1)
+	s.Equal(s.webhook.ID, failedWebhooks[0].NotificationID)
 }
 
 func (s *eventNotificationSuite) TestEvergreenWebhook() {
@@ -219,6 +253,100 @@ func (s *eventNotificationSuite) TestEvergreenWebhook() {
 	s.NotPanics(func() {
 		_ = msg.Message.Raw().(*util.EvergreenWebhook)
 	})
+}
+
+func (s *eventNotificationSuite) TestFailedWebhookSendIsRecorded() {
+	sender := &eventSendErrorSender{
+		Sender: s.env.InternalSender,
+		err:    errors.New("webhook response was 404 (Not Found)"),
+	}
+	job := NewEventSendJob(s.webhook.ID, "").(*eventSendJob)
+	job.env = &eventSendEnvironment{Environment: s.env, sender: sender}
+	job.Run(s.ctx)
+
+	s.Error(job.Error())
+	s.NotZero(s.notificationHasError(s.ctx, s.webhook.ID, "webhook response was 404"))
+
+	failedWebhooks, err := notification.FindFailedWebhooks(s.ctx, []string{"evergreen"})
+	s.NoError(err)
+	s.Require().Len(failedWebhooks, 1)
+	s.Equal(s.webhook.ID, failedWebhooks[0].NotificationID)
+	s.Equal("webhook response was 404 (Not Found)", failedWebhooks[0].Error)
+}
+
+func (s *eventNotificationSuite) TestRetryFailedWebhookWithoutSubscriptionRemovesRecordWithoutSending() {
+	s.Require().NoError(s.webhook.MarkError(s.ctx, errors.New("webhook response was 404 (Not Found)")))
+	failedWebhooks, err := notification.FindFailedWebhooks(s.ctx, []string{"evergreen"})
+	s.Require().NoError(err)
+	s.Require().Len(failedWebhooks, 1)
+
+	job := NewRetryEventSendJob(s.webhook.ID, "").(*eventSendJob)
+	job.env = s.env
+	job.Run(s.ctx)
+	s.NoError(job.Error())
+
+	_, recv := s.env.InternalSender.GetMessageSafe()
+	s.False(recv)
+
+	count, err := db.Count(s.ctx, notification.FailedWebhookCollection, bson.M{})
+	s.NoError(err)
+	s.Zero(count)
+}
+
+func (s *eventNotificationSuite) TestRetryFailedWebhookWithoutNotificationRemovesRecord() {
+	s.Require().NoError(db.ClearCollections(notification.Collection, notification.FailedWebhookCollection))
+	s.Require().NoError(db.Insert(s.ctx, notification.FailedWebhookCollection, &notification.FailedWebhook{
+		NotificationID: "missing",
+		Project:        "evergreen",
+		Error:          "notification is gone",
+		FailedAt:       time.Now(),
+	}))
+
+	job := NewRetryEventSendJob("missing", "").(*eventSendJob)
+	job.env = s.env
+	job.Run(s.ctx)
+	s.Error(job.Error())
+
+	count, err := db.Count(s.ctx, notification.FailedWebhookCollection, bson.M{})
+	s.Require().NoError(err)
+	s.Zero(count)
+}
+
+func (s *eventNotificationSuite) TestRetryFailedWebhookUsesCurrentSubscription() {
+	sub := event.Subscription{
+		ID:           "retry-sub",
+		ResourceType: event.ResourceTypeTask,
+		Trigger:      event.TriggerFailure,
+		Owner:        "evergreen",
+		OwnerType:    event.OwnerTypeProject,
+		Subscriber: event.Subscriber{
+			Type:   event.EvergreenWebhookSubscriberType,
+			Target: &event.WebhookSubscriber{URL: "https://example.com/new", Secret: []byte("new-secret")},
+		},
+	}
+	s.Require().NoError(db.Insert(s.ctx, event.SubscriptionsCollection, &sub))
+
+	n, err := notification.Find(s.ctx, s.webhook.ID)
+	s.Require().NoError(err)
+	s.Require().NotNil(n)
+	s.Require().NoError(db.UpdateId(s.ctx, notification.Collection, n.ID, bson.M{"$set": bson.M{bsonutil.MustHaveTag(notification.Notification{}, "SubscriptionID"): sub.ID}}))
+	s.Require().NoError(n.MarkError(s.ctx, errors.New("webhook response was 404 (Not Found)")))
+
+	capture := &eventSendCaptureSender{Sender: s.env.InternalSender}
+	job := NewRetryEventSendJob(s.webhook.ID, "").(*eventSendJob)
+	job.env = &eventSendEnvironment{Environment: s.env, sender: capture}
+	job.Run(s.ctx)
+	s.Require().NoError(job.Error())
+
+	webhook, ok := capture.raw.(*util.EvergreenWebhook)
+	s.Require().True(ok)
+	s.Equal("https://example.com/new", webhook.URL)
+	s.Equal([]byte("new-secret"), webhook.Secret)
+
+	// A successful retry removes the record.
+	count, err := db.Count(s.ctx, notification.FailedWebhookCollection, bson.M{})
+	s.NoError(err)
+	s.Zero(count)
 }
 
 func (s *eventNotificationSuite) TestSlack() {
@@ -337,4 +465,59 @@ func (s *eventNotificationSuite) TestPermanentGitHubFailureCompletesNotification
 	s.Require().NotNil(n)
 	s.NotZero(n.SentAt)
 	s.Equal("invalid status (HTTP status 422) after 1 attempt(s)", n.Error)
+}
+
+func (s *eventNotificationSuite) TestGitHubStatusSendMarksPatchForResync() {
+	githubErr := func(statusCode int) error {
+		return &send.GitHubSendError{StatusCode: statusCode, Attempts: 1, Err: errors.New("GitHub error")}
+	}
+	for tName, tCase := range map[string]struct {
+		sendErr      error
+		degraded     bool
+		mergeQueue   bool
+		emptyPatchID bool
+		shouldMark   bool
+	}{
+		"ServerErrorMarksPatch":               {sendErr: githubErr(http.StatusServiceUnavailable), shouldMark: true},
+		"ForbiddenMarksPatch":                 {sendErr: githubErr(http.StatusForbidden), shouldMark: true},
+		"TooManyRequestsMarksPatch":           {sendErr: githubErr(http.StatusTooManyRequests), shouldMark: true},
+		"NetworkErrorMarksPatch":              {sendErr: errors.New("connection reset"), shouldMark: true},
+		"DegradedModeMarksPatch":              {degraded: true, shouldMark: true},
+		"MergeQueueSubscriberMarksMergeQueue": {sendErr: githubErr(http.StatusBadGateway), mergeQueue: true, shouldMark: true},
+		"UnprocessableEntityDoesNotMarkPatch": {sendErr: githubErr(http.StatusUnprocessableEntity)},
+		"SuccessDoesNotMarkPatch":             {},
+		"EmptyPatchIDDoesNotMarkPatch":        {sendErr: githubErr(http.StatusServiceUnavailable), emptyPatchID: true},
+	} {
+		s.Run(tName, func() {
+			s.Require().NoError(db.ClearCollections(notification.Collection, patch.GitHubStatusResyncCollection))
+			n := s.notifications[len(s.notifications)-1]
+			if tCase.mergeQueue {
+				n.Subscriber = event.Subscriber{
+					Type:   event.GithubMergeSubscriberType,
+					Target: event.GithubMergeSubscriber{Owner: "evergreen-ci", Repo: "evergreen", Ref: "main"},
+				}
+			}
+			if tCase.emptyPatchID {
+				n.Metadata.PatchID = ""
+			}
+			s.Require().NoError(notification.InsertMany(s.ctx, n))
+
+			job := NewEventSendJob(n.ID, "").(*eventSendJob)
+			job.env = &eventSendEnvironment{
+				Environment:  s.env,
+				githubSender: &eventSendErrorSender{Sender: s.env.InternalSender, err: tCase.sendErr},
+			}
+			job.flags = &evergreen.ServiceFlags{GithubStatusAPIDisabled: tCase.degraded}
+			job.Run(s.ctx)
+
+			resync, err := patch.FindGitHubStatusResync(s.ctx, "patch-id")
+			s.Require().NoError(err)
+			if !tCase.shouldMark {
+				s.Nil(resync)
+				return
+			}
+			s.Require().NotNil(resync)
+			s.Equal(tCase.mergeQueue, resync.IsMergeQueue)
+		})
+	}
 }

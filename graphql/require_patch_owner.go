@@ -9,6 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 )
 
+// RequirePatchOwner restricts access to the patch(es) given by the patchId or patchIds argument
+// to users who can modify them (such as the patch author, a patch admin, a project admin, or a superuser).
 func RequirePatchOwner(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
 	user := mustHaveUser(ctx)
 	args, isStringMap := obj.(map[string]any)

@@ -552,7 +552,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 		RemotePath: "self-tests.yml",
 		Branch:     "main",
 		Triggers: []model.TriggerDefinition{
-			{Project: "upstream", Level: model.ProjectTriggerLevelPush, DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.BuildSucceeded, ConfigFile: "trigger/testdata/downstream_config.yml", Alias: "a1"},
+			{Project: "upstream", Level: evergreen.ProjectTriggerLevelPush, DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.BuildSucceeded, ConfigFile: "trigger/testdata/downstream_config.yml", Alias: "a1"},
 		},
 	}
 	assert.NoError(downstreamProjectRef.Insert(t.Context()))
@@ -621,7 +621,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	assert.Equal(evergreen.VersionCreated, dbVersions[0].Status)
 	assert.Equal(downstreamProjectRef.Id, dbVersions[0].Identifier)
 	assert.Equal(evergreen.TriggerRequester, dbVersions[0].Requester)
-	assert.Equal(model.ProjectTriggerLevelPush, dbVersions[0].TriggerType)
+	assert.Equal(evergreen.ProjectTriggerLevelPush, dbVersions[0].TriggerType)
 	assert.Equal(sampleNewerSHA, dbVersions[0].TriggerSHA)
 	assert.Equal("sample", dbVersions[0].TriggerModule)
 	assert.Equal(uptreamProjectRef.Owner, dbVersions[0].TriggerOwner)
@@ -636,7 +636,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	assert.Equal(evergreen.VersionCreated, dbVersions[1].Status)
 	assert.Equal(downstreamProjectRef.Id, dbVersions[1].Identifier)
 	assert.Equal(evergreen.TriggerRequester, dbVersions[1].Requester)
-	assert.Equal(model.ProjectTriggerLevelPush, dbVersions[1].TriggerType)
+	assert.Equal(evergreen.ProjectTriggerLevelPush, dbVersions[1].TriggerType)
 	assert.Equal(sampleOlderSHA, dbVersions[1].TriggerSHA)
 	assert.Equal("upstream", dbVersions[1].TriggerID)
 
@@ -648,7 +648,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 		assert.Equal(downstreamProjectRef.Id, b.Project)
 		assert.Equal(evergreen.TriggerRequester, b.Requester)
 		assert.Equal(evergreen.BuildCreated, b.Status)
-		assert.Equal(model.ProjectTriggerLevelPush, b.TriggerType)
+		assert.Equal(evergreen.ProjectTriggerLevelPush, b.TriggerType)
 		assert.Contains(b.BuildVariant, "buildvariant")
 	}
 	tasks, err := task.Find(ctx, task.ByVersion(dbVersions[0].Id))
@@ -659,7 +659,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 		assert.Equal(downstreamProjectRef.Id, t.Project)
 		assert.Equal(evergreen.TriggerRequester, t.Requester)
 		assert.Equal(evergreen.TaskUndispatched, t.Status)
-		assert.Equal(model.ProjectTriggerLevelPush, t.TriggerType)
+		assert.Equal(evergreen.ProjectTriggerLevelPush, t.TriggerType)
 		assert.Contains(t.DisplayName, "task1")
 	}
 	mani, err := manifest.FindFromVersion(ctx, dbVersions[1].Id, downstreamProjectRef.Id, downstreamRevisionOlder, evergreen.RepotrackerVersionRequester)

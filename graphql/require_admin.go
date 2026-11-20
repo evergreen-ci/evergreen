@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
+// RequireAdmin restricts access to users with admin settings edit permission.
 func RequireAdmin(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
 	dbUser := mustHaveUser(ctx)
 

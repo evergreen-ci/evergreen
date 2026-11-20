@@ -427,8 +427,10 @@ type QuarantineTaskInput struct {
 }
 
 type QuarantineTestInput struct {
-	TaskID   string `json:"taskId"`
-	TestName string `json:"testName"`
+	TaskID                    string   `json:"taskId"`
+	TestName                  string   `json:"testName"`
+	ExistingJiraTicketsToLink []string `json:"existingJiraTicketsToLink,omitempty"`
+	Justification             *string  `json:"justification,omitempty"`
 }
 
 // QuarantineVariantInput is the input to the quarantineVariant mutation. It marks every known test of every known task in the build variant as manually quarantined in the test selection service.
@@ -729,6 +731,7 @@ type UpdateVolumeInput struct {
 }
 
 type UpstreamProject struct {
+	BaseVersion *model1.Version `json:"baseVersion,omitempty"`
 	Owner       string          `json:"owner"`
 	Project     string          `json:"project"`
 	Repo        string          `json:"repo"`
@@ -786,6 +789,8 @@ type WaterfallOptions struct {
 	// Return all builds and tasks for each matching version instead of applying the waterfall filters to them.
 	IncludeAllBuildsAndTasks *bool `json:"includeAllBuildsAndTasks,omitempty"`
 	Limit                    *int  `json:"limit,omitempty"`
+	// Max active versions to return to the client, between 1 and 300. Mostly used to allow smaller tests.
+	MaxVersions *int `json:"maxVersions,omitempty"`
 	// Return versions with an order greater than minOrder. Used for paginating backward.
 	MinOrder *int `json:"minOrder,omitempty"`
 	// Return versions with an order lower than maxOrder. Used for paginating forward.
@@ -796,9 +801,11 @@ type WaterfallOptions struct {
 	Revision           *string  `json:"revision,omitempty"`
 	Statuses           []string `json:"statuses,omitempty"`
 	Tasks              []string `json:"tasks,omitempty"`
+	TaskTags           []string `json:"taskTags,omitempty"`
 	// Toggle case sensitivity when matching on task names. Note that if false, performance will be slower.
 	TaskCaseSensitive *bool    `json:"taskCaseSensitive,omitempty"`
 	Variants          []string `json:"variants,omitempty"`
+	VariantTags       []string `json:"variantTags,omitempty"`
 	// Toggle case sensitivity when matching on variant names. Note that if false, performance will be slower.
 	VariantCaseSensitive *bool `json:"variantCaseSensitive,omitempty"`
 }

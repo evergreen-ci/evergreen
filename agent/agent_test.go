@@ -29,6 +29,7 @@ import (
 	"github.com/mongodb/jasper/mock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -75,25 +76,62 @@ func TestAgentSuite(t *testing.T) {
 }
 
 func TestBuildTaskEndSpanAttributes(t *testing.T) {
-	t.Run("SystemUnresponsiveIncludesDisplayStatusAndStatusDetails", func(t *testing.T) {
-		detail := &apimodels.TaskEndDetail{
-			Status:      evergreen.TaskFailed,
-			Type:        evergreen.CommandTypeSystem,
-			Description: evergreen.TaskDescriptionHeartbeat,
-			TimedOut:    true,
-		}
+	testCases := []struct {
+		name          string
+		task          *task.Task
+		detail        *apimodels.TaskEndDetail
+		aborted       bool
+		expectedAttrs map[string]string
+	}{
+		{
+			name: "SystemUnresponsiveDisplaysSystemUnresponsive",
+			task: &task.Task{},
+			detail: &apimodels.TaskEndDetail{
+				Status:      evergreen.TaskFailed,
+				Type:        evergreen.CommandTypeSystem,
+				Description: evergreen.TaskDescriptionHeartbeat,
+				TimedOut:    true,
+			},
+			expectedAttrs: map[string]string{
+				evergreen.TaskStatusOtelAttribute:        evergreen.TaskFailed,
+				evergreen.TaskDisplayStatusOtelAttribute: evergreen.TaskSystemUnresponse,
+				evergreen.TaskFailureTypeOtelAttribute:   evergreen.CommandTypeSystem,
+				evergreen.TaskDescriptionOtelAttribute:   evergreen.TaskDescriptionHeartbeat,
+			},
+		},
+		{
+			name: "AbortedDisplaysAborted",
+			task: &task.Task{},
+			detail: &apimodels.TaskEndDetail{
+				Status:      evergreen.TaskFailed,
+				Type:        evergreen.CommandTypeSystem,
+				Description: evergreen.TaskDescriptionHeartbeat,
+				TimedOut:    true,
+			},
+			aborted: true,
+			expectedAttrs: map[string]string{
+				evergreen.TaskStatusOtelAttribute:        evergreen.TaskFailed,
+				evergreen.TaskDisplayStatusOtelAttribute: evergreen.TaskAborted,
+				evergreen.TaskFailureTypeOtelAttribute:   evergreen.CommandTypeSystem,
+				evergreen.TaskDescriptionOtelAttribute:   evergreen.TaskDescriptionHeartbeat,
+			},
+		},
+		{
+			name:          "NilDetailHasNoAttributes",
+			task:          &task.Task{},
+			expectedAttrs: map[string]string{},
+		},
+	}
 
-		attrs := taskEndSpanAttrMap(buildTaskEndSpanAttributes(&task.Task{}, detail))
-
-		assert.Equal(t, evergreen.TaskFailed, attrs[evergreen.TaskStatusOtelAttribute].AsString())
-		assert.Equal(t, evergreen.TaskSystemUnresponse, attrs[evergreen.TaskDisplayStatusOtelAttribute].AsString())
-		assert.Equal(t, evergreen.CommandTypeSystem, attrs[evergreen.TaskFailureTypeOtelAttribute].AsString())
-		assert.Equal(t, evergreen.TaskDescriptionHeartbeat, attrs[evergreen.TaskDescriptionOtelAttribute].AsString())
-	})
-
-	t.Run("NilDetailHasNoAttributes", func(t *testing.T) {
-		assert.Empty(t, buildTaskEndSpanAttributes(&task.Task{}, nil))
-	})
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			attrs := taskEndSpanAttrMap(buildTaskEndSpanAttributes(tc.task, tc.detail, tc.aborted))
+			require.Len(t, attrs, len(tc.expectedAttrs))
+			for key, expected := range tc.expectedAttrs {
+				assert.Equal(t, expected, attrs[key].AsString())
+			}
+		})
+	}
 }
 
 func taskEndSpanAttrMap(attrs []attribute.KeyValue) map[string]attribute.Value {

@@ -387,6 +387,12 @@ func truncateString(s string, capacity int) (string, string) {
 	return head, tail
 }
 
+// isGitHubStatusSubscriber returns whether the subscriber type sends commit
+// statuses to a GitHub PR or merge group.
+func isGitHubStatusSubscriber(subscriberType string) bool {
+	return subscriberType == event.GithubPullRequestSubscriberType || subscriberType == event.GithubMergeSubscriberType
+}
+
 func makeCommonPayload(sub *event.Subscription, eventAttributes event.Attributes,
 	data *commonTemplateData) (any, error) {
 	var err error
@@ -451,10 +457,6 @@ func getFailedTestsFromTemplate(t task.Task) ([]testresult.TestResult, error) {
 	}
 
 	return results, nil
-}
-
-func taskLink(uiBase string, taskID string, execution int) string {
-	return fmt.Sprintf("%s/task/%s/%d", uiBase, url.PathEscape(taskID), execution)
 }
 
 func taskLogLink(uiBase string, taskID string, execution int) string {

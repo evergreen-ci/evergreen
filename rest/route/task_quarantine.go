@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -31,13 +32,14 @@ func parseTaskForQuarantine(ctx context.Context) (*task.Task, error) {
 	return projCtx.Task, nil
 }
 
-func quarantineTask(ctx context.Context, t *task.Task, isManuallyQuarantined bool) gimlet.Responder {
+func quarantineTask(ctx context.Context, env evergreen.Environment, t *task.Task, isManuallyQuarantined bool) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	displayTaskName, err := t.GetDisplayTaskName(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "fetching display task name for task '%s'", t.Id))
 	}
-	if err := data.SetTaskQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, isManuallyQuarantined); err != nil {
+	metadata := data.NewTaskQuarantineMetadata(t, u.Username(), env.Settings().Ui.UIv2Url)
+	if err := data.SetTaskQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, displayTaskName, isManuallyQuarantined, metadata); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting quarantine state to '%t' for task '%s'", isManuallyQuarantined, t.Id))
 	}
 	grip.Info(ctx, message.Fields{
@@ -57,11 +59,12 @@ func quarantineTask(ctx context.Context, t *task.Task, isManuallyQuarantined boo
 }
 
 type taskQuarantineHandler struct {
+	env  evergreen.Environment
 	task *task.Task
 }
 
-func makeTaskQuarantineHandler() gimlet.RouteHandler {
-	return &taskQuarantineHandler{}
+func makeTaskQuarantineHandler(env evergreen.Environment) gimlet.RouteHandler {
+	return &taskQuarantineHandler{env: env}
 }
 
 // Factory creates an instance of the handler.
@@ -74,7 +77,7 @@ func makeTaskQuarantineHandler() gimlet.RouteHandler {
 //	@Param			task_id	path		string	true	"the task ID"
 //	@Success		200		{object}	model.APITask
 func (h *taskQuarantineHandler) Factory() gimlet.RouteHandler {
-	return &taskQuarantineHandler{}
+	return &taskQuarantineHandler{env: h.env}
 }
 
 func (h *taskQuarantineHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -87,15 +90,16 @@ func (h *taskQuarantineHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *taskQuarantineHandler) Run(ctx context.Context) gimlet.Responder {
-	return quarantineTask(ctx, h.task, true)
+	return quarantineTask(ctx, h.env, h.task, true)
 }
 
 type taskUnquarantineHandler struct {
+	env  evergreen.Environment
 	task *task.Task
 }
 
-func makeTaskUnquarantineHandler() gimlet.RouteHandler {
-	return &taskUnquarantineHandler{}
+func makeTaskUnquarantineHandler(env evergreen.Environment) gimlet.RouteHandler {
+	return &taskUnquarantineHandler{env: env}
 }
 
 // Factory creates an instance of the handler.
@@ -108,7 +112,7 @@ func makeTaskUnquarantineHandler() gimlet.RouteHandler {
 //	@Param			task_id	path		string	true	"the task ID"
 //	@Success		200		{object}	model.APITask
 func (h *taskUnquarantineHandler) Factory() gimlet.RouteHandler {
-	return &taskUnquarantineHandler{}
+	return &taskUnquarantineHandler{env: h.env}
 }
 
 func (h *taskUnquarantineHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -121,5 +125,5 @@ func (h *taskUnquarantineHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (h *taskUnquarantineHandler) Run(ctx context.Context) gimlet.Responder {
-	return quarantineTask(ctx, h.task, false)
+	return quarantineTask(ctx, h.env, h.task, false)
 }

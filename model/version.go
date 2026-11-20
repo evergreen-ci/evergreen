@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/anser/bsonutil"
@@ -76,9 +75,12 @@ type Version struct {
 	// BuildVariants contains information about build variant activation. This
 	// is not always loaded in version document queries because it can be large.
 	// See (Version).GetBuildVariants to fetch this field.
-	BuildVariants   []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
-	PeriodicBuildID string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
-	Aborted         bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
+	BuildVariants []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
+	// buildVariantsLoaded caches whether BuildVariants has already been loaded,
+	// including batchtime tasks.
+	buildVariantsLoaded bool   `bson:"-" json:"-"`
+	PeriodicBuildID     string `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
+	Aborted             bool   `bson:"aborted,omitempty" json:"aborted,omitempty"`
 
 	// This stores whether or not a version has tasks which were activated.
 	// We use a bool ptr in order to distinguish the unset value from the default value
@@ -185,13 +187,27 @@ func (v *Version) ActivateAndSetBuildVariants(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "getting build variant info for version")
 	}
+	taskBatchTimes := taskBatchTimesForBuildVariants(bvs)
+	if len(taskBatchTimes) > 0 {
+		bt := &VersionTaskBatchTimes{
+			Id:            v.Id,
+			Identifier:    v.Identifier,
+			Requester:     v.Requester,
+			Order:         v.RevisionOrderNumber,
+			Ignored:       v.Ignored,
+			BuildVariants: taskBatchTimes,
+		}
+		if err := bt.Upsert(ctx); err != nil {
+			return errors.Wrap(err, "setting task batchtimes")
+		}
+	}
 	return VersionUpdateOne(
 		ctx,
 		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$set": bson.M{
 				VersionActivatedKey:     true,
-				VersionBuildVariantsKey: bvs,
+				VersionBuildVariantsKey: withoutTaskBatchTimes(bvs),
 			},
 		},
 	)
@@ -244,6 +260,25 @@ func (v *Version) Insert(ctx context.Context) error {
 
 func (v *Version) IsChild() bool {
 	return v.ParentPatchID != ""
+}
+
+// FindBaseVersion finds the base version for the version.
+// Set repotrackerOnly to true if you only want to get repotracker (gitter_request) versions. Otherwise,
+// if the version is a patch, it will return the base version. If the version is a mainline commit,
+// it will return the previously run mainline commit.
+func (v *Version) FindBaseVersion(ctx context.Context, repotrackerOnly bool) (*Version, error) {
+	if repotrackerOnly || evergreen.IsPatchRequester(v.Requester) {
+		baseVersion, err := VersionFindOne(ctx, BaseVersionByProjectIdAndRevision(v.Identifier, v.Revision))
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
+		}
+		return baseVersion, nil
+	}
+	previousVersion, err := VersionFindOne(ctx, VersionByProjectIdAndOrder(v.Identifier, v.RevisionOrderNumber-1))
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
+	}
+	return previousVersion, nil
 }
 
 func (v *Version) AddSatisfiedTrigger(ctx context.Context, definitionID string) error {
@@ -345,29 +380,73 @@ func (v *Version) UpdatePreGenerationProjectStorageMethod(ctx context.Context, m
 	return nil
 }
 
-// GetBuildVariants returns the build variants for the version. If the version
-// already has build variants cached, it'll use that; otherwise, it will load
-// the build variants from the DB. If the version does not exist in the DB yet,
-// it'll return v's own in-memory BuildVariants, if any.
+// GetBuildVariants returns the build variants for the version, including their
+// batchtime tasks.
+// The version only loads build variants if it hasn't do so already. If the
+// version does not exist in the DB yet, it'll return the version's in-memory
+// BuildVariants, if any.
 func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, error) {
-	if v.BuildVariants != nil {
+	if v.buildVariantsLoaded {
 		return v.BuildVariants, nil
 	}
-	versionWithBuildVariants, err := VersionFindOneIdWithBuildVariants(ctx, v.Id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding version '%s'", v.Id)
-	}
-	bvs := []VersionBuildStatus{}
-	// If the version is nil, then the version doesn't exist in the DB, so it's
-	// safe to assume that BuildVariants is not populated. This intentionally
-	// does not error if the version doesn't exist in the DB so that this method
-	// can be called even if the version hasn't been inserted into the DB yet.
-	if versionWithBuildVariants != nil && versionWithBuildVariants.BuildVariants != nil {
-		bvs = versionWithBuildVariants.BuildVariants
-	}
-	v.BuildVariants = bvs
 
+	if v.BuildVariants == nil {
+		versionWithBuildVariants, err := VersionFindOneIdWithBuildVariants(ctx, v.Id)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding version '%s'", v.Id)
+		}
+		if versionWithBuildVariants != nil && versionWithBuildVariants.BuildVariants != nil {
+			v.BuildVariants = versionWithBuildVariants.BuildVariants
+		} else {
+			v.BuildVariants = []VersionBuildStatus{}
+		}
+	}
+
+	// In newer versions, the task batchtimes are stored in a separate
+	// collection, so populate those if they're not already loaded.
+	bt, err := VersionTaskBatchTimesFindOne(ctx, v.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding batchtime tasks for version '%s'", v.Id)
+	}
+	if bt != nil {
+		attachTaskBatchTimes(v.BuildVariants, bt.BuildVariants)
+	}
+
+	v.buildVariantsLoaded = true
 	return v.BuildVariants, nil
+}
+
+// attachTaskBatchTimes sets each build variant's batchtime tasks.
+func attachTaskBatchTimes(bvs []VersionBuildStatus, btt []BuildVariantTaskBatchTime) {
+	taskBatchTimesForBV := make(map[string][]BatchTimeTaskStatus, len(btt))
+	for _, v := range btt {
+		taskBatchTimesForBV[v.BuildVariant] = v.BatchTimeTasks
+	}
+	for i := range bvs {
+		if tasks, ok := taskBatchTimesForBV[bvs[i].BuildVariant]; ok {
+			bvs[i].BatchTimeTasks = tasks
+		}
+	}
+}
+
+// SplitTaskBatchTimes returns a copy of the version with the task batchtimes
+// split off into a separate doc. The task batchtimes doc is nil if the version
+// has no tasks with batchtime.
+func (v *Version) SplitTaskBatchTimes() (Version, *VersionTaskBatchTimes) {
+	bvs := taskBatchTimesForBuildVariants(v.BuildVariants)
+	if len(bvs) == 0 {
+		return *v, nil
+	}
+	stripped := *v
+	stripped.BuildVariants = withoutTaskBatchTimes(v.BuildVariants)
+	return stripped, &VersionTaskBatchTimes{
+		Id:            v.Id,
+		Identifier:    v.Identifier,
+		Requester:     v.Requester,
+		Order:         v.RevisionOrderNumber,
+		Ignored:       v.Ignored,
+		BuildVariants: bvs,
+	}
 }
 
 // versionS3CostBSONFields returns BSON pairs for the S3-only cost fields; EC2/EBS fields are managed by UpdateAggregateTaskCosts.
@@ -568,6 +647,7 @@ func TrackVersionS3CostForTask(ctx context.Context, taskID, versionID, source st
 		trace.WithNewRoot(),
 		trace.WithAttributes(
 			attribute.String(evergreen.TaskIDOtelAttribute, taskID),
+			attribute.String(evergreen.VersionIDOtelAttribute, versionID),
 			attribute.String(evergreen.TaskS3CostTaskStatusOtelAttribute, source),
 			attribute.Int(evergreen.TaskS3ArtifactPutRequestsOtelAttribute, s3Usage.Artifacts.PutRequests),
 			attribute.Int64(evergreen.TaskS3ArtifactUploadBytesOtelAttribute, s3Usage.Artifacts.UploadBytes),
@@ -619,6 +699,7 @@ func (v *Version) GetHighestTaskExecution(ctx context.Context) (int, error) {
 type VersionBuildStatus struct {
 	BuildVariant     string                `bson:"build_variant" json:"id"`
 	DisplayName      string                `bson:"display_name,omitempty" json:"display_name,omitempty"`
+	Tags             []string              `bson:"tags,omitempty" json:"-"`
 	BuildId          string                `bson:"build_id,omitempty" json:"build_id,omitempty"`
 	BatchTimeTasks   []BatchTimeTaskStatus `bson:"batchtime_tasks,omitempty" json:"batchtime_tasks,omitempty"`
 	ActivationStatus `bson:",inline"`
@@ -658,6 +739,9 @@ type VersionMetadata struct {
 	GitTag              GitTag
 	ChangedFiles        []string
 	IngestTime          time.Time
+	// ModuleResolver, if set, is used to create the version's manifest along
+	// with the version.
+	ModuleResolver *ModuleResolver
 	// SourceModule is only set for push level triggers.
 	SourceModule *SourceModule
 }
@@ -673,6 +757,7 @@ type SourceModule struct {
 var (
 	VersionBuildStatusIdKey             = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildId")
 	VersionBuildStatusDisplayNameKey    = bsonutil.MustHaveTag(VersionBuildStatus{}, "DisplayName")
+	VersionBuildStatusTagsKey           = bsonutil.MustHaveTag(VersionBuildStatus{}, "Tags")
 	VersionBuildStatusVariantKey        = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildVariant")
 	VersionBuildStatusActivatedKey      = bsonutil.MustHaveTag(VersionBuildStatus{}, "Activated")
 	VersionBuildStatusBatchTimeTasksKey = bsonutil.MustHaveTag(VersionBuildStatus{}, "BatchTimeTasks")
@@ -806,6 +891,14 @@ type GetVersionsOptions struct {
 	CreatedBefore  time.Time `json:"created_before"`
 }
 
+// MaxVersionsScannedWithBuilds bounds how many versions past the skip one GetVersionsWithOptions call joins
+// against builds and tasks. It also bounds the skip itself, which callers must validate.
+const MaxVersionsScannedWithBuilds = 1000
+
+// ErrVersionScanLimitExceeded is returned when a request including builds searches the maximum number of
+// versions without filling the page and older versions still remain.
+var ErrVersionScanLimitExceeded = errors.Errorf("searched %d versions without finding enough matches", MaxVersionsScannedWithBuilds)
+
 // GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
 // the input GetVersionsOptions.
 func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVersionsOptions) ([]Version, error) {
@@ -848,6 +941,9 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
+	if opts.IncludeBuilds {
+		pipeline = append(pipeline, bson.M{"$limit": MaxVersionsScannedWithBuilds + opts.Skip})
+	}
 
 	// initial projection of version items
 	project := bson.M{
@@ -937,6 +1033,23 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 	if err := db.AggregateSecondary(ctx, VersionCollection, pipeline, &res); err != nil {
 		return nil, errors.Wrap(err, "aggregating versions and builds")
 	}
+	if !opts.IncludeBuilds || len(res) >= opts.Limit {
+		return res, nil
+	}
+
+	// A short page is only complete if the search reached the end of history.
+	pastLimit := []Version{}
+	q := db.Query(match).
+		Sort([]string{"-" + VersionRevisionOrderNumberKey}).
+		Skip(MaxVersionsScannedWithBuilds + opts.Skip).
+		Limit(1).
+		WithFields(VersionIdKey)
+	if err := db.FindAllQSecondary(ctx, VersionCollection, q, &pastLimit); err != nil {
+		return nil, errors.Wrap(err, "checking for versions past the scan limit")
+	}
+	if len(pastLimit) > 0 {
+		return nil, ErrVersionScanLimitExceeded
+	}
 	return res, nil
 }
 
@@ -976,79 +1089,26 @@ func GetVersionsToModify(ctx context.Context, projectName string, opts ModifyVer
 
 // constructManifest will construct a manifest from the given project and version.
 func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, moduleList ModuleList) (*manifest.Manifest, error) {
-	if len(moduleList) == 0 {
-		return nil, nil
-	}
-	newManifest := &manifest.Manifest{
-		Id:          v.Id,
-		Revision:    v.Revision,
-		ProjectName: v.Identifier,
-		Branch:      projectRef.Branch,
-		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
-	}
-
-	projVars, err := FindMergedProjectVars(ctx, projectRef.Id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting project vars for project '%s'", projectRef.Id)
-	}
-	if projVars != nil {
-		expansions := util.NewExpansions(projVars.Vars)
-		for i := range moduleList {
-			if err = util.ExpandValues(&moduleList[i], expansions); err != nil {
-				return nil, errors.Wrapf(err, "expanding module '%s'", moduleList[i].Name)
-			}
-		}
-	}
-
-	var baseManifest *manifest.Manifest
-	shouldUseBaseRevision := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester) || v.Requester == evergreen.AdHocRequester
-	if shouldUseBaseRevision {
-		baseManifest, err = manifest.FindFromVersion(ctx, v.Id, v.Identifier, v.Revision, v.Requester)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting base manifest")
-		}
-	}
-
-	modules := map[string]*manifest.Module{}
 	ingestTime := v.IngestTime
 	if utility.IsZeroTime(ingestTime) {
 		ingestTime = v.CreateTime
 	}
-	for _, module := range moduleList {
-		_, modRepo, err := module.GetOwnerAndRepo()
-		if err != nil {
-			return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
-		}
-		// GitHub wikis are always cloned at default-branch HEAD. Do not reuse
-		// base manifest pins; every run must resolve via getManifestModule.
-		if shouldUseBaseRevision && !module.AutoUpdate && baseManifest != nil && !IsWikiRepo(modRepo) {
-			if baseModule, ok := baseManifest.Modules[module.Name]; ok {
-				// Use base module revision unless the YAML explicitly specifies a different ref.
-				if module.Ref == "" || module.Ref == baseModule.Revision {
-					inherited := *baseModule
-					inherited.SelectionRule = manifest.ModuleSelectionBaseVersion
-					modules[module.Name] = &inherited
-					continue
-				}
-			}
-		}
-
-		mfstModule, err := getManifestModule(ctx, projectRef, module, v.Requester, ingestTime)
-		if err != nil {
-			return nil, errors.Wrapf(err, "module '%s'", module.Name)
-		}
-		// Push triggers set the triggering module's ref to the pushed commit.
-		if v.TriggerSHA != "" && module.Ref == v.TriggerSHA {
-			mfstModule.SelectionRule = manifest.ModuleSelectionTriggerCommit
-		}
-
-		modules[module.Name] = mfstModule
+	opts := ModuleResolverOpts{
+		VersionID:           v.Id,
+		Revision:            v.Revision,
+		Requester:           v.Requester,
+		RevisionOrderNumber: v.RevisionOrderNumber,
+		IngestTime:          ingestTime,
 	}
-	newManifest.Modules = modules
-
-	setChangedModules(ctx, v, newManifest, baseManifest)
-
-	return newManifest, nil
+	if v.TriggerModule != "" {
+		opts.TriggeringModuleCommit = &manifest.Module{
+			Owner:    v.TriggerOwner,
+			Repo:     v.TriggerRepo,
+			Branch:   v.TriggerBranch,
+			Revision: v.TriggerSHA,
+		}
+	}
+	return NewModuleResolver(projectRef, opts).Manifest(ctx, v, moduleList)
 }
 
 // setChangedModules records which modules changed compared to the version's
@@ -1126,81 +1186,71 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 		}, nil
 	}
 
-	if module.Ref == "" {
-		ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
-		defer cancel()
-
-		var revision, url string
-		var rule manifest.ModuleSelectionRule
-		useHistory := !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester
-
-		// For versions aligned by ingest time, use the latest module revision Evergreen had ingested.
-		// Otherwise, use the current module branch head.
-		if useHistory {
-			repoRevision, err := FindLatestRepositoryRevisionByIngestTime(ctx, owner, repo, module.Branch, ingestTime)
-			if err != nil {
-				return nil, errors.Wrapf(err, "finding latest repository revision by ingest time for module '%s' in '%s/%s'", module.Name, owner, repo)
-			}
-			if repoRevision != nil {
-				revision = repoRevision.Revision
-				rule = manifest.ModuleSelectionLatestIngested
-				githubCommit, err := thirdparty.GetCommitEvent(ghCtx, owner, repo, revision)
-				if err == nil {
-					url = githubCommit.GetURL()
-				}
-			}
-		}
-
-		if revision == "" {
-			opts := &github.CommitsListOptions{
-				SHA: module.Branch,
-				ListOptions: github.ListOptions{
-					PerPage: 1,
-				},
-			}
-			if useHistory {
-				opts.Until = ingestTime
-			}
-			githubCommits, _, err := thirdparty.GetGithubCommits(ghCtx, owner, repo, opts)
-			if err != nil {
-				return nil, errors.Wrapf(err, "retrieving git commit for module '%s' on branch '%s'", module.Name, module.Branch)
-			}
-			if len(githubCommits) == 0 {
-				return nil, errors.Errorf("no commits found for module '%s' on branch '%s'", module.Name, module.Branch)
-			}
-			revision = githubCommits[0].GetSHA()
-			url = githubCommits[0].GetURL()
-			rule = manifest.ModuleSelectionGitHubFallback
-		}
-
-		return &manifest.Module{
-			Branch:        module.Branch,
-			Revision:      revision,
-			Repo:          repo,
-			Owner:         owner,
-			URL:           url,
-			SelectionRule: rule,
-		}, nil
-	}
-
-	ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
-
-	sha := module.Ref
-	gitCommit, err := thirdparty.GetCommitEvent(ghCtx, owner, repo, module.Ref)
+	revision, rule, err := resolveModuleRevision(ctx, owner, repo, module, requester, ingestTime)
 	if err != nil {
-		return nil, errors.Wrapf(err, "retrieving getting git commit for module '%s' with hash '%s'", module.Name, module.Ref)
+		return nil, err
 	}
-	url := gitCommit.GetURL()
-
 	return &manifest.Module{
 		Branch:        module.Branch,
-		Revision:      sha,
+		Revision:      revision,
 		Repo:          repo,
 		Owner:         owner,
-		URL:           url,
-		SelectionRule: manifest.ModuleSelectionPinnedRef,
+		URL:           thirdparty.GitHubCommitURL(owner, repo, revision),
+		SelectionRule: rule,
 	}, nil
+}
+
+// resolveModuleRevision returns the module commit to use for a version and how
+// it was chosen.
+func resolveModuleRevision(ctx context.Context, owner, repo string, module Module, requester string, ingestTime time.Time) (string, manifest.ModuleSelectionRule, error) {
+	if module.Ref != "" {
+		return module.Ref, manifest.ModuleSelectionPinnedRef, nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+
+	var until time.Time
+	if evergreen.IsPatchRequester(requester) || requester == evergreen.AdHocRequester {
+		// Patches use the current branch head, resolved with git so it doesn't
+		// depend on the GitHub API being available.
+		if sha, err := thirdparty.GitLsRemote(ctx, owner, repo, moduleBranchRef(module.Branch)); err == nil {
+			return sha, manifest.ModuleSelectionGitHubFallback, nil
+		}
+	} else {
+		// Versions aligned by ingest time use the latest module commit
+		// Evergreen had ingested by then.
+		repoRevision, err := FindLatestRepositoryRevisionByIngestTime(ctx, owner, repo, module.Branch, ingestTime)
+		if err != nil {
+			return "", "", errors.Wrapf(err, "finding latest repository revision by ingest time for module '%s' in '%s/%s'", module.Name, owner, repo)
+		}
+		if repoRevision != nil {
+			return repoRevision.Revision, manifest.ModuleSelectionLatestIngested, nil
+		}
+		until = ingestTime
+	}
+
+	githubCommits, _, err := thirdparty.GetGithubCommits(ctx, owner, repo, &github.CommitsListOptions{
+		SHA:         module.Branch,
+		Until:       until,
+		ListOptions: github.ListOptions{PerPage: 1},
+	})
+	if err != nil {
+		return "", "", errors.Wrapf(err, "retrieving git commit for module '%s' on branch '%s'", module.Name, module.Branch)
+	}
+	if len(githubCommits) == 0 {
+		return "", "", errors.Errorf("no commits found for module '%s' on branch '%s'", module.Name, module.Branch)
+	}
+	return githubCommits[0].GetSHA(), manifest.ModuleSelectionGitHubFallback, nil
+}
+
+// moduleBranchRef returns the git ref for a module branch. Modules without a
+// branch use the repo's default branch.
+func moduleBranchRef(branch string) string {
+	if branch == "" {
+		return "HEAD"
+	}
+	return "refs/heads/" + branch
 }
 
 // CreateManifest inserts a newly constructed manifest into the DB.

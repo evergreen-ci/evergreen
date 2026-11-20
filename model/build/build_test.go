@@ -10,6 +10,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -403,6 +404,12 @@ func TestGetPRNotificationDescription(t *testing.T) {
 func TestIsDormant(t *testing.T) {
 	t.Run("CreatedAndUnactivatedIsDormant", func(t *testing.T) {
 		b := &Build{Status: evergreen.BuildCreated, Activated: false}
+		assert.True(t, b.IsDormant())
+	})
+	t.Run("CreatedAndUnactivatedWithUnixZeroTimeIsDormant", func(t *testing.T) {
+		// Builds store utility.ZeroTime rather than the Go zero time when
+		// they were never activated.
+		b := &Build{Status: evergreen.BuildCreated, Activated: false, ActivatedTime: utility.ZeroTime}
 		assert.True(t, b.IsDormant())
 	})
 	t.Run("CreatedButActivatedIsNotDormant", func(t *testing.T) {

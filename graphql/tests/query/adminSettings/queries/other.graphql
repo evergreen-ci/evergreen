@@ -30,6 +30,7 @@ query Other {
         roleARN
       }
       longRetentionProjects
+      sourceCacheOptOutProjects
       logBucketLongRetention {
         name
         testResultsPrefix

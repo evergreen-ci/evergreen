@@ -199,6 +199,9 @@ type ApiTaskEndDetail struct {
 	TraceID             *string                   `json:"trace_id" extensions:"!x-nullable"`
 	DiskDevices         []string                  `json:"disk_devices" extensions:"x-nullable"`
 	ResourceConstraints APIResourceConstraintInfo `json:"resource_constraints"`
+	// SystemFailureReason is a human-readable explanation of why the task's
+	// host or agent was lost. It is only set for system failures.
+	SystemFailureReason *string `json:"system_failure_reason" extensions:"x-nullable"`
 }
 
 func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
@@ -230,6 +233,9 @@ func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 	var apiResourceConstraint APIResourceConstraintInfo
 	apiResourceConstraint.BuildFromService(t.ResourceConstraints)
 	at.ResourceConstraints = apiResourceConstraint
+	if t.SystemFailureReason != "" {
+		at.SystemFailureReason = utility.ToStringPtr(t.SystemFailureReason)
+	}
 
 	return nil
 }
@@ -253,6 +259,7 @@ func (ad *ApiTaskEndDetail) ToService() apimodels.TaskEndDetail {
 		TraceID:              utility.FromStringPtr(ad.TraceID),
 		DiskDevices:          ad.DiskDevices,
 		ResourceConstraints:  ad.ResourceConstraints.ToService(),
+		SystemFailureReason:  utility.FromStringPtr(ad.SystemFailureReason),
 	}
 }
 

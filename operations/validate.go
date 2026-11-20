@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/util"
 
@@ -24,7 +23,6 @@ func Validate() cli.Command {
 		Usage: "verify that an evergreen project config is valid",
 		Flags: mergeFlagSlices(
 			addPathFlag(),
-			addCrossFileAnchorsFlag(),
 			[]cli.Flag{
 				cli.BoolFlag{
 					Name:  joinFlagNames(quietFlagName, "q"),
@@ -54,7 +52,6 @@ func Validate() cli.Command {
 			quiet := c.Bool(quietFlagName)
 			errorOnWarnings := c.Bool(errorOnWarningsFlagName)
 			projectID := c.String(projectFlagName)
-			cliAnchors := c.Bool(crossFileAnchorsFlagName)
 			localModulePaths := c.StringSlice(localModulesFlagName)
 			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
 			if err != nil {
@@ -85,34 +82,14 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(conf, filepath.Join(path, file.Name()), quiet, errorOnWarnings, localModuleMap, projectID, cliAnchors))
+					catcher.Add(validateFile(conf, filepath.Join(path, file.Name()), quiet, errorOnWarnings, localModuleMap, projectID))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(conf, path, quiet, errorOnWarnings, localModuleMap, projectID, cliAnchors)
+			return validateFile(conf, path, quiet, errorOnWarnings, localModuleMap, projectID)
 		},
 	}
-}
-
-// getCrossFileYAMLAnchorsEnabled fetches the CrossFileYAMLAnchorsEnabled service flag from the
-// server via REST.
-func getCrossFileYAMLAnchorsEnabled(conf *ClientSettings) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	client, err := conf.setupRestCommunicator(ctx, false)
-	if err != nil {
-		return false, errors.Wrap(err, "setting up REST communicator")
-	}
-	defer client.Close()
-	flags, err := client.GetServiceFlags(ctx)
-	if err != nil {
-		return false, errors.Wrap(err, "getting service flags")
-	}
-	if flags == nil {
-		return false, nil
-	}
-	return flags.CrossFileYAMLAnchorsEnabled, nil
 }
 
 func getLocalModulesFromInput(localModulePaths []string) (map[string]string, error) {
@@ -129,8 +106,8 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 	return moduleMap, catcher.Resolve()
 }
 
-func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string, cliAnchors bool) error {
-	projectYaml, err := loadProjectYAML(conf, path, quiet, errorOnWarnings, localModuleMap, projectID, cliAnchors)
+func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) error {
+	projectYaml, err := loadProjectYAML(conf, path, quiet, errorOnWarnings, localModuleMap, projectID)
 	if err != nil {
 		return err
 	}
@@ -139,7 +116,7 @@ func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool
 
 // loadProjectYAML reads and parses the project config file, performs local validation,
 // and returns the marshalled YAML bytes for remote validation.
-func loadProjectYAML(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string, cliAnchors bool) ([]byte, error) {
+func loadProjectYAML(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) ([]byte, error) {
 	confFile, err := os.ReadFile(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading file '%s'", path)
@@ -150,15 +127,10 @@ func loadProjectYAML(conf *ClientSettings, path string, quiet, errorOnWarnings b
 	}
 	project := &model.Project{}
 	ctx := context.Background()
-	anchorsEnabled := cliAnchors
-	if !cliAnchors {
-		anchorsEnabled, _ = getCrossFileYAMLAnchorsEnabled(conf)
-	}
 	opts := &model.GetProjectOpts{
-		LocalModules:                localModuleMap,
-		ReadFileFrom:                model.ReadFromLocal,
-		LocalIncludeDir:             cwd,
-		CrossFileYAMLAnchorsEnabled: anchorsEnabled,
+		LocalModules:    localModuleMap,
+		ReadFileFrom:    model.ReadFromLocal,
+		LocalIncludeDir: cwd,
 	}
 	if !quiet {
 		opts.UnmarshalStrict = true

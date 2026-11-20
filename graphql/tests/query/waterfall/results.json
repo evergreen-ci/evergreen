@@ -916,6 +916,76 @@
       }
     },
     {
+      "query_file": "task_tags.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": { "activeVersionIds": ["evergreen_version2"] },
+            "versions": [
+              { "id": "evergreen_version5", "waterfallBuilds": null },
+              { "id": "evergreen_version4", "waterfallBuilds": null },
+              { "id": "evergreen_version3", "waterfallBuilds": null },
+              { "id": "evergreen_version2", "waterfallBuilds": [{ "id": "evergreen_version2_build", "tasks": [{ "id": "task_3" }] }] }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "variant_tags.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": { "activeVersionIds": ["evergreen_version2"] },
+            "versions": [
+              { "id": "evergreen_version5", "waterfallBuilds": null },
+              { "id": "evergreen_version4", "waterfallBuilds": null },
+              { "id": "evergreen_version3", "waterfallBuilds": null },
+              { "id": "evergreen_version2", "waterfallBuilds": [{ "id": "evergreen_version2_build", "tasks": [{ "id": "task_3" }, { "id": "task_4" }] }] }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "combined_tags.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": { "activeVersionIds": ["evergreen_version2"] },
+            "versions": [
+              { "id": "evergreen_version5", "waterfallBuilds": null },
+              { "id": "evergreen_version4", "waterfallBuilds": null },
+              { "id": "evergreen_version3", "waterfallBuilds": null },
+              { "id": "evergreen_version2", "waterfallBuilds": [{ "id": "evergreen_version2_build", "tasks": [{ "id": "task_3" }] }] }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "combined_tags_no_match.graphql",
+      "result": {
+        "data": { "waterfall": { "pagination": { "activeVersionIds": [] } } }
+      }
+    },
+    {
+      "query_file": "tags_include_all.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": { "activeVersionIds": ["evergreen_version2"] },
+            "versions": [
+              { "id": "evergreen_version5", "waterfallBuilds": null },
+              { "id": "evergreen_version4", "waterfallBuilds": null },
+              { "id": "evergreen_version3", "waterfallBuilds": null },
+              { "id": "evergreen_version2", "waterfallBuilds": [{ "id": "evergreen_version2_build", "tasks": [{ "id": "task_3" }, { "id": "task_4" }] }] }
+            ]
+          }
+        }
+      }
+    },
+    {
       "query_file": "versions.graphql",
       "result": {
         "data": {
@@ -1024,6 +1094,135 @@
                 "waterfallBuilds": []
               }
             ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "newer_page_no_matches.graphql",
+      "data": {
+        "versions": [
+          {
+            "_id": "bounded_window_v1",
+            "identifier": "evergreen",
+            "r": "gitter_request",
+            "activated": true,
+            "order": 1
+          },
+          {
+            "_id": "bounded_window_v2",
+            "identifier": "evergreen",
+            "r": "gitter_request",
+            "activated": true,
+            "order": 2
+          },
+          {
+            "_id": "bounded_window_v3",
+            "identifier": "evergreen",
+            "r": "gitter_request",
+            "activated": true,
+            "order": 3
+          },
+          {
+            "_id": "bounded_window_v4",
+            "identifier": "evergreen",
+            "r": "gitter_request",
+            "activated": true,
+            "order": 4
+          },
+          {
+            "_id": "bounded_window_v5",
+            "identifier": "evergreen",
+            "r": "gitter_request",
+            "activated": true,
+            "order": 5
+          },
+          {
+            "_id": "bounded_window_v6",
+            "identifier": "evergreen",
+            "r": "gitter_request",
+            "activated": true,
+            "order": 6
+          },
+          {
+            "_id": "bounded_window_v7",
+            "identifier": "evergreen",
+            "r": "gitter_request",
+            "activated": true,
+            "order": 7
+          }
+        ]
+      },
+      "result": {
+        "data": {
+          "waterfall": {
+            "versions": [
+              {
+                "id": "bounded_window_v4",
+                "order": 4
+              },
+              {
+                "id": "bounded_window_v3",
+                "order": 3
+              },
+              {
+                "id": "bounded_window_v2",
+                "order": 2
+              }
+            ],
+            "pagination": {
+              "activeVersionIds": [],
+              "nextPageOrder": 2,
+              "prevPageOrder": 4,
+              "mostRecentVersionOrder": 7,
+              "hasNextPage": true,
+              "hasPrevPage": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "max_versions_over_cap.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "maxVersions must be between 1 and 300",
+            "path": [
+              "waterfall"
+            ],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "max_versions.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "versions": [
+              {
+                "id": "sandbox_active",
+                "order": 3
+              },
+              {
+                "id": "sandbox_inactive1",
+                "order": 2
+              }
+            ],
+            "pagination": {
+              "activeVersionIds": [
+                "sandbox_active"
+              ],
+              "nextPageOrder": 2,
+              "prevPageOrder": 0,
+              "hasNextPage": true,
+              "hasPrevPage": false
+            }
           }
         }
       }

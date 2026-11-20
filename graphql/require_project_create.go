@@ -7,6 +7,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 )
 
+// RequireProjectCreate restricts project creation to superusers and users with project create permission.
 func RequireProjectCreate(ctx context.Context, _ any, next graphql.Resolver) (any, error) {
 	// Allow if user is superuser.
 	user := mustHaveUser(ctx)

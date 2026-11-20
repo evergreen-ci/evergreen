@@ -323,6 +323,9 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	case model.ProjectPagePluginSection:
 		restModel.RestoreRedactedFileTicketWebhookSecret(&newProjectRef.TaskAnnotationSettings, before.ProjectRef.TaskAnnotationSettings)
 		restModel.RestoreRedactedFileTicketWebhookSecret(&mergedSection.TaskAnnotationSettings, mergedBeforeRef.TaskAnnotationSettings)
+		if err = model.ValidateBbProject(ctx, projectId, mergedSection.BuildBaronSettings, &mergedSection.TaskAnnotationSettings.FileTicketWebhook); err != nil {
+			return nil, errors.Wrap(err, "validating build baron config")
+		}
 		for _, link := range mergedSection.ExternalLinks {
 			if link.DisplayName != "" && link.URLTemplate != "" {
 				// check length of link display name
@@ -482,6 +485,11 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	case model.ProjectPageTestSelectionSection:
 		if mergedSection.IsTestSelectionMainlineDefaultEnabled() && !mergedSection.IsTestSelectionDefaultEnabled() {
 			return nil, errors.New("test selection cannot be enabled for mainline commits without also being enabled for patches")
+		}
+	case model.ProjectPageTaskOwnershipAndFoliageSection:
+		if mergedSection.TaskOwnership.GeneratedTaskValidationPrefix == "" &&
+			(utility.FromBoolPtr(mergedSection.TaskOwnership.TrackGeneratedTaskTagValidation) || utility.FromBoolPtr(mergedSection.TaskOwnership.BlockTaskGenerationOnTagValidation)) {
+			return nil, errors.New("generated task validation prefix must be set when tracking or blocking generated tasks missing the validation prefix")
 		}
 	// This section does not support repo-level at this time.
 	case model.ProjectPageGithubAppSettingsSection:

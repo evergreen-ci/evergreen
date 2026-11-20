@@ -12,6 +12,8 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+// RequireProjectSettingsAccess requires project settings view permission to resolve a field on a ProjectSettings
+// (or RepoSettings) object. For repos, view permission on any branch project is also sufficient.
 func RequireProjectSettingsAccess(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
 	usr := mustHaveUser(ctx)
 

@@ -23,6 +23,16 @@ import (
 const (
 	mergeQueuePatchRecoveryJobName = "merge-queue-patch-recovery"
 	minimumStuckTime               = 5 * time.Minute
+	// pendingIntentMaxAge is how long an unprocessed merge intent is treated as
+	// in flight regardless of its processor job. After that, it's only in flight
+	// if its processor job is still in the queue and not completed; otherwise
+	// the job was lost (e.g. never enqueued or crashed) and the intent would
+	// block recovery indefinitely.
+	pendingIntentMaxAge = 30 * time.Minute
+	// unprocessedIntentLookback bounds how far back to look for unprocessed
+	// merge intents. It matches GitHub's maximum merge queue status check
+	// timeout, after which the merge group is removed from the queue anyway.
+	unprocessedIntentLookback = 6 * time.Hour
 )
 
 func init() {
@@ -71,17 +81,21 @@ func (j *mergeQueuePatchRecoveryJob) Run(ctx context.Context) {
 		return
 	}
 
-	// A merge group whose webhook intent has been received but not yet processed
-	// into a patch already has a pending intent. Treat those head SHAs as covered
-	// so we never create a second patch for the same merge group.
-	pendingHeadSHAs, err := patch.FindUnprocessedGithubMergeIntentHeadSHAs(ctx)
+	// A merge group whose intent has been received but not yet processed into
+	// a patch already has a pending intent. Treat the head SHAs of intents that
+	// are still in flight as covered so we never create a second patch for the
+	// same merge group.
+	now := time.Now()
+	unprocessedIntents, err := patch.FindUnprocessedGithubMergeIntents(ctx, now.Add(-unprocessedIntentLookback))
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "finding unprocessed merge queue intents"))
 		return
 	}
-	pending := make(map[string]bool, len(pendingHeadSHAs))
-	for _, sha := range pendingHeadSHAs {
-		pending[sha] = true
+	pending := map[string]bool{}
+	for _, intent := range unprocessedIntents {
+		if isMergeIntentInFlight(ctx, j.env.RemoteQueue(), intent, now) {
+			pending[intent.HeadSHA] = true
+		}
 	}
 
 	for i := range projectRefs {
@@ -96,6 +110,17 @@ func (j *mergeQueuePatchRecoveryJob) Run(ctx context.Context) {
 	}
 }
 
+// isMergeIntentInFlight returns whether an unprocessed merge intent may still be
+// processed into a patch, either because it's recent or because its processor
+// job is still waiting or running in the queue.
+func isMergeIntentInFlight(ctx context.Context, q amboy.Queue, intent patch.UnprocessedMergeIntent, now time.Time) bool {
+	if now.Sub(intent.CreatedAt) < pendingIntentMaxAge {
+		return true
+	}
+	processor, ok := q.Get(ctx, patchIntentProcessorJobID(patch.GithubMergeIntentType, intent.ID))
+	return ok && !processor.Status().Completed
+}
+
 // recoverProject creates a patch for the merge group at the front of the project's GitHub merge
 // queue (queue position 1) if it has neither an active patch nor a pending intent.
 func (j *mergeQueuePatchRecoveryJob) recoverProject(ctx context.Context, projectRef *model.ProjectRef, pending map[string]bool) error {
@@ -107,11 +132,13 @@ func (j *mergeQueuePatchRecoveryJob) recoverProject(ctx context.Context, project
 		return nil
 	}
 
-	hasPatch, err := patch.HasDuplicateMergeQueuePatch(ctx, projectRef.Id, projectRef.Owner, projectRef.Repo, frontSHA)
+	// We use the patch intent job's timeout as the grace period because once it has passed, the job that
+	// inserted the patch has been cancelled, so an older unfinalized patch is a leftover and shouldn't block a new one.
+	existingPatchID, err := patch.FindDuplicateMergeQueuePatchID(ctx, projectRef.Id, projectRef.Owner, projectRef.Repo, frontSHA, "", maxPatchIntentJobTime)
 	if err != nil {
 		return errors.Wrap(err, "checking for an existing merge queue patch")
 	}
-	if hasPatch {
+	if existingPatchID != "" {
 		return nil
 	}
 

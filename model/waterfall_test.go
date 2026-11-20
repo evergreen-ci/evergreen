@@ -15,19 +15,48 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestGetWaterfallOrderFilterValidatesBounds(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		minOrder int
+		maxOrder int
+		wantErr  bool
+	}{
+		{name: "AcceptsWindowOfMaximumWidth", minOrder: 0, maxOrder: MaxWaterfallVersionLimit + 1},
+		{name: "RejectsMissingUpperBound", minOrder: 0, maxOrder: 0, wantErr: true},
+		{name: "RejectsNegativeLowerBound", minOrder: -1, maxOrder: 10, wantErr: true},
+		{name: "RejectsInvertedBounds", minOrder: 10, maxOrder: 10, wantErr: true},
+		{name: "RejectsOverwideWindow", minOrder: 0, maxOrder: MaxWaterfallVersionLimit + 2, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := getWaterfallOrderFilter(tc.minOrder, tc.maxOrder)
+			assert.Equal(t, tc.wantErr, err != nil)
+		})
+	}
+}
+
 func TestGetActiveWaterfallVersions(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	}()
 
 	projectId := "a_project"
+	getVersions := func(ctx context.Context, opts WaterfallOptions, pagingBackward bool) ([]Version, error) {
+		if opts.MaxOrder == 0 {
+			opts.MaxOrder = 1001
+		}
+		if opts.MinOrder == 0 {
+			opts.MinOrder = max(0, opts.MaxOrder-MaxWaterfallVersionLimit-1)
+		}
+		return GetActiveWaterfallVersions(ctx, projectId, opts, pagingBackward)
+	}
 
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context){
-		"Finds active versions with no order range specified": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+		"Finds active versions in an order range": func(t *testing.T, ctx context.Context) {
+			versions, err := getVersions(t.Context(), WaterfallOptions{
 				Limit:      4,
 				Requesters: evergreen.SystemVersionRequesterTypes,
-			})
+			}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 4)
 			assert.EqualValues(t, "v_1", versions[0].Id)
@@ -36,95 +65,96 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 			assert.EqualValues(t, "v_5", versions[3].Id)
 		},
 		"Finds active versions with MaxOrder parameter": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+			versions, err := getVersions(t.Context(), WaterfallOptions{
 				Limit:      2,
 				Requesters: evergreen.SystemVersionRequesterTypes,
 				MaxOrder:   999,
-			})
+			}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 2)
 			assert.EqualValues(t, "v_3", versions[0].Id)
 			assert.EqualValues(t, "v_4", versions[1].Id)
 		},
 		"Finds active versions with MinOrder parameter": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+			versions, err := getVersions(t.Context(), WaterfallOptions{
 				Limit:      5,
 				Requesters: evergreen.SystemVersionRequesterTypes,
 				MinOrder:   997,
-			})
+				MaxOrder:   1298,
+			}, true)
 			assert.NoError(t, err)
 			require.Len(t, versions, 2)
 			assert.EqualValues(t, "v_1", versions[0].Id)
 			assert.EqualValues(t, "v_3", versions[1].Id)
 		},
 		"Errors when given invalid requester": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+			versions, err := getVersions(t.Context(), WaterfallOptions{
 				Limit:      4,
 				Requesters: []string{"foo"},
-			})
+			}, false)
 			assert.Nil(t, versions)
 			assert.Error(t, err)
 			assert.True(t, strings.HasPrefix(err.Error(), "invalid requester"))
 		},
 		"Finds active versions with given build variant (case sensitive)": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+			versions, err := getVersions(t.Context(), WaterfallOptions{
 				Limit:                4,
 				Requesters:           evergreen.SystemVersionRequesterTypes,
 				Variants:             []string{"Build Variant 1"},
 				VariantCaseSensitive: true,
-			})
+			}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
 			assert.EqualValues(t, "v_4", versions[0].Id)
 		},
 		"Finds active versions with given build variant, no results (case sensitive)": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+			versions, err := getVersions(t.Context(), WaterfallOptions{
 				Limit:                4,
 				Requesters:           evergreen.SystemVersionRequesterTypes,
 				Variants:             []string{"build variant 1"},
 				VariantCaseSensitive: true,
-			})
+			}, false)
 			assert.NoError(t, err)
 			assert.Len(t, versions, 0)
 		},
 		"Finds active versions with given build variant (case insensitive)": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+			versions, err := getVersions(t.Context(), WaterfallOptions{
 				Limit:                4,
 				Requesters:           evergreen.SystemVersionRequesterTypes,
 				Variants:             []string{"build variant 1"},
 				VariantCaseSensitive: false,
-			})
+			}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
 			assert.EqualValues(t, "v_4", versions[0].Id)
 		},
 		"Returns version even if matching build variant is inactive": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+			versions, err := getVersions(t.Context(), WaterfallOptions{
 				Limit:      4,
 				Requesters: evergreen.SystemVersionRequesterTypes,
 				Variants:   []string{"Build Variant 2"},
-			})
+			}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
 			assert.EqualValues(t, "v_3", versions[0].Id)
 		},
 		"Returns no versions if there is no matching active build variant and omit inactive builds is true": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+			versions, err := getVersions(t.Context(), WaterfallOptions{
 				Limit:              4,
 				Requesters:         evergreen.SystemVersionRequesterTypes,
 				Variants:           []string{"Build Variant 2"},
 				OmitInactiveBuilds: true,
-			})
+			}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 0)
 		},
 		"Returns versions with active build variant when omit inactive builds is true": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+			versions, err := getVersions(t.Context(), WaterfallOptions{
 				Limit:              4,
 				Requesters:         evergreen.SystemVersionRequesterTypes,
 				Variants:           []string{"Build Variant 1"},
 				OmitInactiveBuilds: true,
-			})
+			}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
 			assert.EqualValues(t, "v_4", versions[0].Id)
@@ -280,29 +310,40 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert(t.Context()))
 
-	versions, err := GetAllWaterfallVersions(t.Context(), p.Id, 7, 9)
+	versions, err := GetAllWaterfallVersions(t.Context(), p.Id, 7, 9, 0)
 	assert.NoError(t, err)
 	require.Len(t, versions, 3)
 	assert.EqualValues(t, "v_2", versions[0].Id)
 	assert.EqualValues(t, "v_3", versions[1].Id)
 	assert.EqualValues(t, "v_4", versions[2].Id)
 
-	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 2, 3)
+	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 2, 3, 0)
 	assert.NoError(t, err)
 	assert.Empty(t, versions)
 
-	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 9, 8)
+	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 9, 8, 0)
 	assert.Error(t, err)
 	assert.Empty(t, versions)
 
-	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 10, 12)
+	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 10, 12, 0)
 	assert.NoError(t, err)
 	require.Len(t, versions, 1)
 	assert.EqualValues(t, "v_1", versions[0].Id)
 
-	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 0, 0)
+	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 0, 0, 0)
 	assert.NoError(t, err)
 	require.Len(t, versions, 5)
+
+	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 0, 0, 2)
+	require.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.Equal(t, "v_1", versions[0].Id)
+	assert.Equal(t, "v_2", versions[1].Id)
+
+	for _, maxVersions := range []int{-1, MaxWaterfallVersionLimit + 1} {
+		_, err = GetAllWaterfallVersions(t.Context(), p.Id, 0, 0, maxVersions)
+		assert.Error(t, err)
+	}
 }
 
 func TestGetVersionBuilds(t *testing.T) {
@@ -633,89 +674,98 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, VersionCollection, build.Collection))
 	}()
+	getVersions := func(ctx context.Context, projectID string, opts WaterfallOptions, pagingBackward bool) ([]Version, error) {
+		if opts.MaxOrder == 0 {
+			opts.MaxOrder = 1002
+		}
+		if opts.MinOrder == 0 {
+			opts.MinOrder = max(0, opts.MaxOrder-MaxWaterfallVersionLimit-1)
+		}
+		return GetActiveVersionsByTaskFilters(ctx, projectID, opts, pagingBackward)
+	}
 
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context){
 		"Finds versions with active tasks within the correct order range": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
+			versions, err := getVersions(ctx, "a_project",
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
-				}, 1002)
+				}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 2)
 		},
 		"Applies a task name filter (case sensitive)": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
+			versions, err := getVersions(ctx, "a_project",
 				WaterfallOptions{
 					Limit:             5,
 					Requesters:        evergreen.SystemVersionRequesterTypes,
 					Tasks:             []string{"Task 80"},
 					TaskCaseSensitive: true,
-				}, 1002)
+				}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
 			assert.Equal(t, versions[0].Id, "v_1")
 		},
 		"Applies a task name filter, no results (case sensitive)": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
+			versions, err := getVersions(ctx, "a_project",
 				WaterfallOptions{
 					Limit:             5,
 					Requesters:        evergreen.SystemVersionRequesterTypes,
 					Tasks:             []string{"task 80"},
 					TaskCaseSensitive: true,
-				}, 1002)
+				}, false)
 			assert.NoError(t, err)
 			assert.Len(t, versions, 0)
 		},
 		"Applies a task name filter (case insensitive)": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
+			versions, err := getVersions(ctx, "a_project",
 				WaterfallOptions{
 					Limit:             5,
 					Requesters:        evergreen.SystemVersionRequesterTypes,
 					Tasks:             []string{"task 80"},
 					TaskCaseSensitive: false,
-				}, 1002)
+				}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
 			assert.Equal(t, versions[0].Id, "v_1")
 		},
 		"Applies a task status filter": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
+			versions, err := getVersions(ctx, "a_project",
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
 					Statuses:   []string{evergreen.TaskFailed},
-				}, 1002)
+				}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 2)
 			assert.Equal(t, versions[0].Id, "v_2")
 			assert.Equal(t, versions[1].Id, "v_1")
 		},
 		"Applies a task name and task status filter with no matches": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
+			versions, err := getVersions(ctx, "a_project",
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
 					Statuses:   []string{evergreen.TaskFailed},
 					Tasks:      []string{"Task 80"},
-				}, 1002)
+				}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 0)
 		},
 		"Applies a task name and task status filter": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
+			versions, err := getVersions(ctx, "a_project",
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
 					Statuses:   []string{evergreen.TaskFailed},
 					Tasks:      []string{"Task 120"},
-				}, 1002)
+				}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
 			assert.Equal(t, versions[0].Id, "v_2")
 		},
 		"Applies a task name and build variant filter (case sensitive)": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
+			versions, err := getVersions(ctx, "a_project",
 				WaterfallOptions{
 					Limit:                5,
 					Requesters:           evergreen.SystemVersionRequesterTypes,
@@ -723,13 +773,13 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 					Variants:             []string{"Build Variant 1"},
 					TaskCaseSensitive:    true,
 					VariantCaseSensitive: true,
-				}, 1002)
+				}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
 			assert.Equal(t, versions[0].Id, "v_1")
 		},
 		"Applies a task name and build variant filter (case insensitive)": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
+			versions, err := getVersions(ctx, "a_project",
 				WaterfallOptions{
 					Limit:                5,
 					Requesters:           evergreen.SystemVersionRequesterTypes,
@@ -737,32 +787,32 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 					Variants:             []string{"build variant 1"},
 					TaskCaseSensitive:    false,
 					VariantCaseSensitive: false,
-				}, 1002)
+				}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
 			assert.Equal(t, versions[0].Id, "v_1")
 		},
 		"Applies a task status and build variant filter": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
+			versions, err := getVersions(ctx, "a_project",
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
 					Statuses:   []string{evergreen.TaskFailed},
 					Variants:   []string{"bv_2"},
-				}, 1002)
+				}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
 			assert.Equal(t, versions[0].Id, "v_2")
 		},
 		"Applies a task name, task status, requester, and build variant filter": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
+			versions, err := getVersions(ctx, "a_project",
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: []string{evergreen.RepotrackerVersionRequester},
 					Statuses:   []string{evergreen.TaskSucceeded},
 					Tasks:      []string{"Task 80"},
 					Variants:   []string{"bv_1"},
-				}, 1002)
+				}, false)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
 			assert.Equal(t, versions[0].Id, "v_1")
@@ -880,4 +930,157 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 			tCase(t, t.Context())
 		})
 	}
+}
+
+func TestWaterfallTagFilters(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
+	})
+
+	requester := evergreen.RepotrackerVersionRequester
+	versions := []Version{
+		{
+			Id: "v1", Identifier: "project", Requester: requester, RevisionOrderNumber: 100, Activated: utility.TruePtr(),
+			BuildIds: []string{"b1", "b2"},
+			BuildVariants: []VersionBuildStatus{
+				{BuildId: "b1", BuildVariant: "alpha", DisplayName: "Alpha", Tags: []string{"linux"}, ActivationStatus: ActivationStatus{Activated: true}},
+				{BuildId: "b2", BuildVariant: "beta", DisplayName: "Beta", Tags: []string{"arm"}},
+			},
+		},
+		{
+			Id: "v2", Identifier: "project", Requester: requester, RevisionOrderNumber: 101, Activated: utility.TruePtr(),
+			BuildIds: []string{"b3"},
+			BuildVariants: []VersionBuildStatus{
+				{BuildId: "b3", BuildVariant: "beta", DisplayName: "Beta", Tags: []string{"arm"}, ActivationStatus: ActivationStatus{Activated: true}},
+			},
+		},
+		{Id: "v3", Identifier: "project", Requester: requester, RevisionOrderNumber: 102, Activated: utility.TruePtr()},
+	}
+	for i := range versions {
+		require.NoError(t, versions[i].Insert(t.Context()))
+	}
+	builds := []build.Build{
+		{Id: "b1", Version: "v1", BuildVariant: "alpha", DisplayName: "Alpha", Activated: true, Tags: []string{"linux"}},
+		{Id: "b2", Version: "v1", BuildVariant: "beta", DisplayName: "Beta", Tags: []string{"arm"}},
+		{Id: "b3", Version: "v2", BuildVariant: "beta", DisplayName: "Beta", Activated: true, Tags: []string{"arm"}},
+	}
+	for i := range builds {
+		require.NoError(t, builds[i].Insert(t.Context()))
+	}
+	tasks := []task.Task{
+		{Id: "t1", DisplayName: "Owned", Project: "project", Version: "v1", RevisionOrderNumber: 100, Requester: requester, BuildId: "b1", BuildVariant: "alpha", BuildVariantDisplayName: "Alpha", BuildVariantTags: []string{"linux"}, Tags: []string{"team"}, Activated: true, DisplayStatusCache: evergreen.TaskFailed},
+		{Id: "t2", DisplayName: "Other", Project: "project", Version: "v1", RevisionOrderNumber: 100, Requester: requester, BuildId: "b1", BuildVariant: "alpha", BuildVariantDisplayName: "Alpha", BuildVariantTags: []string{"linux"}, Tags: []string{"other"}, Activated: true, DisplayStatusCache: evergreen.TaskSucceeded},
+		{Id: "t3", DisplayName: "Inactive Build", Project: "project", Version: "v1", RevisionOrderNumber: 100, Requester: requester, BuildId: "b2", BuildVariant: "beta", BuildVariantDisplayName: "Beta", BuildVariantTags: []string{"arm"}, Tags: []string{"team"}, Activated: true, DisplayStatusCache: evergreen.TaskFailed},
+		{Id: "t4", DisplayName: "Other Version", Project: "project", Version: "v2", RevisionOrderNumber: 101, Requester: requester, BuildId: "b3", BuildVariant: "beta", BuildVariantDisplayName: "Beta", BuildVariantTags: []string{"arm"}, Tags: []string{"team"}, Activated: true, DisplayStatusCache: evergreen.TaskSucceeded},
+		{Id: "display", DisplayName: "Display", Project: "project", Version: "v1", RevisionOrderNumber: 100, Requester: requester, BuildId: "b1", BuildVariant: "alpha", BuildVariantDisplayName: "Alpha", BuildVariantTags: []string{"linux"}, DisplayOnly: true, ExecutionTasks: []string{"exec1", "exec2"}, Activated: true, DisplayStatusCache: evergreen.TaskFailed},
+		{Id: "exec1", DisplayName: "Execution One", Project: "project", Version: "v1", RevisionOrderNumber: 100, Requester: requester, BuildId: "b1", BuildVariant: "alpha", BuildVariantDisplayName: "Alpha", BuildVariantTags: []string{"linux"}, DisplayTaskId: utility.ToStringPtr("display"), Tags: []string{"display-team"}, Activated: true, DisplayStatusCache: evergreen.TaskFailed},
+		{Id: "exec2", DisplayName: "Execution Two", Project: "project", Version: "v1", RevisionOrderNumber: 100, Requester: requester, BuildId: "b1", BuildVariant: "alpha", BuildVariantDisplayName: "Alpha", BuildVariantTags: []string{"linux"}, DisplayTaskId: utility.ToStringPtr("display"), Tags: []string{"display-team"}, Activated: true, DisplayStatusCache: evergreen.TaskFailed},
+	}
+	for i := range tasks {
+		require.NoError(t, tasks[i].Insert(t.Context()))
+	}
+
+	t.Run("VersionVariantTags", func(t *testing.T) {
+		for _, tc := range []struct {
+			name string
+			opts WaterfallOptions
+			want []string
+		}{
+			{name: "NoTagsIncludesUntaggedVersions", want: []string{"v3", "v2", "v1"}},
+			{name: "MatchesAnyVariantTag", opts: WaterfallOptions{VariantTags: []string{"linux", "arm"}}, want: []string{"v2", "v1"}},
+			{name: "TagsAreExactAndCaseSensitive", opts: WaterfallOptions{VariantTags: []string{"Linux"}}, want: []string{}},
+			{name: "MatchesVariantNameAndTagOnSameBuild", opts: WaterfallOptions{Variants: []string{"Alpha"}, VariantCaseSensitive: true, VariantTags: []string{"arm"}}, want: []string{}},
+			{name: "OmitsInactiveTaggedBuilds", opts: WaterfallOptions{VariantTags: []string{"arm"}, OmitInactiveBuilds: true}, want: []string{"v2"}},
+			{name: "PaginatesMatchingVariants", opts: WaterfallOptions{VariantTags: []string{"arm"}, MinOrder: 100, MaxOrder: 401}, want: []string{"v2"}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				tc.opts.Limit = 5
+				tc.opts.Requesters = []string{requester}
+				if tc.opts.MaxOrder == 0 {
+					if tc.opts.MinOrder != 0 {
+						tc.opts.MaxOrder = tc.opts.MinOrder + MaxWaterfallVersionLimit + 1
+					} else {
+						tc.opts.MaxOrder = 103
+					}
+				}
+				if tc.opts.MinOrder == 0 {
+					tc.opts.MinOrder = max(0, tc.opts.MaxOrder-MaxWaterfallVersionLimit-1)
+				}
+				found, err := GetActiveWaterfallVersions(t.Context(), "project", tc.opts, false)
+				require.NoError(t, err)
+				ids := []string{}
+				for _, v := range found {
+					ids = append(ids, v.Id)
+				}
+				assert.Equal(t, tc.want, ids)
+			})
+		}
+	})
+
+	t.Run("TaskFilteredVersions", func(t *testing.T) {
+		for _, tc := range []struct {
+			name string
+			opts WaterfallOptions
+			want []string
+		}{
+			{name: "MatchesTaskTags", opts: WaterfallOptions{TaskTags: []string{"team"}}, want: []string{"v2", "v1"}},
+			{name: "CombinesTaskAndVariantTags", opts: WaterfallOptions{TaskTags: []string{"team"}, VariantTags: []string{"linux"}}, want: []string{"v1"}},
+			{name: "MatchesExecutionTaskTagsWhenSelectingVersions", opts: WaterfallOptions{TaskTags: []string{"display-team"}, Tasks: []string{"Execution"}, TaskCaseSensitive: true, Statuses: []string{evergreen.TaskFailed}}, want: []string{"v1"}},
+			{name: "TagsDoNotMatchAcrossTasks", opts: WaterfallOptions{TaskTags: []string{"other"}, VariantTags: []string{"arm"}}, want: []string{}},
+			{name: "DoesNotOmitInactiveBuildsWhenSelectingByTask", opts: WaterfallOptions{TaskTags: []string{"team"}, VariantTags: []string{"arm"}, Statuses: []string{evergreen.TaskFailed}, OmitInactiveBuilds: true}, want: []string{"v1"}},
+			{name: "MatchesAnyTaskTag", opts: WaterfallOptions{TaskTags: []string{"missing", "team"}}, want: []string{"v2", "v1"}},
+			{name: "TagsAreExactAndCaseSensitive", opts: WaterfallOptions{TaskTags: []string{"TEAM"}}, want: []string{}},
+			{name: "PaginatesBackwardWithTagFilters", opts: WaterfallOptions{TaskTags: []string{"team"}, MinOrder: 100}, want: []string{"v2"}},
+			{name: "PaginatesForwardWithTagFilters", opts: WaterfallOptions{TaskTags: []string{"team"}, MaxOrder: 101}, want: []string{"v1"}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				tc.opts.Limit = 5
+				tc.opts.Requesters = []string{requester}
+				pagingBackward := tc.opts.MinOrder != 0
+				if pagingBackward {
+					tc.opts.MaxOrder = tc.opts.MinOrder + MaxWaterfallVersionLimit + 1
+				} else if tc.opts.MaxOrder != 0 {
+					tc.opts.MinOrder = max(0, tc.opts.MaxOrder-MaxWaterfallVersionLimit-1)
+				} else {
+					tc.opts.MaxOrder = 103
+					tc.opts.MinOrder = max(0, tc.opts.MaxOrder-MaxWaterfallVersionLimit-1)
+				}
+				found, err := GetActiveVersionsByTaskFilters(t.Context(), "project", tc.opts, pagingBackward)
+				require.NoError(t, err)
+				ids := []string{}
+				for _, v := range found {
+					ids = append(ids, v.Id)
+				}
+				assert.Equal(t, tc.want, ids)
+			})
+		}
+	})
+
+	t.Run("VersionBuilds", func(t *testing.T) {
+		for _, tc := range []struct {
+			name string
+			opts WaterfallOptions
+			want map[string][]string
+		}{
+			{name: "NoTagsPreservesAllTasks", want: map[string][]string{"b1": {"display", "t2", "t1"}, "b2": {"t3"}}},
+			{name: "MatchesTaskAndVariantTags", opts: WaterfallOptions{TaskTags: []string{"team"}, VariantTags: []string{"linux"}}, want: map[string][]string{"b1": {"t1"}}},
+			{name: "OmitsDisplayTaskWhenOnlyExecutionTasksHaveMatchingTags", opts: WaterfallOptions{TaskTags: []string{"display-team"}}, want: map[string][]string{}},
+			{name: "AppliesStatusToTaggedTask", opts: WaterfallOptions{TaskTags: []string{"team"}, Statuses: []string{evergreen.TaskSucceeded}}, want: map[string][]string{}},
+			{name: "OmitsInactiveTaggedBuilds", opts: WaterfallOptions{VariantTags: []string{"arm"}, OmitInactiveBuilds: true}, want: map[string][]string{}},
+			{name: "MatchesAnyVariantTag", opts: WaterfallOptions{VariantTags: []string{"missing", "arm"}}, want: map[string][]string{"b2": {"t3"}}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				found, err := GetVersionBuilds(t.Context(), versions[0], tc.opts)
+				require.NoError(t, err)
+				got := map[string][]string{}
+				for _, b := range found {
+					for _, task := range b.Tasks {
+						got[b.Id] = append(got[b.Id], task.Id)
+					}
+				}
+				assert.Equal(t, tc.want, got)
+			})
+		}
+	})
 }

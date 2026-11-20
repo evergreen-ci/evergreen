@@ -1,0 +1,13 @@
+mutation {
+  quarantineTest(
+    opts: {
+      taskId: "quarantine_target"
+      testName: "TestFoo"
+      existingJiraTicketsToLink: ["BF-123", "EVG-456"]
+      justification: "Fails intermittently on ubuntu."
+    }
+  ) {
+    id
+    isManuallyQuarantined
+  }
+}

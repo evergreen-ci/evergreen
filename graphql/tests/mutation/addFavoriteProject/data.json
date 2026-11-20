@@ -1,9 +1,7 @@
 {
     "project_ref": [
         {
-            "_id": {
-                "$oid": "5ca4dad4bedb55a6ed6e1321"
-            },
+            "_id": "spruce",
             "owner_name": "annie.black",
             "repo_name": "buildhost-configuration",
             "branch_name": "main",
@@ -30,6 +28,28 @@
             "disabled_stats_cache": false,
             "files_ignored_from_cache": [],
             "triggers": []
+        },
+        {
+            "_id": "restricted_secret_project_id",
+            "identifier": "restricted-secret-project",
+            "restricted": true,
+            "owner_name": "private-owner",
+            "repo_name": "private-repo",
+            "task_annotation_settings": {
+                "web_hook": {
+                    "endpoint": "https://example.com/file-ticket",
+                    "secret": "EVG_SECRET_CANARY_4F2A"
+                }
+            },
+            "workstation_config": {
+                "git_clone": true,
+                "setup_commands": [
+                    {
+                        "command": "private-setup-command",
+                        "directory": "private-directory"
+                    }
+                ]
+            }
         }
     ]
 }

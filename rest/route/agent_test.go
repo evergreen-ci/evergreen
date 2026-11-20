@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -29,6 +31,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
@@ -41,6 +44,83 @@ import (
 var (
 	taskSecret = "tasksecret"
 )
+
+func TestAttachFiles(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		setBadFileLink   func([]artifact.File)
+		getExpectedFiles func([]artifact.File) []artifact.File
+	}{
+		{
+			name:             "ValidLinksShouldBeStoredWithEncodingFlagsRespected",
+			getExpectedFiles: func(files []artifact.File) []artifact.File { return files },
+		},
+		{
+			name: "UnencodedJavaScriptShouldDropOnlyThatArtifact",
+			setBadFileLink: func(files []artifact.File) {
+				files[1].Link = "javascript:alert(document.domain)"
+			},
+			getExpectedFiles: func(files []artifact.File) []artifact.File { return []artifact.File{files[0], files[2]} },
+		},
+		{
+			name: "UnencodedAssociatedJavaScriptShouldDropOnlyThatAssociatedLink",
+			setBadFileLink: func(files []artifact.File) {
+				files[1].AssociatedLinks[0].Link = "javascript:alert(document.domain)"
+			},
+			getExpectedFiles: func(files []artifact.File) []artifact.File {
+				files[1].AssociatedLinks = files[1].AssociatedLinks[1:]
+				return files
+			},
+		},
+		{
+			name: "AllEmptyArtifactsShouldBeDroppedWithoutError",
+			setBadFileLink: func(files []artifact.File) {
+				for i := range files {
+					files[i] = artifact.File{}
+				}
+			},
+			getExpectedFiles: func([]artifact.File) []artifact.File { return nil },
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.WithValue(t.Context(), model.ApiTaskKey, &task.Task{Id: "ArtifactTask", DisplayName: "ArtifactTask"})
+			require.NoError(t, db.Clear(artifact.Collection))
+			t.Cleanup(func() { assert.NoError(t, db.Clear(artifact.Collection)) })
+			existing := artifact.Entry{TaskId: "ArtifactTask", TaskDisplayName: "ArtifactTask", Files: []artifact.File{
+				{Name: "Existing", Link: "https://example.com/existing.txt"},
+			}}
+			require.NoError(t, existing.Upsert(ctx))
+			files := []artifact.File{
+				{Name: "Report", Link: "http://fileserver/report#1%.txt"},
+				{Name: "SignedReport", Link: "https://example.com/report?X-Amz-Signature=signature&X-Amz-Expires=3600", DoNotEncodeLink: true,
+					AssociatedLinks: []artifact.AssociatedLink{
+						{Name: "Coverage", Link: "https://example.com/coverage#report.html", DoNotEncodeLink: true},
+						{Name: "T2", Link: "t2://internal.example.com/report", DoNotEncodeLink: true},
+					}},
+				{Name: "T2Report", Link: "t2://internal.example.com/report", DoNotEncodeLink: true},
+			}
+			if tc.setBadFileLink != nil {
+				tc.setBadFileLink(files)
+			}
+			body, err := json.Marshal(files)
+			require.NoError(t, err)
+			req := httptest.NewRequest(http.MethodPost, "/rest/v2/task/ArtifactTask/files", bytes.NewReader(body))
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "ArtifactTask"})
+			h := &attachFilesHandler{}
+			require.NoError(t, h.Parse(ctx, req))
+			resp := h.Run(ctx)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			// The report link is not marked DoNotEncodeLink, so it should be stored escaped.
+			files[0].Link = "http://fileserver/report%231%25.txt"
+			entry, err := artifact.FindOne(ctx, artifact.ByTaskIdAndExecution("ArtifactTask", 0))
+			require.NoError(t, err)
+			require.NotNil(t, entry)
+			assert.Equal(t, append(existing.Files, tc.getExpectedFiles(files)...), entry.Files)
+		})
+	}
+}
 
 func TestAgentGetExpansionsAndVars(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler){
@@ -107,7 +187,6 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
 			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
 			require.NoError(t, flags.Set(ctx))
-			// t.Context is canceled before cleanups run, so reset the flag with a fresh context.
 			t.Cleanup(func() {
 				require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
 			})
@@ -118,13 +197,27 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, "source-cache", data.SourceCacheBucket.Name)
 		},
+		"RunReturnsNoSourceCacheBucketForOptedOutProject": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
+			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
+			rh.settings.Buckets.SourceCacheOptOutProjects = []string{"p1"}
+			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
+			require.NoError(t, flags.Set(ctx))
+			t.Cleanup(func() {
+				require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
+			})
+			rh.taskID = "t1"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+			require.True(t, ok)
+			assert.Zero(t, data.SourceCacheBucket)
+		},
 		"RunReturnsSourceCacheBucketForPatchWhenFlagOverridesProjectSetting": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
 			require.NoError(t, db.Update(ctx, model.ProjectRefCollection, mgobson.M{model.ProjectRefIdKey: "p1"}, mgobson.M{"$set": mgobson.M{model.ProjectRefSourceCacheModeKey: model.SourceCacheModeDisabled}}))
 			require.NoError(t, db.Update(ctx, task.Collection, mgobson.M{task.IdKey: "t1"}, mgobson.M{"$set": mgobson.M{task.RequesterKey: evergreen.PatchVersionRequester}}))
 			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
 			require.NoError(t, flags.Set(ctx))
-			// t.Context is canceled before cleanups run, so reset the flag with a fresh context.
 			t.Cleanup(func() {
 				require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
 			})
@@ -1009,6 +1102,30 @@ func TestIsRepoAllowedForTask(t *testing.T) {
 	}
 }
 
+func TestCreateInstallationTokenRepoAccess(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.VersionCollection, model.ParserProjectCollection, manifest.Collection))
+
+	require.NoError(t, (&model.ProjectRef{Id: "p1", Owner: "myorg", Repo: "myrepo"}).Insert(t.Context()))
+	require.NoError(t, (&model.Version{Id: "v1", Identifier: "p1", Owner: "myorg", Repo: "old-repo", Requester: evergreen.RepotrackerVersionRequester}).Insert(t.Context()))
+	require.NoError(t, (&model.ParserProject{Id: "v1"}).Insert(t.Context()))
+	tsk := task.Task{Id: "t1", Project: "p1", Version: "v1", Requester: evergreen.RepotrackerVersionRequester}
+	require.NoError(t, tsk.Insert(t.Context()))
+
+	t.Run("UndeclaredRepoIsForbidden", func(t *testing.T) {
+		r, ok := makeCreateInstallationToken(env).(*createInstallationTokenForClone)
+		require.True(t, ok)
+		r.taskID, r.owner, r.repo = tsk.Id, "myorg", "secret-repo"
+		assert.Equal(t, http.StatusForbidden, r.Run(t.Context()).Status())
+	})
+	t.Run("VersionRepoIsAllowedAfterProjectRepoMoves", func(t *testing.T) {
+		allowed, err := isRepoAllowedForTask(t.Context(), env, &tsk, "myorg", "old-repo")
+		require.NoError(t, err)
+		assert.True(t, allowed)
+	})
+}
+
 func TestUpsertCheckRunParse(t *testing.T) {
 	ctx := t.Context()
 
@@ -1326,25 +1443,56 @@ tasks:
 }
 
 func TestCreateGitHubDynamicAccessToken(t *testing.T) {
-	route := "/task/%s/github_dynamic_access_token/%s/%s"
+	route := "/task/%s/github_dynamic_access_token/%s"
 	owner := "owner"
-	repo := "repo"
 	taskID := "taskID"
 	json := []byte(`{ "checks": "read", "actions": "write" }`)
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *createGitHubDynamicAccessToken){
 		"ParseErrorsOnEmptyOwner": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf(route, taskID, "", repo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
+			url := fmt.Sprintf(route, taskID, "")
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(json))
 			require.NoError(t, err)
 
-			options := map[string]string{"owner": "", "repo": repo, "task_id": taskID}
+			options := map[string]string{"owner": "", "task_id": taskID}
 			request = gimlet.SetURLVars(request, options)
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
 		},
-		"ParseSucceedsWithoutRepo": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf("/task/%s/github_dynamic_access_token/%s", taskID, owner)
+		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
+			url := fmt.Sprintf(route, "", owner)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(json))
+			require.NoError(t, err)
+
+			options := map[string]string{"owner": owner, "task_id": ""}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing task_id")
+		},
+		"ParseSucceedsOnNullBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
+			url := fmt.Sprintf(route, taskID, owner)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte("null")))
+			require.NoError(t, err)
+
+			options := map[string]string{"owner": owner, "task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			require.NoError(t, handler.Parse(ctx, request))
+			require.True(t, handler.noPermissionsRequested)
+		},
+		"ParseSucceedsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
+			url := fmt.Sprintf(route, taskID, owner)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte("{}")))
+			require.NoError(t, err)
+
+			options := map[string]string{"owner": owner, "task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			require.NoError(t, handler.Parse(ctx, request))
+			require.True(t, handler.noPermissionsRequested)
+		},
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
+			url := fmt.Sprintf(route, taskID, owner)
 			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(json))
 			require.NoError(t, err)
 
@@ -1353,51 +1501,8 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 
 			require.NoError(t, handler.Parse(ctx, request))
 			assert.Equal(t, owner, handler.owner)
-			assert.Empty(t, handler.repo)
-		},
-		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf(route, "", owner, repo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
-			require.NoError(t, err)
-
-			options := map[string]string{"owner": owner, "repo": repo, "task_id": ""}
-			request = gimlet.SetURLVars(request, options)
-
-			assert.ErrorContains(t, handler.Parse(ctx, request), "missing task_id")
-		},
-		"ParseSucceedsOnNullBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf(route, taskID, owner, repo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader([]byte("null")))
-			require.NoError(t, err)
-
-			options := map[string]string{"owner": owner, "repo": repo, "task_id": taskID}
-			request = gimlet.SetURLVars(request, options)
-
-			require.NoError(t, handler.Parse(ctx, request))
-			require.True(t, handler.allPermissions)
-		},
-		"ParseSucceedsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf(route, taskID, owner, repo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader([]byte("{}")))
-			require.NoError(t, err)
-
-			options := map[string]string{"owner": owner, "repo": repo, "task_id": taskID}
-			request = gimlet.SetURLVars(request, options)
-
-			require.NoError(t, handler.Parse(ctx, request))
-			require.True(t, handler.allPermissions)
-		},
-		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
-			url := fmt.Sprintf(route, taskID, owner, repo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
-			require.NoError(t, err)
-
-			options := map[string]string{"owner": owner, "repo": repo, "task_id": taskID}
-			request = gimlet.SetURLVars(request, options)
-
-			require.NoError(t, handler.Parse(ctx, request))
 			require.NotNil(t, handler.permissions)
-			require.False(t, handler.allPermissions)
+			assert.False(t, handler.noPermissionsRequested)
 			assert.Equal(t, "read", utility.FromStringPtr(handler.permissions.Checks))
 			assert.Equal(t, "write", utility.FromStringPtr(handler.permissions.Actions))
 		},
@@ -1412,6 +1517,31 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 			require.True(t, ok)
 
 			tCase(ctx, t, r)
+		})
+	}
+}
+
+func TestDefaultGitHubTokenPermissions(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		readOnlyEnabled bool
+		expected        model.GitHubDynamicTokenPermissionGroup
+	}{
+		"EnabledFlagShouldDefaultToContentsRead": {
+			readOnlyEnabled: true,
+			expected: model.GitHubDynamicTokenPermissionGroup{
+				Permissions: github.InstallationPermissions{
+					Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
+				},
+			},
+		},
+		"DisabledFlagShouldDefaultToAllPermissions": {
+			readOnlyEnabled: false,
+			expected:        model.GitHubDynamicTokenPermissionGroup{AllPermissions: true},
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			h := &createGitHubDynamicAccessToken{}
+			assert.Equal(t, tCase.expected, h.defaultGitHubTokenPermissions(tCase.readOnlyEnabled))
 		})
 	}
 }

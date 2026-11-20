@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	mongobson "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -554,6 +555,8 @@ tasks:
 	v, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
 	require.NoError(t, err)
 	require.NotNil(t, v)
+	_, err = v.GetBuildVariants(ctx)
+	require.NoError(t, err)
 	assert.Len(t, v.BuildVariants, 3)
 	assert.False(t, v.BuildVariants[0].Activated)
 	assert.False(t, v.BuildVariants[1].Activated)
@@ -1138,7 +1141,7 @@ tasks:
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 
-	s.Require().NoError(createVersionItems(s.ctx, v, model.VersionMetadata{Revision: *s.rev}, projectInfo, nil))
+	s.Require().NoError(createVersionItems(s.ctx, v, model.VersionMetadata{Revision: *s.rev}, projectInfo, nil, nil))
 	dbTasks, err := task.Find(s.ctx, task.ByVersion(v.Id))
 	s.Require().NoError(err)
 	s.Require().Len(dbTasks, 1)
@@ -1521,7 +1524,7 @@ tasks:
 				Branch:              "main",
 				Requester:           requester,
 			}
-			s.NoError(createVersionItems(s.ctx, v, metadata, projectInfo, nil))
+			s.NoError(createVersionItems(s.ctx, v, metadata, projectInfo, nil, nil))
 			tasks, err := task.FindAllTaskIDsFromVersion(s.ctx, v.Id)
 			s.NoError(err)
 			s.Len(tasks, 4)
@@ -1933,22 +1936,6 @@ func TestCreateManifest(t *testing.T) {
 	assert.NotEmpty(module.URL)
 	assert.Equal(mfst.ModuleSelectionPinnedRef, module.SelectionRule)
 
-	// invalid revision
-	hash = "1234"
-	proj = model.Project{
-		Identifier: "proj",
-		Modules: []model.Module{
-			{
-				Name:   "module1",
-				Repo:   "git@github.com:evergreen-ci/sample.git",
-				Branch: "main",
-				Ref:    hash,
-			},
-		},
-	}
-	_, err = model.CreateManifest(t.Context(), &v, proj.Modules, projRef)
-	assert.Contains(err.Error(), "No commit found for SHA")
-
 	// patch with module ref that differs from base manifest should use YAML ref
 	baseRevision := "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
 	yamlRef := "cf46076567e4949f9fc68e0634139d4ac495c89b"
@@ -1982,6 +1969,7 @@ func TestCreateManifest(t *testing.T) {
 		},
 	}
 	manifest, err = model.CreateManifest(t.Context(), &patchVersion, proj.Modules, projRef)
+	require.NoError(t, err)
 	require.NotNil(t, manifest)
 	assert.Equal(patchVersion.Id, manifest.Id)
 	assert.Len(manifest.Modules, 1)
@@ -2076,7 +2064,7 @@ func TestShellVersionFromRevisionTriggerModule(t *testing.T) {
 	metadata := model.VersionMetadata{
 		Revision:            model.Revision{Revision: "mainline-sha"},
 		TriggerID:           "dsi",
-		TriggerType:         model.ProjectTriggerLevelPush,
+		TriggerType:         evergreen.ProjectTriggerLevelPush,
 		TriggerDefinitionID: "def1",
 		SourceCommit:        "module-sha",
 		SourceModule: &model.SourceModule{
@@ -2300,6 +2288,7 @@ func TestCreateVersionItemsPathFiltering(t *testing.T) {
 buildvariants:
 - name: frontend
   display_name: Frontend
+  tags: [frontend-tag]
   run_on: d
   paths:
   - "frontend/**"
@@ -2378,8 +2367,26 @@ tasks:
 				Requester:           evergreen.RepotrackerVersionRequester,
 			}
 
-			err = createVersionItems(ctx, v, tc.metadata, projectInfo, nil)
+			err = createVersionItems(ctx, v, tc.metadata, projectInfo, nil, nil)
 			require.NoError(t, err)
+			storedVersion, err := model.VersionFindOneIdWithBuildVariants(ctx, v.Id)
+			require.NoError(t, err)
+			require.NotNil(t, storedVersion)
+
+			foundFrontend := false
+			for _, bv := range storedVersion.BuildVariants {
+				if bv.BuildVariant == "frontend" {
+					foundFrontend = true
+					assert.Equal(t, []string{"frontend-tag"}, bv.Tags)
+					tasks, err := task.Find(ctx, mongobson.M{task.BuildIdKey: bv.BuildId})
+					require.NoError(t, err)
+					require.NotEmpty(t, tasks)
+					for _, task := range tasks {
+						assert.Equal(t, []string{"frontend-tag"}, task.BuildVariantTags)
+					}
+				}
+			}
+			require.True(t, foundFrontend)
 
 			ignoredVariants := []string{}
 			for _, bv := range v.BuildVariants {

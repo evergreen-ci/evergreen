@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
@@ -24,16 +25,16 @@ func TestEvaluate(t *testing.T) {
 			args: []string{"--" + pathFlagName, samplePath},
 		},
 		{
-			name:        "CrossFileAnchorYAMLFailsWithoutFlag",
-			args:        []string{"--" + pathFlagName, crossFilePath},
-			expectError: true,
-		},
-		{
-			name: "CrossFileAnchorYAMLSucceedsWithFlag",
-			args: []string{"--" + pathFlagName, crossFilePath, "--" + crossFileAnchorsFlagName},
+			name: "SucceedsWithCrossFileAnchors",
+			args: []string{"--" + pathFlagName, crossFilePath},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			// Keep the command hermetic: without a mock client any server
+			// communication hits the default API server.
+			mockClient = &client.Mock{}
+			defer func() { mockClient = nil }()
+
 			app := cli.NewApp()
 			app.Commands = []cli.Command{Evaluate()}
 
@@ -42,7 +43,6 @@ func TestEvaluate(t *testing.T) {
 
 			childSet := flag.NewFlagSet("evaluate", 0)
 			childSet.String(pathFlagName, "", "")
-			childSet.Bool(crossFileAnchorsFlagName, false, "")
 			require.NoError(t, childSet.Parse(tc.args))
 
 			ctx := cli.NewContext(app, childSet, cli.NewContext(app, parentSet, nil))

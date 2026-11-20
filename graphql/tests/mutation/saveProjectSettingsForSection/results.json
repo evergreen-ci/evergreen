@@ -253,7 +253,8 @@
               "testSelection": {
                 "allowed": true,
                 "defaultEnabled": true,
-                "mainlineDefaultEnabled": true
+                "mainlineDefaultEnabled": true,
+                "quarantineJiraTicketsRequired": true
               }
             }
           }

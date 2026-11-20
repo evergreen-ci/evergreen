@@ -421,6 +421,11 @@ db.patch_intents.ensureIndex({
     "unique": true,
     "sparse": true
 })
+db.patch_intents.ensureIndex({
+    "base_repo_name": 1,
+    "pr_number": 1,
+    "created_at": 1
+})
 
 //======github_hooks======//
 db.github_hooks.ensureIndex({
@@ -445,6 +450,17 @@ db.subscriptions.createIndex({
 }, {
     sparse: true,
     expireAfterSeconds: 1209600 // 2 weeks
+})
+
+//======failed_webhooks======//
+db.failed_webhooks.createIndex({
+    "failed_at": 1,
+}, {
+    expireAfterSeconds: 5 * 24 * 3600 // 5 days
+})
+db.failed_webhooks.ensureIndex({
+    "project": 1,
+    "failed_at": -1
 })
 
 //======users======//

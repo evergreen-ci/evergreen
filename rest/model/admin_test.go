@@ -415,6 +415,7 @@ func TestAPIBucketsConfigServiceRoundTrip(t *testing.T) {
 		LogBucketFailedTasks:            bucket("failed"),
 		TestResultsBucket:               bucket("tr"),
 		LongRetentionProjects:           []string{"p1", "p2"},
+		SourceCacheOptOutProjects:       []string{"p1", "p2"},
 		RetryFailedLogMoveLookbackDays:  14,
 		RetryFailedLogMoveMaxJobsPerRun: 25,
 		Credentials:                     evergreen.S3Credentials{Key: "k", Secret: "s", Bucket: "cb"},

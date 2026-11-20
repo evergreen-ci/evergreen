@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -229,4 +230,53 @@ func TestDownloadUrls(t *testing.T) {
 		require.Len(t, entries, 1)
 		assert.Equal(t, "my-artifact.tar.gz", entries[0].Name())
 	})
+}
+
+func TestResolveModuleDir(t *testing.T) {
+	cloneDir := filepath.Join(os.TempDir(), "source-project")
+	absolutePrefix := "/etc"
+	if runtime.GOOS == "windows" {
+		absolutePrefix = `C:\etc`
+	}
+
+	for testName, testCase := range map[string]struct {
+		modulePrefix string
+		expected     string
+		expectError  bool
+	}{
+		"EmptyPrefixClonesIntoRoot": {
+			modulePrefix: "",
+			expected:     filepath.Join(cloneDir, "module"),
+		},
+		"NestedPrefixStaysInsideRoot": {
+			modulePrefix: filepath.Join("modules", "subdir"),
+			expected:     filepath.Join(cloneDir, "modules", "subdir", "module"),
+		},
+		"InternalDotDotThatStaysInsideRoot": {
+			modulePrefix: filepath.Join("modules", "..", "subdir"),
+			expected:     filepath.Join(cloneDir, "subdir", "module"),
+		},
+		"ParentTraversalPrefixIsRejected": {
+			modulePrefix: "..",
+			expectError:  true,
+		},
+		"DeepTraversalPrefixIsRejected": {
+			modulePrefix: filepath.Join("..", "..", "..", "escape"),
+			expectError:  true,
+		},
+		"AbsolutePrefixIsRejected": {
+			modulePrefix: absolutePrefix,
+			expectError:  true,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			dir, err := resolveModuleDir(cloneDir, testCase.modulePrefix, "module")
+			if testCase.expectError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, testCase.expected, dir)
+		})
+	}
 }

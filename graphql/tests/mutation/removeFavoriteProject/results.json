@@ -1,13 +1,39 @@
+{
+  "tests": [
     {
-        "query_file": "success.graphql",
-        "result": {
-            "data": {
-                "removeFavoriteProject": {
-                    "identifier": "buildhost-test",
-                    "repo": "buildhost-configuration",
-                    "owner": "annie.black",
-                    "displayName": "buildhost-test"
-                }
-            }
+      "query_file": "success.graphql",
+      "result": {
+        "data": {
+          "removeFavoriteProject": {
+            "identifier": "buildhost-test",
+            "repo": "buildhost-configuration",
+            "owner": "annie.black",
+            "displayName": "buildhost-test"
+          }
         }
+      },
+      "test_user_id": "favorite_user"
+    },
+    {
+      "name": "RestrictedProjectWithoutAccessShouldBeForbidden",
+      "query_file": "restricted.graphql",
+      "test_user_id": "favorite_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'favorite_user' does not have permission to 'view tasks' for the project 'restricted_secret_project_id'",
+            "path": [
+              "removeFavoriteProject",
+              "opts",
+              "projectIdentifier"
+            ],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
     }
+  ]
+}

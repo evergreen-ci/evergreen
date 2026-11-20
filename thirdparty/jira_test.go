@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/trivago/tgo/tcontainer"
 )
@@ -111,4 +112,23 @@ func TestJiraIntegration(t *testing.T) {
 			}
 		})
 	})
+}
+
+func TestNormalizeJiraTicketKey(t *testing.T) {
+	assert.Equal(t, "BF-123", NormalizeJiraTicketKey("  bf-123 "))
+	assert.Equal(t, "BF-123", NormalizeJiraTicketKey("BF-123"))
+}
+
+func TestNormalizeJiraTicketKeys(t *testing.T) {
+	assert.Equal(t, []string{"BF-123", "EVG-4"}, NormalizeJiraTicketKeys([]string{"bf-123", " evg-4"}))
+	assert.Empty(t, NormalizeJiraTicketKeys(nil))
+}
+
+func TestIsValidJiraTicketKey(t *testing.T) {
+	for _, key := range []string{"BF-123", "EVG_2-1", "A1-9"} {
+		assert.True(t, IsValidJiraTicketKey(key), key)
+	}
+	for _, key := range []string{"", "bf-123", "BF123", "BF-", "-123", "1BF-123", " BF-123", "BF-12a"} {
+		assert.False(t, IsValidJiraTicketKey(key), key)
+	}
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/util"
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -275,7 +276,7 @@ func (t *taskTriggers) makeData(ctx context.Context, sub *event.Subscription, pa
 		DisplayName:     displayName,
 		Object:          "task",
 		Project:         projectRef.Identifier,
-		URL:             taskLink(t.uiConfig.Url, t.task.Id, t.task.Execution),
+		URL:             util.TaskURL(t.uiConfig.Url, t.task.Id, t.task.Execution),
 		PastTenseStatus: status,
 		apiModel:        t.apiTask,
 		Task:            t.task,
@@ -285,7 +286,7 @@ func (t *taskTriggers) makeData(ctx context.Context, sub *event.Subscription, pa
 	slackColor := evergreenFailColor
 
 	if len(t.task.OldTaskId) != 0 {
-		data.URL = taskLink(t.uiConfig.Url, t.task.OldTaskId, t.task.Execution)
+		data.URL = util.TaskURL(t.uiConfig.Url, t.task.OldTaskId, t.task.Execution)
 	}
 
 	if data.PastTenseStatus == evergreen.TaskSystemFailed {

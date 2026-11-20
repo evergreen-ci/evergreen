@@ -51,6 +51,9 @@ type BucketsConfig struct {
 	TestResultsBucket BucketConfig `bson:"test_results_bucket" json:"test_results_bucket" yaml:"test_results_bucket"`
 	// SourceCacheBucket is the bucket information for the git.get_project source cache.
 	SourceCacheBucket BucketConfig `bson:"source_cache_bucket" json:"source_cache_bucket" yaml:"source_cache_bucket"`
+	// SourceCacheOptOutProjects is the list of project IDs that never use the
+	// source cache, even when SourceCacheAllProjectsEnabled is set.
+	SourceCacheOptOutProjects []string `bson:"source_cache_opt_out_projects" json:"source_cache_opt_out_projects" yaml:"source_cache_opt_out_projects"`
 	// Credentials for accessing the LogBucket.
 	Credentials S3Credentials `bson:"credentials" json:"credentials" yaml:"credentials"`
 }
@@ -64,6 +67,7 @@ var (
 	BucketsConfigRetryFailedLogMoveMaxJobsPerRunKey = bsonutil.MustHaveTag(BucketsConfig{}, "RetryFailedLogMoveMaxJobsPerRun")
 	BucketsConfigTestResultsBucketKey               = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
 	BucketsConfigSourceCacheBucketKey               = bsonutil.MustHaveTag(BucketsConfig{}, "SourceCacheBucket")
+	BucketsConfigSourceCacheOptOutProjectsKey       = bsonutil.MustHaveTag(BucketsConfig{}, "SourceCacheOptOutProjects")
 	BucketsConfigCredentialsKey                     = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
 )
 
@@ -122,6 +126,7 @@ func (c *BucketsConfig) Set(ctx context.Context) error {
 				BucketsConfigRetryFailedLogMoveMaxJobsPerRunKey: c.RetryFailedLogMoveMaxJobsPerRun,
 				BucketsConfigTestResultsBucketKey:               c.TestResultsBucket,
 				BucketsConfigSourceCacheBucketKey:               c.SourceCacheBucket,
+				BucketsConfigSourceCacheOptOutProjectsKey:       c.SourceCacheOptOutProjects,
 				BucketsConfigCredentialsKey:                     c.Credentials,
 			},
 		}),

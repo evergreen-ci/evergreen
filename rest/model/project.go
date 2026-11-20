@@ -489,13 +489,17 @@ type APITestSelectionSettings struct {
 	// Whether or not test selection is enabled by default for mainline commit
 	// tasks.
 	MainlineDefaultEnabled *bool `json:"mainline_default_enabled,omitzero" extensions:"x-nullable"`
+	// Whether or not users must link at least one Jira ticket when manually
+	// quarantining a test.
+	QuarantineJiraTicketsRequired *bool `json:"quarantine_jira_tickets_required,omitzero" extensions:"x-nullable"`
 }
 
 func (ts *APITestSelectionSettings) ToService() model.TestSelectionSettings {
 	return model.TestSelectionSettings{
-		Allowed:                utility.BoolPtrCopy(ts.Allowed),
-		DefaultEnabled:         utility.BoolPtrCopy(ts.DefaultEnabled),
-		MainlineDefaultEnabled: utility.BoolPtrCopy(ts.MainlineDefaultEnabled),
+		Allowed:                       utility.BoolPtrCopy(ts.Allowed),
+		DefaultEnabled:                utility.BoolPtrCopy(ts.DefaultEnabled),
+		MainlineDefaultEnabled:        utility.BoolPtrCopy(ts.MainlineDefaultEnabled),
+		QuarantineJiraTicketsRequired: utility.BoolPtrCopy(ts.QuarantineJiraTicketsRequired),
 	}
 }
 
@@ -503,6 +507,7 @@ func (ts *APITestSelectionSettings) BuildFromService(settings model.TestSelectio
 	ts.Allowed = utility.BoolPtrCopy(settings.Allowed)
 	ts.DefaultEnabled = utility.BoolPtrCopy(settings.DefaultEnabled)
 	ts.MainlineDefaultEnabled = utility.BoolPtrCopy(settings.MainlineDefaultEnabled)
+	ts.QuarantineJiraTicketsRequired = utility.BoolPtrCopy(settings.QuarantineJiraTicketsRequired)
 }
 
 type APITaskOwnershipSettings struct {
@@ -510,18 +515,33 @@ type APITaskOwnershipSettings struct {
 	DefaultMothraTeam *string `json:"default_mothra_team,omitempty"`
 	// DefaultMothraTeamForBreakingCommit is the default Mothra team for breaking commit tasks.
 	DefaultMothraTeamForBreakingCommit *string `json:"default_mothra_team_for_breaking_commit,omitempty"`
+	// GeneratedTaskValidationPrefix is the required prefix for generated task
+	// tags. Only one of the task's tags needs to have this prefix.
+	GeneratedTaskValidationPrefix *string `json:"generated_task_validation_prefix,omitempty"`
+	// TrackGeneratedTaskTagValidation enables tracking generated tasks that
+	// don't have the GeneratedTaskValidationPrefix.
+	TrackGeneratedTaskTagValidation *bool `json:"track_generated_task_tag_validation,omitzero" extensions:"x-nullable"`
+	// BlockTaskGenerationOnTagValidation enables failing generate.tasks if any
+	// task it generates doesn't have GeneratedTaskValidationPrefix.
+	BlockTaskGenerationOnTagValidation *bool `json:"block_task_generation_on_tag_validation,omitzero" extensions:"x-nullable"`
 }
 
 func (to *APITaskOwnershipSettings) ToService() model.TaskOwnershipSettings {
 	return model.TaskOwnershipSettings{
 		DefaultMothraTeam:                  utility.FromStringPtr(to.DefaultMothraTeam),
 		DefaultMothraTeamForBreakingCommit: utility.FromStringPtr(to.DefaultMothraTeamForBreakingCommit),
+		GeneratedTaskValidationPrefix:      utility.FromStringPtr(to.GeneratedTaskValidationPrefix),
+		TrackGeneratedTaskTagValidation:    utility.BoolPtrCopy(to.TrackGeneratedTaskTagValidation),
+		BlockTaskGenerationOnTagValidation: utility.BoolPtrCopy(to.BlockTaskGenerationOnTagValidation),
 	}
 }
 
 func (to *APITaskOwnershipSettings) BuildFromService(settings model.TaskOwnershipSettings) {
 	to.DefaultMothraTeam = utility.ToStringPtr(settings.DefaultMothraTeam)
 	to.DefaultMothraTeamForBreakingCommit = utility.ToStringPtr(settings.DefaultMothraTeamForBreakingCommit)
+	to.GeneratedTaskValidationPrefix = utility.ToStringPtr(settings.GeneratedTaskValidationPrefix)
+	to.TrackGeneratedTaskTagValidation = utility.BoolPtrCopy(settings.TrackGeneratedTaskTagValidation)
+	to.BlockTaskGenerationOnTagValidation = utility.BoolPtrCopy(settings.BlockTaskGenerationOnTagValidation)
 }
 
 type APIProjectRef struct {
@@ -591,6 +611,8 @@ type APIProjectRef struct {
 	DebugSpawnHostsDisabled *bool `json:"debug_spawn_hosts_disabled" extensions:"x-nullable"`
 	// Use bisect stepback instead of linear.
 	StepbackBisect *bool `json:"stepback_bisect" extensions:"x-nullable"`
+	// Step back mainline and push-triggered versions together.
+	StepbackPushTriggers *bool `json:"stepback_push_triggers" extensions:"x-nullable"`
 	// Enable setting project aliases from version-controlled project configs.
 	VersionControlEnabled *bool `json:"version_control_enabled" extensions:"x-nullable"`
 	// Disable stats caching.
@@ -708,6 +730,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		WaterfallDisabled:                utility.BoolPtrCopy(p.WaterfallDisabled),
 		StepbackDisabled:                 utility.BoolPtrCopy(p.StepbackDisabled),
 		StepbackBisect:                   utility.BoolPtrCopy(p.StepbackBisect),
+		StepbackPushTriggers:             utility.BoolPtrCopy(p.StepbackPushTriggers),
 		VersionControlEnabled:            utility.BoolPtrCopy(p.VersionControlEnabled),
 		DisabledStatsCache:               utility.BoolPtrCopy(p.DisabledStatsCache),
 		SourceCacheMode:                  sourceCacheModeFromPtr(p.SourceCacheMode),
@@ -821,6 +844,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.WaterfallDisabled = utility.BoolPtrCopy(projectRef.WaterfallDisabled)
 	p.StepbackDisabled = utility.BoolPtrCopy(projectRef.StepbackDisabled)
 	p.StepbackBisect = utility.BoolPtrCopy(projectRef.StepbackBisect)
+	p.StepbackPushTriggers = utility.BoolPtrCopy(projectRef.StepbackPushTriggers)
 	p.VersionControlEnabled = utility.BoolPtrCopy(projectRef.VersionControlEnabled)
 	p.DisabledStatsCache = utility.BoolPtrCopy(projectRef.DisabledStatsCache)
 	p.SourceCacheMode = sourceCacheModePtr(projectRef.SourceCacheMode)

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -19,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/cache"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/evergreen-ci/utility/ttlcache"
 	"github.com/gonzojive/httpcache"
@@ -58,6 +58,13 @@ const (
 	githubCachedAttribute      = "evergreen.github.cached"
 	githubLocalCachedAttribute = "evergreen.github.local_cached"
 	githubAuthMethodAttribute  = "evergreen.github.auth_method"
+
+	githubRateLimitLimitAttribute     = "evergreen.github.rate_limit.limit"
+	githubRateLimitRemainingAttribute = "evergreen.github.rate_limit.remaining"
+	githubRateLimitUsedAttribute      = "evergreen.github.rate_limit.used"
+	githubRateLimitResetAttribute     = "evergreen.github.rate_limit.reset"
+	githubRateLimitResourceAttribute  = "evergreen.github.rate_limit.resource"
+	githubRequestIDAttribute          = "evergreen.github.request_id"
 )
 
 var githubWritePermissions = []string{
@@ -332,7 +339,11 @@ func (c *retryConfig) shouldIgnoreCode(statusCode int) bool {
 
 func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunction {
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
-		trace.SpanFromContext(req.Context()).SetAttributes(attribute.Int(githubRetriesAttribute, index))
+		span := trace.SpanFromContext(req.Context())
+		span.SetAttributes(attribute.Int(githubRetriesAttribute, index))
+		if resp != nil {
+			span.SetAttributes(githubResponseAttributes(resp.Header)...)
+		}
 
 		if !(config.retry || config.retry404) {
 			return false
@@ -633,6 +644,12 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref string, ghAppAuth
 			defer resp.Body.Close()
 			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 			if resp.StatusCode == http.StatusNotFound {
+				// GitHub also returns a 404 when the ref doesn't exist, which
+				// is distinguishable only by the error message.
+				var errResp *github.ErrorResponse
+				if errors.As(err, &errResp) && strings.HasPrefix(errResp.Message, "No commit found for the ref") {
+					return RevisionNotFoundError{owner: owner, repo: repo, revision: ref}
+				}
 				return FileNotFoundError{filepath: path}
 			}
 			if err != nil {
@@ -795,11 +812,36 @@ func GetGithubMergeBaseRevision(ctx context.Context, owner, repo, baseRevision, 
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
-	compare, err := getCommitComparison(ctx, owner, repo, baseRevision, currentCommitHash, caller)
+	compare, err := getCommitComparison(ctx, owner, repo, baseRevision, currentCommitHash, caller, nil)
 	if err != nil {
 		return "", errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", baseRevision, currentCommitHash)
 	}
 	return *compare.MergeBaseCommit.SHA, nil
+}
+
+// GetCommitComparisonStatus returns how headRevision compares to baseRevision
+// in a GitHub repo, which is one of "ahead", "behind", "identical", or
+// "diverged".
+func GetCommitComparisonStatus(ctx context.Context, owner, repo, baseRevision, headRevision string) (string, error) {
+	caller := "GetCommitComparisonStatus"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+	// Only the status is needed. Every page includes it, even pages past the
+	// last commit, but only the first page includes the changed files, so
+	// request a later page to skip them.
+	opts := &github.ListOptions{Page: 2, PerPage: 1}
+	compare, err := getCommitComparison(ctx, owner, repo, baseRevision, headRevision, caller, opts)
+	if err != nil {
+		return "", errors.Wrapf(err, "comparing commits '%s' and '%s'", baseRevision, headRevision)
+	}
+	if compare.GetStatus() == "" {
+		return "", errors.Errorf("GitHub compare response for commits '%s' and '%s' is missing status", baseRevision, headRevision)
+	}
+	return compare.GetStatus(), nil
 }
 
 // IsMergeBaseAllowed will return true if the input merge base is newer than the oldest allowed merge base
@@ -812,7 +854,7 @@ func IsMergeBaseAllowed(ctx context.Context, owner, repo, oldestAllowedMergeBase
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
-	compare, err := getCommitComparison(ctx, owner, repo, mergeBase, oldestAllowedMergeBase, caller)
+	compare, err := getCommitComparison(ctx, owner, repo, mergeBase, oldestAllowedMergeBase, caller, nil)
 	if err != nil {
 		return false, errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", oldestAllowedMergeBase, mergeBase)
 	}
@@ -824,7 +866,7 @@ func IsMergeBaseAllowed(ctx context.Context, owner, repo, oldestAllowedMergeBase
 	return status == "behind" || status == "identical", nil
 }
 
-func getCommitComparison(ctx context.Context, owner, repo, baseRevision, currentCommitHash, caller string) (*github.CommitsComparison, error) {
+func getCommitComparison(ctx context.Context, owner, repo, baseRevision, currentCommitHash, caller string, opts *github.ListOptions) (*github.CommitsComparison, error) {
 	span := trace.SpanFromContext(ctx)
 
 	token, err := getInstallationToken(ctx, owner, repo, nil)
@@ -836,7 +878,7 @@ func getCommitComparison(ctx context.Context, owner, repo, baseRevision, current
 	defer githubClient.Close()
 
 	compare, resp, err := githubClient.Repositories.CompareCommits(ctx,
-		owner, repo, baseRevision, currentCommitHash, nil)
+		owner, repo, baseRevision, currentCommitHash, opts)
 	if resp != nil {
 		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
@@ -1023,6 +1065,30 @@ func parseGithubRateLimit(h http.Header) github.Rate {
 	}
 
 	return rate
+}
+
+func githubResponseAttributes(h http.Header) []attribute.KeyValue {
+	var attrs []attribute.KeyValue
+	if requestID := h.Get("X-GitHub-Request-Id"); requestID != "" {
+		attrs = append(attrs, attribute.String(githubRequestIDAttribute, requestID))
+	}
+	if h.Get("X-Ratelimit-Limit") == "" {
+		return attrs
+	}
+
+	rate := parseGithubRateLimit(h)
+	attrs = append(attrs,
+		attribute.Int(githubRateLimitLimitAttribute, rate.Limit),
+		attribute.Int(githubRateLimitRemainingAttribute, rate.Remaining),
+		attribute.String(githubRateLimitResourceAttribute, h.Get("X-Ratelimit-Resource")),
+	)
+	if used, err := strconv.Atoi(h.Get("X-Ratelimit-Used")); err == nil {
+		attrs = append(attrs, attribute.Int(githubRateLimitUsedAttribute, used))
+	}
+	if !rate.Reset.IsZero() {
+		attrs = append(attrs, attribute.String(githubRateLimitResetAttribute, rate.Reset.UTC().Format(time.RFC3339)))
+	}
+	return attrs
 }
 
 // GithubAuthenticate does a POST to github with the code that it received, the ClientId, ClientSecret
@@ -1542,7 +1608,16 @@ func githubAppSlugForUser(appUser *github.User, userID int, botSuffix string) (s
 // GitHubUserHasWritePermission returns true if the given user has write permission for the repo.
 // Returns an error if the user isn't found or the token isn't authed for this repo.
 func GitHubUserHasWritePermission(ctx context.Context, owner, repo, username string) (bool, error) {
-	caller := "userHasWritePermission"
+	return gitHubUserHasPermission(ctx, "userHasWritePermission", owner, repo, username, githubWritePermissions)
+}
+
+// GitHubUserHasReadPermission returns true if the given user can read the repo.
+// Returns an error if the user isn't found or the token isn't authed for this repo.
+func GitHubUserHasReadPermission(ctx context.Context, owner, repo, username string) (bool, error) {
+	return gitHubUserHasPermission(ctx, "userHasReadPermission", owner, repo, username, allGitHubPermissions)
+}
+
+func gitHubUserHasPermission(ctx context.Context, caller, owner, repo, username string, permissions []string) (bool, error) {
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -1571,7 +1646,43 @@ func GitHubUserHasWritePermission(ctx context.Context, owner, repo, username str
 		return false, errors.Errorf("GitHub returned an invalid response to request for user permissions for '%s'", username)
 	}
 
-	return utility.StringSliceContains(githubWritePermissions, permissionLevel.GetPermission()), nil
+	return utility.StringSliceContains(permissions, permissionLevel.GetPermission()), nil
+}
+
+// IsGitHubRepoPublic returns true if the repo is visible to anyone on GitHub.
+func IsGitHubRepoPublic(ctx context.Context, owner, repo string) (bool, error) {
+	caller := "IsGitHubRepoPublic"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
+	if err != nil {
+		return false, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(ctx, token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	ghRepo, resp, err := githubClient.Repositories.Get(ctx, owner, repo)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		if resp.StatusCode == http.StatusNotFound {
+			return false, nil
+		}
+		if err != nil {
+			return false, parseGithubErrorResponse(resp)
+		}
+	}
+	if err != nil {
+		return false, errors.Wrapf(err, "getting repo '%s/%s'", owner, repo)
+	}
+
+	return !ghRepo.GetPrivate(), nil
 }
 
 // ValidateGitHubPermission checks if the given permission is a valid GitHub permission.
@@ -1754,7 +1865,7 @@ func GetChangedFilesBetweenCommits(ctx context.Context, owner, repo, base, head 
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
-	commits, err := getCommitComparison(ctx, owner, repo, base, head, caller)
+	commits, err := getCommitComparison(ctx, owner, repo, base, head, caller, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", base, head)
 	}
@@ -1949,10 +2060,6 @@ func getCheckRunConclusion(status string) string {
 	}
 }
 
-func makeTaskLink(uiBase string, taskID string, execution int) string {
-	return fmt.Sprintf("%s/task/%s/%d", uiBase, url.PathEscape(taskID), execution)
-}
-
 func makeCheckRunName(task *task.Task) string {
 	return fmt.Sprintf("%s/%s", task.BuildVariantDisplayName, task.DisplayName)
 }
@@ -1979,7 +2086,7 @@ func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, ta
 		CompletedAt: &github.Timestamp{Time: task.FinishTime},
 		Status:      utility.ToStringPtr(githubCheckRunCompleted),
 		Conclusion:  utility.ToStringPtr(getCheckRunConclusion(task.Status)),
-		DetailsURL:  utility.ToStringPtr(makeTaskLink(uiBase, task.Id, task.Execution)),
+		DetailsURL:  utility.ToStringPtr(util.TaskURL(uiBase, task.Id, task.Execution)),
 	}
 
 	var checkRun *github.CheckRun
@@ -2028,7 +2135,7 @@ func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID 
 		Name:       makeCheckRunName(task),
 		Status:     utility.ToStringPtr(githubCheckRunCompleted),
 		Conclusion: utility.ToStringPtr(getCheckRunConclusion(task.Status)),
-		DetailsURL: utility.ToStringPtr(makeTaskLink(uiBase, task.Id, task.Execution)),
+		DetailsURL: utility.ToStringPtr(util.TaskURL(uiBase, task.Id, task.Execution)),
 		Output:     output,
 	}
 

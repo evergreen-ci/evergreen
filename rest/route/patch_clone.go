@@ -139,14 +139,13 @@ func (h *patchCloneHandler) Run(ctx context.Context) gimlet.Responder {
 // submission permission is checked when the processor spawns the child patches.
 func cloneIntentParams(source *patch.Patch, raw *restModel.APIRawPatch, description string) patch.CLIIntentParams {
 	params := patch.CLIIntentParams{
-		BaseGitHash:                 source.Githash,
-		PatchContent:                raw.Patch.Diff,
-		Path:                        source.Path,
-		Description:                 description,
-		Parameters:                  source.Parameters,
-		TriggerAliases:              source.Triggers.Aliases,
-		LocalModuleIncludes:         source.LocalModuleIncludes,
-		CrossFileYAMLAnchorsEnabled: source.CrossFileYAMLAnchorsEnabled,
+		BaseGitHash:         source.Githash,
+		PatchContent:        raw.Patch.Diff,
+		Path:                source.Path,
+		Description:         description,
+		Parameters:          source.Parameters,
+		TriggerAliases:      source.Triggers.Aliases,
+		LocalModuleIncludes: source.LocalModuleIncludes,
 	}
 	if source.Version != "" {
 		// Reuse the source patch's exact build variant/task selection through the repeat logic rather than copying

@@ -102,11 +102,8 @@ func (i *mergingIterator) Item() LogLine { return i.currentItem }
 func (i *mergingIterator) Close() error {
 	catcher := grip.NewBasicCatcher()
 
-	for {
-		it := i.iteratorHeap.SafePop()
-		if it == nil {
-			break
-		}
+	// Close every child iterator.
+	for _, it := range i.iterators {
 		catcher.Add(it.Close())
 	}
 

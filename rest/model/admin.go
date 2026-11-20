@@ -796,6 +796,7 @@ type APIBucketsConfig struct {
 	RetryFailedLogMoveMaxJobsPerRun  *int             `json:"retry_failed_log_move_max_jobs_per_run,omitempty"`
 	TestResultsBucket                APIBucketConfig  `json:"test_results_bucket"`
 	SourceCacheBucket                APIBucketConfig  `json:"source_cache_bucket"`
+	SourceCacheOptOutProjects        []string         `json:"source_cache_opt_out_projects"`
 	InternalBuckets                  []string         `json:"internal_buckets"`
 	Credentials                      APIS3Credentials `json:"credentials"`
 }
@@ -875,6 +876,7 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.SourceCacheBucket.buildFromService(v.SourceCacheBucket)
 
 		a.LongRetentionProjects = v.LongRetentionProjects
+		a.SourceCacheOptOutProjects = v.SourceCacheOptOutProjects
 		a.RetryFailedLogMoveLookbackDays = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
 		a.RetryFailedLogMoveLookbackMonths = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
 		a.RetryFailedLogMoveMaxJobsPerRun = utility.ToIntPtr(v.RetryFailedLogMoveMaxJobsPerRun)
@@ -911,6 +913,7 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 		LogBucketLongRetention:          a.LogBucketLongRetention.ToService(),
 		LogBucketFailedTasks:            a.LogBucketFailedTasks.ToService(),
 		LongRetentionProjects:           a.LongRetentionProjects,
+		SourceCacheOptOutProjects:       a.SourceCacheOptOutProjects,
 		RetryFailedLogMoveLookbackDays:  utility.FromIntPtr(lookbackDays),
 		RetryFailedLogMoveMaxJobsPerRun: utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
 		TestResultsBucket:               a.TestResultsBucket.ToService(),
@@ -2135,7 +2138,6 @@ type APIServiceFlags struct {
 	TaskDispatchDisabled               bool `json:"task_dispatch_disabled"`
 	HostInitDisabled                   bool `json:"host_init_disabled"`
 	LargeParserProjectsDisabled        bool `json:"large_parser_projects_disabled"`
-	CrossFileYAMLAnchorsEnabled        bool `json:"cross_file_yaml_anchors_enabled"`
 	MonitorDisabled                    bool `json:"monitor_disabled"`
 	MergeQueueRecoveryEnabled          bool `json:"merge_queue_recovery_enabled"`
 	AlertsDisabled                     bool `json:"alerts_disabled"`
@@ -2186,12 +2188,12 @@ type APIServiceFlags struct {
 
 	TaskQueueAutoUnscheduleDisabled bool `json:"task_queue_auto_unschedule_disabled"`
 	VirtualTasksDisabled            bool `json:"virtual_tasks_disabled"`
+	GitHubTokenReadOnlyEnabled      bool `json:"github_token_read_only_enabled"`
 }
 
 // APIServiceFlagsResponse contains service flags used by Evergreen clients.
 type APIServiceFlagsResponse struct {
-	DebugSpawnHostDisabled      bool `json:"debug_spawn_host_disabled"`
-	CrossFileYAMLAnchorsEnabled bool `json:"cross_file_yaml_anchors_enabled"`
+	DebugSpawnHostDisabled bool `json:"debug_spawn_host_disabled"`
 }
 
 type APIProjectTasksPair struct {
@@ -2609,7 +2611,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
 		as.HostInitDisabled = v.HostInitDisabled
 		as.LargeParserProjectsDisabled = v.LargeParserProjectsDisabled
-		as.CrossFileYAMLAnchorsEnabled = v.CrossFileYAMLAnchorsEnabled
 		as.MonitorDisabled = v.MonitorDisabled
 		as.MergeQueueRecoveryEnabled = v.MergeQueueRecoveryEnabled
 		as.AlertsDisabled = v.AlertsDisabled
@@ -2655,6 +2656,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.GraphQLComplexityRateLimiterDisabled = v.GraphQLComplexityRateLimiterDisabled
 		as.TaskQueueAutoUnscheduleDisabled = v.TaskQueueAutoUnscheduleDisabled
 		as.VirtualTasksDisabled = v.VirtualTasksDisabled
+		as.GitHubTokenReadOnlyEnabled = v.GitHubTokenReadOnlyEnabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2667,7 +2669,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		TaskDispatchDisabled:                 as.TaskDispatchDisabled,
 		HostInitDisabled:                     as.HostInitDisabled,
 		LargeParserProjectsDisabled:          as.LargeParserProjectsDisabled,
-		CrossFileYAMLAnchorsEnabled:          as.CrossFileYAMLAnchorsEnabled,
 		MonitorDisabled:                      as.MonitorDisabled,
 		MergeQueueRecoveryEnabled:            as.MergeQueueRecoveryEnabled,
 		AlertsDisabled:                       as.AlertsDisabled,
@@ -2713,6 +2714,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		GraphQLComplexityRateLimiterDisabled: as.GraphQLComplexityRateLimiterDisabled,
 		TaskQueueAutoUnscheduleDisabled:      as.TaskQueueAutoUnscheduleDisabled,
 		VirtualTasksDisabled:                 as.VirtualTasksDisabled,
+		GitHubTokenReadOnlyEnabled:           as.GitHubTokenReadOnlyEnabled,
 	}, nil
 }
 

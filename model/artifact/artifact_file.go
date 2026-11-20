@@ -3,6 +3,7 @@ package artifact
 import (
 	"context"
 	"fmt"
+	"mime"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -120,6 +121,35 @@ func (f *File) validate() error {
 	catcher.ErrorfWhen(f.FileKey == "", "file key is required")
 
 	return catcher.Resolve()
+}
+
+// CanonicalizeStreamingContentType returns the canonical header value to serve
+// if the task-supplied content type exactly matches an allowlist entry,
+// including its parameters, and false otherwise. Parsing (not prefix-matching)
+// rejects ambiguous values like "text/plain,text/html". Callers must serve the
+// returned value, not the stored string.
+func CanonicalizeStreamingContentType(contentType string, allowlist []string) (string, bool) {
+	parsedType, params, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return "", false
+	}
+	for _, allowed := range allowlist {
+		allowedType, allowedParams, err := mime.ParseMediaType(allowed)
+		if err != nil || !strings.EqualFold(parsedType, allowedType) {
+			continue
+		}
+		matched := true
+		for key, value := range allowedParams {
+			if !strings.EqualFold(params[key], value) {
+				matched = false
+				break
+			}
+		}
+		if matched {
+			return mime.FormatMediaType(parsedType, params), true
+		}
+	}
+	return "", false
 }
 
 // StripHiddenFiles is a helper for only showing users the files they are
@@ -298,6 +328,65 @@ func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, e
 		files = append(files, artifact.Files...)
 	}
 	return files, nil
+}
+
+// ValidateFiles checks that artifact and associated links are absolute HTTP(S) or T2 URLs.
+// DoNotEncodeLink affects escaping but does not bypass validation.
+func ValidateFiles(files []File) error {
+	_, err := RemoveInvalidLinks(files)
+	return err
+}
+
+// RemoveInvalidLinks returns the files with any links that fail ValidateFiles removed.
+// An artifact with an invalid link is removed entirely, whereas an invalid associated
+// link only removes that associated link from its artifact. The returned error
+// describes everything that was removed and is nil if all links are valid.
+func RemoveInvalidLinks(files []File) ([]File, error) {
+	catcher := grip.NewBasicCatcher()
+	valid := make([]File, 0, len(files))
+	for _, file := range files {
+		if err := validateLink(file.Link); err != nil {
+			catcher.Wrapf(err, "validating link for artifact '%s'", file.Name)
+			continue
+		}
+		if len(file.AssociatedLinks) > 0 {
+			validLinks := make([]AssociatedLink, 0, len(file.AssociatedLinks))
+			for _, link := range file.AssociatedLinks {
+				if err := validateLink(link.Link); err != nil {
+					catcher.Wrapf(err, "validating associated link '%s' for artifact '%s'", link.Name, file.Name)
+					continue
+				}
+				validLinks = append(validLinks, link)
+			}
+			file.AssociatedLinks = validLinks
+		}
+		valid = append(valid, file)
+	}
+	return valid, catcher.Resolve()
+}
+
+func validateLink(link string) error {
+	if strings.TrimSpace(link) != link {
+		return errors.New("URL must not have leading or trailing whitespace")
+	}
+	// S3 paths can contain unescaped object keys that are escaped when signing.
+	// Validate the scheme and authority without parsing the path.
+	if i := strings.Index(link, "://"); i >= 0 {
+		if end := strings.IndexAny(link[i+3:], "/?#"); end >= 0 {
+			link = link[:i+3+end]
+		}
+	}
+	u, err := url.Parse(link)
+	if err != nil {
+		return errors.Wrap(err, "parsing URL")
+	}
+	if u.Scheme != "http" && u.Scheme != "https" && u.Scheme != "t2" {
+		return errors.Errorf("URL scheme '%s' must be 'http', 'https', or 't2'", u.Scheme)
+	}
+	if u.Hostname() == "" {
+		return errors.New("URL must have a host name")
+	}
+	return nil
 }
 
 // EscapeFiles escapes the base of the file link to avoid issues opening links

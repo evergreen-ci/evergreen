@@ -885,8 +885,10 @@ func processIntermediateProjectIncludes(ctx context.Context, intermediateProject
 		ReferencePatchID:          projectOpts.ReferencePatchID,
 		ReferenceManifestID:       projectOpts.ReferenceManifestID,
 		AutoUpdateModuleRevisions: projectOpts.AutoUpdateModuleRevisions,
+		ModuleResolver:            projectOpts.ModuleResolver,
 		IsIncludedFile:            true,
 		LocalIncludeDir:           projectOpts.LocalIncludeDir,
+		moduleRepoChecker:         projectOpts.moduleRepoChecker,
 	}
 	if projectOpts.Ref != nil {
 		localOpts.Worktree = dirs.getWorktreeForOwnerRepoWorker(projectOpts.Ref.Owner, projectOpts.Ref.Repo, workerIdx)
@@ -940,12 +942,9 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	defer span.End()
 
 	unmarshalStrict := false
-	var registry *anchorRegistry
+	registry := &anchorRegistry{}
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
-		if opts.CrossFileYAMLAnchorsEnabled {
-			registry = &anchorRegistry{}
-		}
 	}
 	intermediateProject, decodeErr, err := createIntermediateProject(data, unmarshalStrict, registry)
 	if err != nil {
@@ -965,11 +964,12 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 
 	// Return project even with errors.
 	cacheEnabled := opts != nil && opts.cacheEnabled
-	var revision string
+	var revision, modulesKey string
 	if opts != nil {
 		revision = opts.Revision
+		modulesKey = opts.ModuleResolver.resolvedModulesKey()
 	}
-	p, err := loadTranslateProject(ctx, span, intermediateProject, projectID, revision, cacheEnabled)
+	p, err := loadTranslateProject(ctx, span, intermediateProject, projectID, revision, modulesKey, cacheEnabled)
 	if p != nil {
 		*project = *p
 	}
@@ -1009,8 +1009,8 @@ func logDecodeErrorWithOpts(ctx context.Context, projectID, filename, caller str
 
 // loadTranslateProject translates the post-merge intermediate project, optionally serving the
 // result from the content-hash translation cache keyed on its content and projectID.
-func loadTranslateProject(ctx context.Context, span trace.Span, intermediateProject *ParserProject, projectID, revision string, cacheEnabled bool) (*Project, error) {
-	return translateAndCache(ctx, span, intermediateProject, projectID, fileTranslationKey(projectID, revision), cacheEnabled)
+func loadTranslateProject(ctx context.Context, span trace.Span, intermediateProject *ParserProject, projectID, revision, modulesKey string, cacheEnabled bool) (*Project, error) {
+	return translateAndCache(ctx, span, intermediateProject, projectID, fileTranslationKey(projectID, revision, modulesKey), cacheEnabled)
 }
 
 // mergeIncludes merges all included files into intermediateProject.
@@ -1383,6 +1383,9 @@ type GetProjectOpts struct {
 	ReferencePatchID          string
 	ReferenceManifestID       string
 	AutoUpdateModuleRevisions map[string]string
+	// ModuleResolver, if set, determines the module commits that module
+	// includes are read from.
+	ModuleResolver *ModuleResolver
 	// IsIncludedFile indicates whether the file being retrieved is an included
 	// YAML file.
 	IsIncludedFile bool
@@ -1392,12 +1395,11 @@ type GetProjectOpts struct {
 	// LocalIncludeDir is the base directory for resolving relative include
 	// file paths when ReadFileFrom is ReadFromLocal.
 	LocalIncludeDir string
-	// CrossFileYAMLAnchorsEnabled enables cross-file YAML anchor and alias support.
-	// Must be set from the CrossFileYAMLAnchorsEnabled service flag; do not default to true.
-	CrossFileYAMLAnchorsEnabled bool
 	// cacheEnabled routes the translate step through the content-hash translation cache. It is only
 	// set internally by GetProjectFromFile from the ServiceFlag, so external callers stay uncached.
 	cacheEnabled bool
+	// moduleRepoChecker rejects module includes from repos the patch can't use.
+	moduleRepoChecker *patchModuleRepoChecker
 }
 
 type PatchOpts struct {
@@ -1534,6 +1536,9 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting module owner and repo '%s'", module.Name)
 	}
+	if err := opts.moduleRepoChecker.check(ctx, module.Name, repoOwner, repoName); err != nil {
+		return nil, err
+	}
 	pRef := *opts.Ref
 	pRef.Owner = repoOwner
 	pRef.Repo = repoName
@@ -1573,6 +1578,18 @@ func getRevisionForRemoteModule(ctx context.Context, mod Module, modName string,
 					return mod.Revision, nil
 				}
 			}
+		}
+	}
+
+	if opts.ModuleResolver != nil {
+		mfstModule, err := opts.ModuleResolver.Resolve(ctx, mod)
+		if err != nil {
+			return "", errors.Wrap(err, "resolving module commit")
+		}
+		// Wiki modules are always cloned at the branch HEAD, so they have no
+		// resolved commit and fall back to the branch below.
+		if mfstModule.Revision != "" {
+			return mfstModule.Revision, nil
 		}
 	}
 
@@ -1631,11 +1648,6 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 	defer cancel()
 
 	opts.cacheEnabled = projectTranslationCacheEnabled(settings)
-	svcFlags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return ProjectInfo{}, errors.Wrap(err, "getting service flags")
-	}
-	opts.CrossFileYAMLAnchorsEnabled = svcFlags.CrossFileYAMLAnchorsEnabled
 
 	fileContents, err := retrieveFile(ctx, opts)
 	if err != nil {
@@ -1661,27 +1673,25 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 // createIntermediateProject marshals the supplied YAML into our intermediate project representation
 // (i.e. before selectors or matrix logic has been evaluated).
 // If unmarshalStrict is true, use the strict version of unmarshalling.
-// When anchorRegistry is non-nil, always uses decodeWithAnchors to collect anchors from each file
-// into the registry. If the registry already has entries, a preamble is prepended so aliases from
-// prior files resolve. Falls back to standard unmarshalling if decoding with anchors fails.
+// Uses decodeWithAnchors to collect anchors from each file into the registry.
+// If the registry already has entries, a preamble is prepended so aliases from
+// prior files resolve.
 func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (pp *ParserProject, decodeErr error, err error) {
-	if anchorRegistry != nil {
-		var combined []byte
-		if anchorRegistry.Length() > 0 {
-			var preamble []byte
-			preamble, decodeErr = buildAnchorPreamble(anchorRegistry)
-			if decodeErr == nil {
-				combined = append(preamble, normalizeForPreamble(parseBytes)...)
-			}
-		}
+	var combined []byte
+	if anchorRegistry.Length() > 0 {
+		var preamble []byte
+		preamble, decodeErr = buildAnchorPreamble(anchorRegistry)
 		if decodeErr == nil {
-			if combined == nil {
-				combined = parseBytes
-			}
-			pp, decodeErr = decodeWithAnchors(combined, unmarshalStrict, anchorRegistry)
-			if decodeErr == nil {
-				return pp, nil, nil
-			}
+			combined = append(preamble, normalizeForPreamble(parseBytes)...)
+		}
+	}
+	if decodeErr == nil {
+		if combined == nil {
+			combined = parseBytes
+		}
+		pp, decodeErr = decodeWithAnchors(combined, unmarshalStrict, anchorRegistry)
+		if decodeErr == nil {
+			return pp, nil, nil
 		}
 	}
 	pp, err = standardUnmarshal(parseBytes, unmarshalStrict)
