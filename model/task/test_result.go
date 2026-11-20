@@ -347,6 +347,31 @@ func GetQuarantinedTestSamples(ctx context.Context, env evergreen.Environment, t
 	return samples, nil
 }
 
+// GetTestSelectionCheckedTests returns the test results info and the tests
+// that test selection checked for each task run specified. A task run whose
+// record has no checked tests, such as one from before checked tests were
+// recorded, has nil TestSelectionCheckedTests.
+func GetTestSelectionCheckedTests(ctx context.Context, env evergreen.Environment, tasks []Task) ([]testresult.TaskTestResults, error) {
+	if len(tasks) == 0 {
+		return nil, nil
+	}
+	output, ok := tasks[0].GetTaskOutputSafe()
+	if !ok {
+		return nil, nil
+	}
+	svc, err := getTestResultService(env, output.TestResults.Version)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting test results service")
+	}
+	allTaskResults, err := svc.Get(ctx, tasks, GetTaskTestResultsOptions{
+		Fields: []string{
+			testresult.TestResultsInfoKey,
+			testresult.TestSelectionCheckedTestsKey,
+		},
+	})
+	return allTaskResults, errors.Wrap(err, "getting test results")
+}
+
 func getFailedTestSamples(allTaskResults []testresult.TaskTestResults, regexFilters []string) ([]testresult.TaskTestResultsFailedSample, error) {
 	regexes := make([]*regexp.Regexp, len(regexFilters))
 	for i, filter := range regexFilters {
