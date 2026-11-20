@@ -544,11 +544,10 @@ func GetPatchedProjectConfig(ctx context.Context, p *patch.Patch) (string, error
 	// Parse the config directly instead of going through LoadProjectInto to
 	// avoid paying for project translation, which isn't needed for the config.
 	registry := &anchorRegistry{}
-	intermediateProject, decodeErr, err := createIntermediateProject(projectFileBytes, opts.UnmarshalStrict, registry)
+	intermediateProject, err := createIntermediateProject(projectFileBytes, opts.UnmarshalStrict, registry)
 	if err != nil {
 		return "", errors.Wrapf(err, LoadProjectError)
 	}
-	logDecodeErrorWithOpts(ctx, projectRef.Id, "", "GetPatchedProjectConfig", decodeErr, opts)
 	if len(intermediateProject.Include) > 0 {
 		if err := mergeIncludes(ctx, p.Project, intermediateProject, registry, opts); err != nil {
 			return "", errors.Wrap(err, "merging included files")

@@ -67,7 +67,7 @@ tasks:
     status: "failed"
     patch_optional: true
 `
-			p, _, err := createIntermediateProject([]byte(simple), false, nil)
+			p, err := createIntermediateProject([]byte(simple), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "compile")
@@ -84,7 +84,7 @@ tasks:
 - name: task1
   depends_on: task0
 `
-			p, _, err := createIntermediateProject([]byte(single), false, nil)
+			p, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "task0")
@@ -96,7 +96,7 @@ tasks:
 - name: "compile"
   depends_on: ""
 `
-				p, _, err := createIntermediateProject([]byte(nameless), false, nil)
+				p, err := createIntermediateProject([]byte(nameless), false, nil)
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
 			})
@@ -108,7 +108,7 @@ tasks:
   - name: "task1"
   - status: "failed" #this has no task attached
 `
-				p, _, err := createIntermediateProject([]byte(nameless), false, nil)
+				p, err := createIntermediateProject([]byte(nameless), false, nil)
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
 			})
@@ -117,7 +117,7 @@ tasks:
 tasks:
 - name: "compile"
 `
-				p, _, err := createIntermediateProject([]byte(nameless), false, nil)
+				p, err := createIntermediateProject([]byte(nameless), false, nil)
 				So(p, ShouldNotBeNil)
 				So(err, ShouldBeNil)
 			})
@@ -146,7 +146,7 @@ buildvariants:
     stepback: false
     priority: 77
 `
-			p, _, err := createIntermediateProject([]byte(simple), false, nil)
+			p, err := createIntermediateProject([]byte(simple), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -170,7 +170,7 @@ buildvariants:
   - name: "t2"
     depends_on: "t3"
 `
-			p, _, err := createIntermediateProject([]byte(simple), false, nil)
+			p, err := createIntermediateProject([]byte(simple), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -188,7 +188,7 @@ buildvariants:
   tasks:
     name: "t1"
 `
-			p, _, err := createIntermediateProject([]byte(simple), false, nil)
+			p, err := createIntermediateProject([]byte(simple), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(p.BuildVariants), ShouldEqual, 2)
@@ -212,7 +212,7 @@ buildvariants:
   run_on: "distro1"
   tasks: "*"
 `
-			p, _, err := createIntermediateProject([]byte(single), false, nil)
+			p, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(p.Ignore), ShouldEqual, 1)
@@ -233,7 +233,7 @@ buildvariants:
   - name: "t1"
     run_on: "test"
 `
-			p, _, err := createIntermediateProject([]byte(single), false, nil)
+			p, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.BuildVariants[0].Tasks[0].RunOn[0], ShouldEqual, "test")
@@ -248,7 +248,7 @@ buildvariants:
     run_on: "test"
     distros: "asdasdasd"
 `
-			p, _, err := createIntermediateProject([]byte(single), false, nil)
+			p, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldBeNil)
 			So(err, ShouldNotBeNil)
 		})
@@ -260,7 +260,7 @@ buildvariants:
   - name: "t1"
     commit_queue_merge: true
 `
-			p, _, err := createIntermediateProject([]byte(single), false, nil)
+			p, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -283,7 +283,7 @@ buildvariants:
   - name: "t1"
     activate: true
 `
-	p, _, err := createIntermediateProject([]byte(yml), false, nil)
+	p, err := createIntermediateProject([]byte(yml), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 	bv := p.BuildVariants[0]
@@ -1048,7 +1048,7 @@ tasks:
 - name: execTask3
 - name: execTask4
 `
-	p, _, err := createIntermediateProject([]byte(yml), false, nil)
+	p, err := createIntermediateProject([]byte(yml), false, nil)
 
 	// check that display tasks in bv1 parsed correctly
 	assert.NoError(err)
@@ -1077,7 +1077,7 @@ parameters:
 - key: buggy
   value: driver
 `
-	p, _, err := createIntermediateProject([]byte(yml), false, nil)
+	p, err := createIntermediateProject([]byte(yml), false, nil)
 	assert.NoError(t, err)
 	require.Len(t, p.Parameters, 2)
 	assert.Equal(t, "iter_count", p.Parameters[0].Key)
@@ -1386,7 +1386,7 @@ tasks:
 - name: execTask4
   tags: [ "even" ]
 `
-	pp, _, err := createIntermediateProject([]byte(tagYml), false, nil)
+	pp, err := createIntermediateProject([]byte(tagYml), false, nil)
 	assert.NotNil(pp)
 	assert.NoError(err)
 	require.Len(pp.BuildVariants[0].DisplayTasks, 2)
@@ -2254,7 +2254,7 @@ buildvariants:
 }
 
 func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Environment, yml []byte, ppStorageMethod evergreen.ParserProjectStorageMethod) {
-	pp, _, err := createIntermediateProject(yml, false, nil)
+	pp, err := createIntermediateProject(yml, false, nil)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("old-project-identifier")
@@ -2277,7 +2277,7 @@ func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Envir
 	assert.True(t, bytes.Equal(newYaml, yamlToCompare))
 
 	// ensure that updating with the re-parsed project doesn't error
-	pp, _, err = createIntermediateProject(newYaml, false, nil)
+	pp, err = createIntermediateProject(newYaml, false, nil)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("new-project-identifier")
@@ -2304,7 +2304,7 @@ func TestParserProjectRoundtrip(t *testing.T) {
 	yml, err := os.ReadFile(filepath)
 	assert.NoError(t, err)
 
-	original, _, err := createIntermediateProject(yml, false, nil)
+	original, err := createIntermediateProject(yml, false, nil)
 	assert.NoError(t, err)
 
 	// to and from yaml
@@ -2928,10 +2928,10 @@ ignore:
   - ".github/*"
 `
 
-	p1, _, err := createIntermediateProject([]byte(mainYaml), false, nil)
+	p1, err := createIntermediateProject([]byte(mainYaml), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	p2, _, err := createIntermediateProject([]byte(smallYaml), false, nil)
+	p2, err := createIntermediateProject([]byte(smallYaml), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
 	err = p1.mergeMultipleParserProjects(p2)
@@ -2977,13 +2977,13 @@ buildvariants:
       - name: task3
 `
 
-	p1, _, err := createIntermediateProject([]byte(mainYaml), false, nil)
+	p1, err := createIntermediateProject([]byte(mainYaml), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	p2, _, err := createIntermediateProject([]byte(succeed), false, nil)
+	p2, err := createIntermediateProject([]byte(succeed), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
-	p3, _, err := createIntermediateProject([]byte(fail), false, nil)
+	p3, err := createIntermediateProject([]byte(fail), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p3)
 	err = p1.mergeMultipleParserProjects(p2)
@@ -3021,9 +3021,9 @@ commit_queue_aliases:
   - variant: ".*"
     task: ".*"
 `
-		p1, _, err := createIntermediateProject([]byte(mainYaml), false, nil)
+		p1, err := createIntermediateProject([]byte(mainYaml), false, nil)
 		require.NoError(t, err)
-		p2, _, err := createIntermediateProject([]byte(includedYaml), false, nil)
+		p2, err := createIntermediateProject([]byte(includedYaml), false, nil)
 		require.NoError(t, err)
 
 		p1.mergeProjectConfigFields(p2)
@@ -3048,9 +3048,9 @@ build_baron_settings:
 workstation_config:
   git_clone: false
 `
-		p1, _, err := createIntermediateProject([]byte(mainYaml), false, nil)
+		p1, err := createIntermediateProject([]byte(mainYaml), false, nil)
 		require.NoError(t, err)
-		p2, _, err := createIntermediateProject([]byte(includedYaml), false, nil)
+		p2, err := createIntermediateProject([]byte(includedYaml), false, nil)
 		require.NoError(t, err)
 
 		p1.mergeProjectConfigFields(p2)
@@ -3079,7 +3079,7 @@ workstation_config:
 `
 		for name, unmarshalStrict := range map[string]bool{"Strict": true, "NonStrict": false} {
 			t.Run(name, func(t *testing.T) {
-				pp, _, err := createIntermediateProject([]byte(singleFileYaml), unmarshalStrict, nil)
+				pp, err := createIntermediateProject([]byte(singleFileYaml), unmarshalStrict, nil)
 				require.NoError(t, err)
 				merged := pp.MergedProjectConfig("my-project")
 				require.NotNil(t, merged)
@@ -3096,7 +3096,7 @@ workstation_config:
 	})
 
 	t.Run("ConfigFieldsAreNotMarshalled", func(t *testing.T) {
-		pp, _, err := createIntermediateProject([]byte(`
+		pp, err := createIntermediateProject([]byte(`
 stepback: true
 patch_aliases:
   - alias: "my-alias"
@@ -3704,7 +3704,7 @@ tasks:
 - name: task2
   commands: *common-commands
 `
-	p, _, err := createIntermediateProject([]byte(yml), false, nil)
+	p, err := createIntermediateProject([]byte(yml), false, nil)
 	require.NoError(t, err)
 	require.NotNil(t, p)
 	require.Len(t, p.Tasks, 2)
@@ -3732,7 +3732,7 @@ tasks:
       os: linux
       arch: amd64
 `
-	p, _, err := createIntermediateProject([]byte(yml), false, nil)
+	p, err := createIntermediateProject([]byte(yml), false, nil)
 	require.NoError(t, err)
 	require.NotNil(t, p)
 	require.Len(t, p.Tasks, 1)
@@ -3816,10 +3816,9 @@ func TestCollectAnchorsExpansionBombErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "exceeded the maximum")
 
 	// Breaching the expansion limit is a fatal error, not a silent fallback.
-	pp, decodeErr, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
+	pp, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
 	require.ErrorIs(t, err, errAnchorExpansionLimit)
 	assert.Nil(t, pp)
-	assert.NoError(t, decodeErr)
 }
 
 func TestCreateIntermediateProjectPreambleLimitErrors(t *testing.T) {
@@ -3832,20 +3831,21 @@ func TestCreateIntermediateProjectPreambleLimitErrors(t *testing.T) {
 	require.NoError(t, registry.mergeAnchorsFrom(&node))
 	require.Greater(t, registry.Length(), 0)
 
-	pp, decodeErr, err := createIntermediateProject([]byte("b: *a\n"), false, registry)
+	pp, err := createIntermediateProject([]byte("b: *a\n"), false, registry)
 	require.ErrorIs(t, err, errAnchorPreambleSize)
 	assert.Nil(t, pp)
-	assert.NoError(t, decodeErr)
 }
 
-func TestCreateIntermediateProjectNonLimitFailureFallsBack(t *testing.T) {
-	yml := "tasks:\n  - name: t1\ntasks:\n  - name: t2\n"
-	pp, decodeErr, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
-	require.NoError(t, err)
-	require.NotNil(t, pp)
-	require.Error(t, decodeErr)
-	assert.NotErrorIs(t, decodeErr, errAnchorExpansionLimit)
-	assert.NotErrorIs(t, decodeErr, errAnchorPreambleSize)
+func TestCreateIntermediateProjectNonLimitFailureFailsLoad(t *testing.T) {
+	// An alias to an anchor that no file defines fails both the v3 and v2
+	// parses, so it fails the whole load rather than silently dropping the
+	// alias.
+	yml := "tasks:\n  - name: t1\n    commands:\n    - *undefined-anchor\n"
+	pp, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
+	require.Error(t, err)
+	assert.Nil(t, pp)
+	assert.NotErrorIs(t, err, errAnchorExpansionLimit)
+	assert.NotErrorIs(t, err, errAnchorPreambleSize)
 }
 
 func TestExpandAliases(t *testing.T) {
@@ -4492,7 +4492,7 @@ func TestAnchorPreambleNormalization(t *testing.T) {
 		{name: "BOMBeforeMapping", yml: "\uFEFFfunctions:\n  f:\n    command: shell.exec\n", expectedFunctions: 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			pp, _, err := createIntermediateProject([]byte(tc.yml), false, registry)
+			pp, err := createIntermediateProject([]byte(tc.yml), false, registry)
 			if tc.expectedFunctions < 0 {
 				require.Error(t, err, "file must error loudly rather than lose contents silently")
 				return
@@ -4503,15 +4503,14 @@ func TestAnchorPreambleNormalization(t *testing.T) {
 	}
 }
 
-// TestAnchorPreambleFailureFallsBack verifies that if the anchor preamble itself is
-// invalid (alias-before-definition ordering), createIntermediateProject falls back to
-// parsing without the preamble rather than propagating the error. This guards against
-// any future preamble-construction bugs breaking projects that don't use cross-file anchors.
-func TestAnchorPreambleFailureFallsBack(t *testing.T) {
+// TestAnchorPreambleFailureFailsLoad verifies that if the anchor preamble itself is
+// invalid (alias-before-definition ordering), createIntermediateProject fails the
+// load rather than silently parsing without the preamble (which would drop the
+// anchors). collectAnchors can't produce this state (it expands aliases at
+// collection time), so this guards against future preamble-construction bugs.
+func TestAnchorPreambleFailureFailsLoad(t *testing.T) {
 	// Manually construct a registry entry containing an alias to an anchor that
-	// isn't defined in the preamble. collectAnchors can't produce this state
-	// (it expands aliases at collection time), but the fallback must still
-	// protect against future preamble-construction bugs.
+	// isn't defined in the preamble.
 	registry := &anchorRegistry{
 		entries: []anchorEntry{
 			{name: "broken", node: &yaml.Node{
@@ -4532,13 +4531,10 @@ func TestAnchorPreambleFailureFallsBack(t *testing.T) {
 	require.Error(t, yaml.NewDecoder(bytes.NewReader(preamble)).Decode(&preambleNode),
 		"preamble should fail to parse due to alias referencing an undefined anchor")
 
-	// createIntermediateProject should fall back to parsing without the preamble.
 	simpleYAML := []byte("tasks:\n- name: my-task\n  commands:\n  - command: shell.exec\n")
-	result, preambleErr, err := createIntermediateProject(simpleYAML, false, registry)
-	require.NoError(t, err, "should succeed via fallback when preamble is invalid")
-	require.Error(t, preambleErr, "preamble error should be set when fallback occurs")
-	require.Len(t, result.Tasks, 1)
-	assert.Equal(t, "my-task", result.Tasks[0].Name)
+	pp, err := createIntermediateProject(simpleYAML, false, registry)
+	require.Error(t, err, "an invalid preamble must fail the load rather than silently drop the anchors")
+	assert.Nil(t, pp)
 }
 
 // TestAnchorWithNestedAlias verifies that a file can use an alias from an
@@ -5203,33 +5199,27 @@ modules:
 tasks:
 - name: t1
 `
-	pp, decodeErr, err := createIntermediateProject([]byte(yml), false, nil)
+	pp, err := createIntermediateProject([]byte(yml), false, nil)
 	require.NoError(t, err)
-	require.NoError(t, decodeErr)
 	require.Len(t, pp.Modules, 2)
 	assert.Equal(t, 1, pp.Modules[0].CloneDepth)
 	assert.Zero(t, pp.Modules[1].CloneDepth)
 }
 
-func TestLoadProjectIntoWarnsWhenCrossFileAnchorParsingFallsBack(t *testing.T) {
-	// yaml v3 rejects duplicate mapping keys, but the fallback parse accepts
-	// them via the yaml v2 fallback, so this file forces the fallback path.
+func TestLoadProjectIntoFailsWhenAnchorParsingFails(t *testing.T) {
+	// An alias to an anchor that no file defines fails both the v3 and v2
+	// parses, so it fails the load rather than silently dropping the alias.
 	yml := `
-functions:
-  f:
-    command: shell.exec
-functions:
-  g:
-    command: shell.exec
+tasks:
+  - name: t1
+    commands:
+    - *undefined-anchor
 `
-	t.Run("FallbackEmitsWarning", func(t *testing.T) {
+	t.Run("FailsLoad", func(t *testing.T) {
 		opts := &GetProjectOpts{}
 		pp, err := LoadProjectInto(t.Context(), []byte(yml), opts, "proj", &Project{})
-		require.NoError(t, err)
-		require.NotNil(t, pp)
-		require.Len(t, pp.parseWarnings, 1)
-		assert.Contains(t, pp.parseWarnings[0], "cross-file YAML anchor")
-		assert.Contains(t, pp.parseWarnings[0], "mapping key")
+		require.Error(t, err)
+		assert.Nil(t, pp)
 	})
 
 	t.Run("SuccessfulAnchorParseEmitsNoWarning", func(t *testing.T) {
@@ -5251,39 +5241,34 @@ functions:
     command: shell.exec
 `
 	t.Run("NoPreambleWarnsAndStrips", func(t *testing.T) {
-		pp, decodeErr, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
+		pp, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
 		require.NoError(t, err)
-		require.NoError(t, decodeErr)
 		// The reserved key must still be stripped from the parsed project.
 		require.Len(t, pp.Functions, 1)
 		require.Len(t, pp.parseWarnings, 1)
 		assert.Contains(t, pp.parseWarnings[0], "top-level YAML key '_evg_anchors'")
 	})
 
-	t.Run("WithPreambleDoesNotWarn", func(t *testing.T) {
+	t.Run("WithPreambleParsesWithoutReservedKeyWarning", func(t *testing.T) {
 		// A registry with entries means a preamble was prepended, so the
-		// _evg_anchors key belongs to Evergreen and must be removed silently.
+		// _evg_anchors key belongs to Evergreen; the user-defined duplicate of
+		// that key is ignored without a reserved-key warning.
 		registry := &anchorRegistry{}
 		var anchorNode yaml.Node
 		require.NoError(t, yaml.Unmarshal([]byte("anchors:\n- &dummy\n  x: 1\n"), &anchorNode))
 		require.NoError(t, registry.mergeAnchorsFrom(&anchorNode))
 
-		pp, decodeErr, err := createIntermediateProject([]byte(yml), false, registry)
+		pp, err := createIntermediateProject([]byte(yml), false, registry)
 		require.NoError(t, err)
-		require.NoError(t, decodeErr)
 		require.Len(t, pp.Functions, 1)
-		// The duplicate user-defined key makes the anchor-based parse fall
-		// back, which has its own warning; assert only that the reserved-key
-		// warning is absent.
 		for _, warning := range pp.parseWarnings {
 			assert.NotContains(t, warning, "top-level YAML key '_evg_anchors'")
 		}
 	})
 
 	t.Run("StrictModeStillWarns", func(t *testing.T) {
-		pp, decodeErr, err := createIntermediateProject([]byte(yml), true, &anchorRegistry{})
+		pp, err := createIntermediateProject([]byte(yml), true, &anchorRegistry{})
 		require.NoError(t, err)
-		require.NoError(t, decodeErr)
 		require.Len(t, pp.Functions, 1)
 		require.Len(t, pp.parseWarnings, 1)
 		assert.Contains(t, pp.parseWarnings[0], "top-level YAML key '_evg_anchors'")
@@ -5313,4 +5298,51 @@ tasks:
 	require.Len(t, pp.parseWarnings, 1)
 	assert.Contains(t, pp.parseWarnings[0], "included file 'include.yml'")
 	assert.Contains(t, pp.parseWarnings[0], "top-level YAML key '_evg_anchors'")
+}
+
+func TestCrossFileAliasSurvivesV2Fallback(t *testing.T) {
+	// second.yml has a duplicate mapping key, which yaml v3 rejects, so the
+	// file is parsed by the v2 fallback — but the fallback decodes the
+	// combined preamble+file bytes, so the cross-file alias to first.yml's
+	// anchor still resolves.
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - &common-step
+    command: shell.exec
+    params:
+      script: ./common.sh
+`, "first.yml", "second.yml")
+
+	firstYAML := `
+tasks:
+- name: first-task
+  commands:
+  - command: shell.exec
+`
+	secondYAML := `
+tasks:
+- name: second-task
+  commands:
+  - *common-step
+  commands:
+  - *common-step
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(t,
+			moduleInclude("first.yml", firstYAML),
+			moduleInclude("second.yml", secondYAML),
+		), "proj", proj)
+	require.NoError(t, err)
+
+	tasksByName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		tasksByName[task.Name] = task
+	}
+	require.Contains(t, tasksByName, "second-task")
+	require.Len(t, tasksByName["second-task"].Commands, 1)
+	assert.Equal(t, "shell.exec", tasksByName["second-task"].Commands[0].Command)
+	assert.Equal(t, "./common.sh", tasksByName["second-task"].Commands[0].Params["script"])
 }
