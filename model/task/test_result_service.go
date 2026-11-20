@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -41,8 +42,7 @@ func (s *testResultService) AppendTestResultMetadata(ctx context.Context, failed
 	if !record.CreatedAt.IsZero() {
 		// The created timestamp determines the partition key of the offline
 		// test results, so it must reflect when the results were attached
-		// even if the record was created earlier by the quarantined-tests
-		// snapshot.
+		// even if the record was created earlier by test selection.
 		set[testresult.TestResultsCreatedAtKey] = record.CreatedAt
 	}
 	update := bson.M{"$set": set}
@@ -51,9 +51,13 @@ func (s *testResultService) AppendTestResultMetadata(ctx context.Context, failed
 }
 
 // AppendTestSelectionResults upserts the task's test results record with the
-// test selection results update.
+// test selection results update. It returns errTestSelectionResultsConflict if
+// the record's checked tests don't match the update's previous checked tests.
 func (s *testResultService) AppendTestSelectionResults(ctx context.Context, record testresult.DbTaskTestResults, update TestSelectionResultsUpdate) error {
-	_, err := s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: record.ID}, appendTestSelectionResultsUpdate(record.Info, update), options.Update().SetUpsert(true))
+	_, err := s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, appendTestSelectionResultsQuery(record.ID, update), appendTestSelectionResultsUpdate(record.Info, update), options.Update().SetUpsert(true))
+	if db.IsDuplicateKey(err) {
+		return errTestSelectionResultsConflict
+	}
 	return errors.Wrap(err, "appending test selection results to DB test results")
 }
 
@@ -145,6 +149,7 @@ func (s *testResultService) Get(ctx context.Context, tasks []Task, getOpts GetTa
 		allTaskResults[i].Results = dbTaskResults.Results
 		allTaskResults[i].QuarantinedTestsCount = dbTaskResults.QuarantinedTestsCount
 		allTaskResults[i].QuarantinedTests = dbTaskResults.QuarantinedTests
+		allTaskResults[i].TestSelectionCheckedTests = dbTaskResults.TestSelectionCheckedTests
 	}
 
 	return allTaskResults, nil

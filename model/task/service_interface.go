@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/mongodb/anser/bsonutil"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -19,31 +21,63 @@ type TestResultsService interface {
 // TestSelectionResultsUpdate is a change to the test selection results
 // recorded on a test results record.
 type TestSelectionResultsUpdate struct {
+	// PrevCheckedTests are the checked tests that the record is expected to
+	// have. If the record has different ones, the update fails with
+	// errTestSelectionResultsConflict.
+	PrevCheckedTests *testresult.TestNameFilter
+	// CheckedTests, if set, replaces the record's checked tests.
+	CheckedTests *testresult.TestNameFilter
 	// QuarantinedTests are appended to the record's quarantined-tests
 	// snapshot.
 	QuarantinedTests []testresult.QuarantinedTest
 }
 
+// errTestSelectionResultsConflict means the record's checked tests changed
+// since they were read.
+var errTestSelectionResultsConflict = errors.New("test selection results were concurrently modified")
+
 // maxQuarantinedTestsPerRecord caps how many quarantined tests are stored on a
 // single test results record to keep the document under 16MB.
 const maxQuarantinedTestsPerRecord = 40000
 
-// appendTestSelectionResultsUpdate returns the update document that appends the
-// given tests to a test results record's quarantined-tests snapshot and
-// increments the snapshot count.
+// appendTestSelectionResultsQuery returns the query that matches the test
+// results record with the given ID only if its checked tests are the update's
+// previous checked tests.
+func appendTestSelectionResultsQuery(id any, update TestSelectionResultsUpdate) bson.M {
+	query := bson.M{IdKey: id}
+	if update.CheckedTests == nil {
+		return query
+	}
+	if update.PrevCheckedTests == nil {
+		query[testresult.TestSelectionCheckedTestsKey] = bson.M{"$exists": false}
+	} else {
+		query[bsonutil.GetDottedKeyName(testresult.TestSelectionCheckedTestsKey, testresult.TestNameFilterBitsKey)] = update.PrevCheckedTests.Bits
+	}
+	return query
+}
+
+// appendTestSelectionResultsUpdate returns the update document that replaces a
+// test results record's checked tests, appends the given tests to its
+// quarantined-tests snapshot, and increments the snapshot count.
 func appendTestSelectionResultsUpdate(info testresult.TestResultsInfo, update TestSelectionResultsUpdate) bson.M {
-	return bson.M{
+	doc := bson.M{
 		"$setOnInsert": bson.M{
 			testresult.TestResultsInfoKey: info,
 		},
 		"$inc": bson.M{testresult.QuarantinedTestsCountKey: len(update.QuarantinedTests)},
-		"$push": bson.M{
+	}
+	if len(update.QuarantinedTests) > 0 {
+		doc["$push"] = bson.M{
 			testresult.QuarantinedTestsKey: bson.M{
 				"$each":  update.QuarantinedTests,
 				"$slice": maxQuarantinedTestsPerRecord,
 			},
-		},
+		}
 	}
+	if update.CheckedTests != nil {
+		doc["$set"] = bson.M{testresult.TestSelectionCheckedTestsKey: update.CheckedTests}
+	}
+	return doc
 }
 
 // GetTaskTestResultsOptions configures how test result metadata is fetched.
@@ -59,13 +93,15 @@ type GetTaskTestResultsOptions struct {
 }
 
 // testResultsProjection returns the database projection for fetching test
-// results metadata.
+// results metadata. When no fields are requested, it omits the test selection
+// results that are only needed by specific callers.
 func testResultsProjection(getOpts GetTaskTestResultsOptions) bson.M {
 	if len(getOpts.Fields) == 0 {
-		if getOpts.IncludeQuarantinedTests {
-			return nil
+		projection := bson.M{testresult.TestSelectionCheckedTestsKey: 0}
+		if !getOpts.IncludeQuarantinedTests {
+			projection[testresult.QuarantinedTestsKey] = 0
 		}
-		return bson.M{testresult.QuarantinedTestsKey: 0}
+		return projection
 	}
 
 	projection := bson.M{}

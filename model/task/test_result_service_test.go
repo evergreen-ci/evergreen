@@ -824,31 +824,59 @@ func TestAppendTestSelectionResults(t *testing.T) {
 		return allTaskResults[0]
 	}
 
-	t.Run("AppendCreatesRecordWithSnapshot", func(t *testing.T) {
+	checkedTestsFilter := func(names ...string) *testresult.TestNameFilter {
+		filter := testresult.NewTestNameFilter(len(names))
+		filter.Add(names...)
+		return filter
+	}
+	checkedTests := checkedTestsFilter("c0", "q0", "q1")
+
+	t.Run("AppendCreatesRecordWithCheckedTestsAndSnapshot", func(t *testing.T) {
 		quarantinedTests := []testresult.QuarantinedTest{
 			{TestName: "q0"},
 			{TestName: "q1", DisplayTestName: "q1_display"},
 		}
-		require.NoError(t, svc.AppendTestSelectionResults(ctx, record, TestSelectionResultsUpdate{QuarantinedTests: quarantinedTests}))
+		require.NoError(t, svc.AppendTestSelectionResults(ctx, record, TestSelectionResultsUpdate{CheckedTests: checkedTests, QuarantinedTests: quarantinedTests}))
 
 		taskResults := getRecord(t)
 		assert.Equal(t, record.Info, taskResults.Info)
 		assert.Equal(t, 2, taskResults.QuarantinedTestsCount)
 		assert.Equal(t, quarantinedTests, taskResults.QuarantinedTests)
+		assert.Nil(t, taskResults.TestSelectionCheckedTests, "checked tests should be omitted by default")
 		assert.Zero(t, taskResults.Stats.TotalCount)
 		assert.Empty(t, taskResults.Results)
+
+		allTaskResults, err := svc.Get(ctx, []Task{tsk}, GetTaskTestResultsOptions{Fields: []string{testresult.TestSelectionCheckedTestsKey}})
+		require.NoError(t, err)
+		require.Len(t, allTaskResults, 1)
+		assert.Equal(t, checkedTests, allTaskResults[0].TestSelectionCheckedTests)
 	})
 
-	t.Run("AppendingResultMetadataPreservesSnapshot", func(t *testing.T) {
+	t.Run("AppendingResultMetadataPreservesTestSelectionResults", func(t *testing.T) {
 		require.NoError(t, svc.AppendTestResultMetadata(ctx, []string{"failed_test"}, 1, 2, record))
 		allTaskResults, err := svc.Get(ctx, []Task{tsk}, GetTaskTestResultsOptions{
-			Fields: []string{testresult.StatsKey, testresult.QuarantinedTestsCountKey, testresult.QuarantinedTestsKey},
+			Fields: []string{testresult.StatsKey, testresult.QuarantinedTestsCountKey, testresult.QuarantinedTestsKey, testresult.TestSelectionCheckedTestsKey},
 		})
 		require.NoError(t, err)
 		require.Len(t, allTaskResults, 1)
 		assert.Equal(t, 2, allTaskResults[0].QuarantinedTestsCount)
 		assert.Len(t, allTaskResults[0].QuarantinedTests, 2)
+		assert.Equal(t, checkedTests, allTaskResults[0].TestSelectionCheckedTests)
 		assert.Equal(t, 2, allTaskResults[0].Stats.TotalCount)
 		assert.Equal(t, 1, allTaskResults[0].Stats.FailedCount)
+	})
+
+	t.Run("ReplacingCheckedTestsThatChangedShouldConflict", func(t *testing.T) {
+		stale := checkedTestsFilter("c0")
+		err := svc.AppendTestSelectionResults(ctx, record, TestSelectionResultsUpdate{PrevCheckedTests: stale, CheckedTests: checkedTestsFilter("c0", "c1")})
+		assert.ErrorIs(t, err, errTestSelectionResultsConflict)
+
+		err = svc.AppendTestSelectionResults(ctx, record, TestSelectionResultsUpdate{CheckedTests: checkedTestsFilter("c1")})
+		assert.ErrorIs(t, err, errTestSelectionResultsConflict, "a record that already has checked tests should conflict with an update that expects none")
+
+		allTaskResults, err := svc.Get(ctx, []Task{tsk}, GetTaskTestResultsOptions{Fields: []string{testresult.TestSelectionCheckedTestsKey}})
+		require.NoError(t, err)
+		require.Len(t, allTaskResults, 1)
+		assert.Equal(t, checkedTests, allTaskResults[0].TestSelectionCheckedTests)
 	})
 }
