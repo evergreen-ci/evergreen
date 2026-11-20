@@ -20,6 +20,9 @@ type TaskTestResults struct {
 	Results               []TestResult         `json:"results"`
 	QuarantinedTestsCount int                  `json:"quarantined_tests_count,omitempty"`
 	QuarantinedTests      []QuarantinedTest    `json:"quarantined_tests,omitempty"`
+	// TestSelectionCheckedTests holds the tests that test selection checked
+	// during the task run.
+	TestSelectionCheckedTests *TestNameFilter `json:"-"`
 }
 
 // TaskTestResultsStats represents basic statistics of a set of test results.
