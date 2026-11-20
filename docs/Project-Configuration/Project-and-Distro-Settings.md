@@ -198,15 +198,29 @@ users basic access to this project.
 Admins can store project variables that can be referenced in the config
 file via an expansion.
 
+Project variables have three tiers, which differ in who can see the value
+and which tasks receive it:
+
+| Tier       | Visibility                                         | Delivered to                                                                                                  | Typical uses                                                                                                                                |
+| ---------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public     | Visible to anyone who can view the project         | Every task, including patches and PRs                                                                         | Non-sensitive configuration, feature flags, URLs                                                                                            |
+| Private    | Redacted from the UI, API responses, and task logs | Every task, including patches and PRs from non-admin users                                                    | Values that should not appear in logs or the UI but are safe to expose to any patch, such as internal identifiers or low-sensitivity tokens |
+| Admin only | Redacted like private variables                    | Only tasks from mainline commits, periodic builds, or trigger versions, or tasks activated by a project admin | Values that should be limited to trusted builds, such as release signing credentials or cloud credentials                                   |
+
+Note that the private tier controls _display_: it hides the value from
+logs, the UI, and API responses, but the plaintext value is still delivered
+in full to the task environment of any patch on the project. The admin-only
+tier is the one that changes which tasks receive the value.
+
 Options:
 
 - Checking **private** makes the variable redacted so the value won't be
-  visible on the projects page or by API routes. Note that private
+  visible on the projects page or by API routes. Private variables will
+  also be redacted from task logs, and after saving them, private
+  variables cannot be retrieved. Note that private
   variables may still be accessible on [debug spawn hosts](../Hosts/Debug-Spawn-Hosts.md) by users,
   since these hosts run tasks on behalf of the user, which requires fetching expansions as part of that
   process. For values that must not be accessible even on debug hosts, use **admin only** instead, as these will be restricted even on debug spawn hosts.
-  Additionally, private variables will be redacted from task logs. After
-  saving them, private variables cannot be retrieved.
 - Checking **admin only** restricts the variable so it is only available
   to tasks in mainline commits, periodic builds, or trigger versions, or
   to tasks activated by a project admin.
@@ -229,6 +243,11 @@ Admin-only variables are injected into a task's environment only when the task
 belongs to a mainline commit, periodic build, or trigger version, or when the
 task was activated by a user with project admin permissions. Patches and PRs
 activated by non-admin users will not have access to these variables.
+
+Note that access is determined by who activated the task, not who authored
+the code being run. If a project admin schedules or restarts a task in a
+patch created by another user, that task runs the patch author's code but
+still receives admin-only variables.
 
 ### Aliases
 
@@ -729,6 +748,8 @@ that all execute independently:
      For most workloads, privileging patches over mainline builds
      will improve the throughput of your team to complete requests,
      if patch builds are a prerequisite to committing.
+   - _Git Tag Factor_ how much to weight tasks from versions triggered
+     by a git tag over other versions.
    - _Time in Queue_ how much to weight tasks that have been waiting
      for a long period of time over tasks that have entered the queue
      more recently. This factor privileges older patches and newer

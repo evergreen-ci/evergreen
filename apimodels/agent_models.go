@@ -190,6 +190,11 @@ type TaskEndDetail struct {
 type ExternalExecutionMetadata struct {
 	EngFlowInvocationID string `bson:"engflow_invocation_id,omitempty" json:"engflow_invocation_id,omitempty"`
 	ShardID             string `bson:"shard_id,omitempty" json:"shard_id,omitempty"`
+	// EstimatedCostUSD is the producer's cost estimate; the producer owns the
+	// pricing formula. WorkerHours and RateUSDPerWorkerHour are its inputs.
+	EstimatedCostUSD     float64 `bson:"estimated_cost_usd,omitempty" json:"estimated_cost_usd,omitempty"`
+	WorkerHours          float64 `bson:"worker_hours,omitempty" json:"worker_hours,omitempty"`
+	RateUSDPerWorkerHour float64 `bson:"rate_usd_per_worker_hour,omitempty" json:"rate_usd_per_worker_hour,omitempty"`
 }
 
 // FailingCommand represents a command that failed in a task.

@@ -2297,6 +2297,11 @@ func (t *Task) markEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		// Calculate EC2 runtime costs now that we have the actual runtime.
 		t.UpdateTaskCost(ctx)
 	}
+	// A push-completed task's cost comes from the producer since it never ran on an Evergreen host.
+	// Gate on the push-completed condition so the estimate can never double-count on top of host runtime costs.
+	if md := detail.ExternalExecutionMetadata; md != nil && t.IsVirtual && t.CompletedBy != "" {
+		t.TaskCost.AdjustedEngFlowCost = md.EstimatedCostUSD
+	}
 
 	// record that the task has finished, in memory and in the db
 	t.Status = detail.Status
@@ -2328,7 +2333,7 @@ func (t *Task) markEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		setFields[ActivatedKey] = true
 		setFields[ActivatedTimeKey] = t.ActivatedTime
 	}
-	ec2EBSSetFields(TaskCostKey, t.TaskCost, setFields)
+	taskCostSetFields(TaskCostKey, t.TaskCost, setFields)
 	return UpdateOne(ctx, query, bson.M{"$set": setFields})
 }
 
@@ -4411,6 +4416,9 @@ type RankValueBreakdown struct {
 	// StepbackImpact represents how much of the total rank value can be attributed to
 	// a task being activated by the stepback process.
 	StepbackImpact int64
+	// GitTagImpact represents how much of the total rank value can be attributed to
+	// a task being part of a version triggered by a git tag.
+	GitTagImpact int64
 	// PatchImpact represents how much of the total rank value can be attributed to a task
 	// being part of a patch.
 	PatchImpact int64
@@ -4445,6 +4453,7 @@ func (t *Task) SetSortingValueBreakdownAttributes(ctx context.Context, breakdown
 		attribute.Int64(fmt.Sprintf("%s.patch_wait_time", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.PatchWaitTimeImpact),
 		attribute.Int64(fmt.Sprintf("%s.mainline_wait_time", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.MainlineWaitTimeImpact),
 		attribute.Int64(fmt.Sprintf("%s.stepback", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.StepbackImpact),
+		attribute.Int64(fmt.Sprintf("%s.git_tag", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.GitTagImpact),
 		attribute.Int64(fmt.Sprintf("%s.num_dependents", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.NumDependentsImpact),
 		attribute.Int64(fmt.Sprintf("%s.estimated_runtime", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.EstimatedRuntimeImpact),
 		// Priority percentage values
@@ -4458,6 +4467,7 @@ func (t *Task) SetSortingValueBreakdownAttributes(ctx context.Context, breakdown
 		attribute.Float64(fmt.Sprintf("%s.commit_queue_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.CommitQueueImpact/breakdown.TotalValue*100)),
 		attribute.Float64(fmt.Sprintf("%s.mainline_wait_time_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.MainlineWaitTimeImpact/breakdown.TotalValue*100)),
 		attribute.Float64(fmt.Sprintf("%s.stepback_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.StepbackImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.git_tag_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.GitTagImpact/breakdown.TotalValue*100)),
 		attribute.Float64(fmt.Sprintf("%s.num_dependents_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.NumDependentsImpact/breakdown.TotalValue*100)),
 		attribute.Float64(fmt.Sprintf("%s.estimated_runtime_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.EstimatedRuntimeImpact/breakdown.TotalValue*100)),
 	)
@@ -4700,15 +4710,16 @@ func (t *Task) UpdateTaskCost(ctx context.Context) {
 	t.calculateEBSThroughputCost(ctx, financeConfig, d)
 }
 
-// ec2EBSSetFields populates m with dotted-path $set entries for the EC2 and EBS cost fields under prefix.
+// taskCostSetFields populates m with dotted-path $set entries for the EC2, EBS, and EngFlow cost fields under prefix.
 // S3 cost fields are intentionally excluded — they are owned by SaveS3Usage.
-func ec2EBSSetFields(prefix string, c cost.Cost, m bson.M) {
+func taskCostSetFields(prefix string, c cost.Cost, m bson.M) {
 	m[bsonutil.GetDottedKeyName(prefix, cost.OnDemandEC2CostKey)] = c.OnDemandEC2Cost
 	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEC2CostKey)] = c.AdjustedEC2Cost
 	m[bsonutil.GetDottedKeyName(prefix, cost.OnDemandEBSThroughputCostKey)] = c.OnDemandEBSThroughputCost
 	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEBSThroughputCostKey)] = c.AdjustedEBSThroughputCost
 	m[bsonutil.GetDottedKeyName(prefix, cost.OnDemandEBSStorageCostKey)] = c.OnDemandEBSStorageCost
 	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEBSStorageCostKey)] = c.AdjustedEBSStorageCost
+	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEngFlowCostKey)] = c.AdjustedEngFlowCost
 }
 
 // calculateRuntimeCost sets the EC2 cost fields on TaskCost based on the task's runtime and distro pricing.

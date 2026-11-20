@@ -174,12 +174,6 @@ type EditSpawnHostInput struct {
 	VolumeID            *string                 `json:"volumeId,omitempty"`
 }
 
-// ExecutionTasksFilterOptions is an input for the task.executionTasksFull field.
-// It's used to filter a display task's execution tasks.
-type ExecutionTasksFilterOptions struct {
-	Statuses []string `json:"statuses,omitempty"`
-}
-
 type ExternalLinkForMetadata struct {
 	URL         string `json:"url"`
 	DisplayName string `json:"displayName"`
@@ -388,6 +382,21 @@ type ProjectBuildVariant struct {
 	DisplayName string   `json:"displayName"`
 	Name        string   `json:"name"`
 	Tasks       []string `json:"tasks"`
+}
+
+type ProjectCommits struct {
+	Pagination *ProjectCommitsPagination `json:"pagination"`
+	Versions   []*model1.Version         `json:"versions"`
+}
+
+type ProjectCommitsOptions struct {
+	Limit    *int `json:"limit,omitempty"`
+	MaxOrder *int `json:"maxOrder,omitempty"`
+}
+
+type ProjectCommitsPagination struct {
+	HasNextPage   bool `json:"hasNextPage"`
+	NextPageOrder int  `json:"nextPageOrder"`
 }
 
 // ProjectEvents contains project event log entries that concern the history of changes related to project

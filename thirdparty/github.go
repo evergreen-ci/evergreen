@@ -58,6 +58,13 @@ const (
 	githubCachedAttribute      = "evergreen.github.cached"
 	githubLocalCachedAttribute = "evergreen.github.local_cached"
 	githubAuthMethodAttribute  = "evergreen.github.auth_method"
+
+	githubRateLimitLimitAttribute     = "evergreen.github.rate_limit.limit"
+	githubRateLimitRemainingAttribute = "evergreen.github.rate_limit.remaining"
+	githubRateLimitUsedAttribute      = "evergreen.github.rate_limit.used"
+	githubRateLimitResetAttribute     = "evergreen.github.rate_limit.reset"
+	githubRateLimitResourceAttribute  = "evergreen.github.rate_limit.resource"
+	githubRequestIDAttribute          = "evergreen.github.request_id"
 )
 
 var githubWritePermissions = []string{
@@ -332,7 +339,11 @@ func (c *retryConfig) shouldIgnoreCode(statusCode int) bool {
 
 func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunction {
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
-		trace.SpanFromContext(req.Context()).SetAttributes(attribute.Int(githubRetriesAttribute, index))
+		span := trace.SpanFromContext(req.Context())
+		span.SetAttributes(attribute.Int(githubRetriesAttribute, index))
+		if resp != nil {
+			span.SetAttributes(githubResponseAttributes(resp.Header)...)
+		}
 
 		if !(config.retry || config.retry404) {
 			return false
@@ -1054,6 +1065,30 @@ func parseGithubRateLimit(h http.Header) github.Rate {
 	}
 
 	return rate
+}
+
+func githubResponseAttributes(h http.Header) []attribute.KeyValue {
+	var attrs []attribute.KeyValue
+	if requestID := h.Get("X-GitHub-Request-Id"); requestID != "" {
+		attrs = append(attrs, attribute.String(githubRequestIDAttribute, requestID))
+	}
+	if h.Get("X-Ratelimit-Limit") == "" {
+		return attrs
+	}
+
+	rate := parseGithubRateLimit(h)
+	attrs = append(attrs,
+		attribute.Int(githubRateLimitLimitAttribute, rate.Limit),
+		attribute.Int(githubRateLimitRemainingAttribute, rate.Remaining),
+		attribute.String(githubRateLimitResourceAttribute, h.Get("X-Ratelimit-Resource")),
+	)
+	if used, err := strconv.Atoi(h.Get("X-Ratelimit-Used")); err == nil {
+		attrs = append(attrs, attribute.Int(githubRateLimitUsedAttribute, used))
+	}
+	if !rate.Reset.IsZero() {
+		attrs = append(attrs, attribute.String(githubRateLimitResetAttribute, rate.Reset.UTC().Format(time.RFC3339)))
+	}
+	return attrs
 }
 
 // GithubAuthenticate does a POST to github with the code that it received, the ClientId, ClientSecret
@@ -2222,28 +2257,23 @@ func GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*gi
 }
 
 type mergeQueueFrontEntryResponse struct {
-	Data struct {
-		Repository struct {
-			MergeQueue struct {
-				Entries struct {
-					Nodes []struct {
-						BaseCommit struct {
-							Oid string `json:"oid"`
-						} `json:"baseCommit"`
-						HeadCommit struct {
-							Oid string `json:"oid"`
-						} `json:"headCommit"`
-						PullRequest struct {
-							Number int `json:"number"`
-						} `json:"pullRequest"`
-					} `json:"nodes"`
-				} `json:"entries"`
-			} `json:"mergeQueue"`
-		} `json:"repository"`
-	} `json:"data"`
-	Errors []struct {
-		Message string `json:"message"`
-	} `json:"errors"`
+	Repository struct {
+		MergeQueue struct {
+			Entries struct {
+				Nodes []struct {
+					BaseCommit struct {
+						Oid string `json:"oid"`
+					} `json:"baseCommit"`
+					HeadCommit struct {
+						Oid string `json:"oid"`
+					} `json:"headCommit"`
+					PullRequest struct {
+						Number int `json:"number"`
+					} `json:"pullRequest"`
+				} `json:"nodes"`
+			} `json:"entries"`
+		} `json:"mergeQueue"`
+	} `json:"repository"`
 }
 
 // GetMergeQueueFrontEntry returns the head ref and head commit SHA of the merge group at the
@@ -2266,57 +2296,144 @@ func GetMergeQueueFrontEntry(ctx context.Context, owner, repo, baseBranch string
 	githubClient := getGithubClient(ctx, token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	reqBody, err := json.Marshal(map[string]any{
-		"query": `query($owner: String!, $repo: String!, $branch: String!) {
-			repository(owner: $owner, name: $repo) {
-				mergeQueue(branch: $branch) {
-					entries(first: 1) {
-						nodes { baseCommit { oid } headCommit { oid } pullRequest { number } }
-					}
+	query := `query($owner: String!, $repo: String!, $branch: String!) {
+		repository(owner: $owner, name: $repo) {
+			mergeQueue(branch: $branch) {
+				entries(first: 1) {
+					nodes { baseCommit { oid } headCommit { oid } pullRequest { number } }
 				}
 			}
-		}`,
-		"variables": map[string]string{"owner": owner, "repo": repo, "branch": baseBranch},
-	})
-	if err != nil {
-		return "", "", false, errors.Wrap(err, "marshalling GraphQL request body")
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, githubGraphQLURL, bytes.NewReader(reqBody))
-	if err != nil {
-		return "", "", false, errors.Wrap(err, "creating GraphQL request")
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := githubClient.Client.Client().Do(req)
-	if err != nil {
-		return "", "", false, errors.Wrap(err, "sending GraphQL request")
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", "", false, errors.Wrap(err, "reading GraphQL response body")
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", "", false, errors.Errorf("GraphQL request failed with status %d: %s", resp.StatusCode, body)
-	}
-
+		}
+	}`
 	var parsed mergeQueueFrontEntryResponse
-	if err := json.Unmarshal(body, &parsed); err != nil {
-		return "", "", false, errors.Wrap(err, "decoding GraphQL response")
-	}
-	if len(parsed.Errors) > 0 {
-		return "", "", false, errors.Errorf("GraphQL error: %s", parsed.Errors[0].Message)
+	if err := postGitHubGraphQL(ctx, githubClient.Client.Client(), query, map[string]any{"owner": owner, "repo": repo, "branch": baseBranch}, &parsed); err != nil {
+		return "", "", false, err
 	}
 
-	nodes := parsed.Data.Repository.MergeQueue.Entries.Nodes
+	nodes := parsed.Repository.MergeQueue.Entries.Nodes
 	if len(nodes) == 0 {
 		return "", "", false, nil
 	}
 
 	node := nodes[0]
-	// Merge group refs follow this naming scheme according to GitHub docs.
+	// Merge group refs naming scheme.
 	headRef = fmt.Sprintf("refs/heads/gh-readonly-queue/%s/pr-%d-%s", baseBranch, node.PullRequest.Number, node.BaseCommit.Oid)
 	return headRef, node.HeadCommit.Oid, true, nil
+}
+
+// postGitHubGraphQL sends a query to GitHub's GraphQL API and decodes returned data.
+func postGitHubGraphQL(ctx context.Context, client *http.Client, query string, variables map[string]any, data any) error {
+	reqBody, err := json.Marshal(map[string]any{"query": query, "variables": variables})
+	if err != nil {
+		return errors.Wrap(err, "marshalling GraphQL request body")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, githubGraphQLURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return errors.Wrap(err, "creating GraphQL request")
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "sending GraphQL request")
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return errors.Wrap(err, "reading GraphQL response body")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.Errorf("GraphQL request failed with status %d: %s", resp.StatusCode, body)
+	}
+
+	var parsed struct {
+		Data   json.RawMessage `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return errors.Wrap(err, "decoding GraphQL response")
+	}
+	if len(parsed.Errors) > 0 {
+		return errors.Errorf("GraphQL error: %s", parsed.Errors[0].Message)
+	}
+	return errors.Wrap(json.Unmarshal(parsed.Data, data), "decoding GraphQL response data")
+}
+
+// MergeQueueRemovalEvent is a GitHub RemovedFromMergeQueueEvent, which records the specific reason
+// a PR left the merge queue and who removed it.
+type MergeQueueRemovalEvent struct {
+	Reason    string
+	Actor     string
+	CreatedAt time.Time
+}
+
+type mergeQueueRemovalEventResponse struct {
+	Repository struct {
+		PullRequest struct {
+			TimelineItems struct {
+				Nodes []struct {
+					Reason string `json:"reason"`
+					Actor  struct {
+						Login string `json:"login"`
+					} `json:"actor"`
+					CreatedAt time.Time `json:"createdAt"`
+				} `json:"nodes"`
+			} `json:"timelineItems"`
+		} `json:"pullRequest"`
+	} `json:"repository"`
+}
+
+// GetLatestMergeQueueRemovalEvent returns the most recent RemovedFromMergeQueueEvent for the PR
+// that the merge queue head ref belongs to.
+func GetLatestMergeQueueRemovalEvent(ctx context.Context, owner, repo, headRef string) (*MergeQueueRemovalEvent, error) {
+	caller := "GetLatestMergeQueueRemovalEvent"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	prNum, err := strconv.Atoi(extractPRNumberFromHeadRef(headRef))
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing PR number from head ref '%s'", headRef)
+	}
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(ctx, token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	query := `query($owner: String!, $repo: String!, $number: Int!) {
+		repository(owner: $owner, name: $repo) {
+			pullRequest(number: $number) {
+				timelineItems(itemTypes: [REMOVED_FROM_MERGE_QUEUE_EVENT], last: 1) {
+					nodes {
+						... on RemovedFromMergeQueueEvent { reason actor { login } createdAt }
+					}
+				}
+			}
+		}
+	}`
+	var parsed mergeQueueRemovalEventResponse
+	if err := postGitHubGraphQL(ctx, githubClient.Client.Client(), query, map[string]any{"owner": owner, "repo": repo, "number": prNum}, &parsed); err != nil {
+		return nil, err
+	}
+
+	nodes := parsed.Repository.PullRequest.TimelineItems.Nodes
+	if len(nodes) == 0 {
+		return nil, nil
+	}
+	return &MergeQueueRemovalEvent{
+		Reason:    nodes[0].Reason,
+		Actor:     nodes[0].Actor.Login,
+		CreatedAt: nodes[0].CreatedAt,
+	}, nil
 }

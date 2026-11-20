@@ -808,6 +808,19 @@ func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *g
 
 	model.EmitMergeQueueCompletionMetricsFromWebhook(ctx, updatedPatchIDs)
 
+	// Start a new job to collect metrics about the item if it wasn't merged.
+	if rootPatchIdx := slices.IndexFunc(updatedPatches, func(p patch.Patch) bool { return !p.IsChild() }); rootPatchIdx >= 0 && reason != thirdparty.MergeQueueReasonMerged {
+		removalDetailJob := units.NewMergeQueueRemovalDetailJob(updatedPatches[rootPatchIdx].Project, org, repo, event.GetMergeGroup().GetHeadRef(), headSHA, reason, gh.receivedAt)
+		grip.Warning(ctx, message.WrapError(amboy.EnqueueUniqueJob(ctx, gh.queue, removalDetailJob), message.Fields{
+			"source":   "GitHub hook",
+			"msg_id":   gh.msgID,
+			"org":      org,
+			"repo":     repo,
+			"head_sha": headSHA,
+			"message":  "could not enqueue merge queue removal detail job",
+		}))
+	}
+
 	logFields := message.Fields{
 		"source":   "GitHub hook",
 		"msg_id":   gh.msgID,
@@ -1646,7 +1659,7 @@ func (gh *githubHookApi) handleCreatedGitTag(ctx context.Context, event *github.
 func (gh *githubHookApi) handleDeletedGitTag(ctx context.Context, event *github.PushEvent, tag model.GitTag, owner, repo string) error {
 	err := model.RemoveGitTagFromVersions(ctx, owner, repo, tag)
 	if err != nil {
-		grip.ErrorWhen(ctx, !errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
+		grip.ErrorWhen(ctx, !errors.Is(err, context.Canceled), message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
 			"message": "removing tag from versions",
 			"ref":     event.GetRef(),
@@ -1751,7 +1764,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		if gh.settings == nil {
 			gh.settings, err = evergreen.GetConfig(ctx)
 			if err != nil {
-				return nil, errors.Wrap(err, "getting admin settings")
+				return nil, fmt.Errorf("getting admin settings: %w", err)
 			}
 		}
 		projectInfo, err = gh.sc.GetProjectFromFile(ctx, pRef, remotePath, gh.settings)

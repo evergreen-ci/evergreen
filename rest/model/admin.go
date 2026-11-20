@@ -2070,6 +2070,7 @@ type APISchedulerConfig struct {
 	GenerateTaskFactor               int64   `json:"generate_task_factor"`
 	NumDependentsFactor              float64 `json:"num_dependents_factor"`
 	StepbackTaskFactor               int64   `json:"stepback_task_factor"`
+	GitTagFactor                     int64   `json:"git_tag_factor"`
 	TranslateProjectConcurrencyLimit int     `json:"translate_project_concurrency_limit"`
 	TranslateProjectCacheBytesLimit  int64   `json:"translate_project_cache_bytes_limit"`
 	TranslateProjectCacheTTLSeconds  int64   `json:"translate_project_cache_ttl_seconds"`
@@ -2097,6 +2098,7 @@ func (a *APISchedulerConfig) BuildFromService(h any) error {
 		a.GenerateTaskFactor = v.GenerateTaskFactor
 		a.NumDependentsFactor = v.NumDependentsFactor
 		a.StepbackTaskFactor = v.StepbackTaskFactor
+		a.GitTagFactor = v.GitTagFactor
 		a.TranslateProjectConcurrencyLimit = v.TranslateProjectConcurrencyLimit
 		a.TranslateProjectCacheBytesLimit = v.TranslateProjectCacheBytesLimit
 		a.TranslateProjectCacheTTLSeconds = v.TranslateProjectCacheTTLSeconds
@@ -2127,6 +2129,7 @@ func (a *APISchedulerConfig) ToService() (any, error) {
 		GenerateTaskFactor:               a.GenerateTaskFactor,
 		NumDependentsFactor:              a.NumDependentsFactor,
 		StepbackTaskFactor:               a.StepbackTaskFactor,
+		GitTagFactor:                     a.GitTagFactor,
 		TranslateProjectConcurrencyLimit: a.TranslateProjectConcurrencyLimit,
 		TranslateProjectCacheBytesLimit:  a.TranslateProjectCacheBytesLimit,
 		TranslateProjectCacheTTLSeconds:  a.TranslateProjectCacheTTLSeconds,
@@ -2188,6 +2191,7 @@ type APIServiceFlags struct {
 
 	TaskQueueAutoUnscheduleDisabled bool `json:"task_queue_auto_unschedule_disabled"`
 	VirtualTasksDisabled            bool `json:"virtual_tasks_disabled"`
+	GitHubTokenReadOnlyEnabled      bool `json:"github_token_read_only_enabled"`
 }
 
 // APIServiceFlagsResponse contains service flags used by Evergreen clients.
@@ -2655,6 +2659,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.GraphQLComplexityRateLimiterDisabled = v.GraphQLComplexityRateLimiterDisabled
 		as.TaskQueueAutoUnscheduleDisabled = v.TaskQueueAutoUnscheduleDisabled
 		as.VirtualTasksDisabled = v.VirtualTasksDisabled
+		as.GitHubTokenReadOnlyEnabled = v.GitHubTokenReadOnlyEnabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2712,6 +2717,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		GraphQLComplexityRateLimiterDisabled: as.GraphQLComplexityRateLimiterDisabled,
 		TaskQueueAutoUnscheduleDisabled:      as.TaskQueueAutoUnscheduleDisabled,
 		VirtualTasksDisabled:                 as.VirtualTasksDisabled,
+		GitHubTokenReadOnlyEnabled:           as.GitHubTokenReadOnlyEnabled,
 	}, nil
 }
 

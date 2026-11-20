@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -326,7 +327,10 @@ func TestWriteDaemonInfo(t *testing.T) {
 
 	tokenInfo, err := os.Stat(tokenFile)
 	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0600), tokenInfo.Mode().Perm())
+	// Windows doesn't support Unix permission bits, so the mode is only meaningful elsewhere.
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, os.FileMode(0600), tokenInfo.Mode().Perm())
+	}
 }
 
 func TestRouterSetup(t *testing.T) {

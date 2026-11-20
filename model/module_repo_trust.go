@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -12,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility/ttlcache"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -29,11 +31,17 @@ var committedConfigRequesters = []string{
 const (
 	committedManifestLookback = 10
 	moduleRepoTrustDocsURL    = "https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Project-Configuration-Files#private-module-repos-in-patches"
+
+	repoPublicCacheTTL         = time.Hour
+	repoReadPermissionCacheTTL = 10 * time.Minute
 )
 
 var (
 	isGitHubRepoPublic          = thirdparty.IsGitHubRepoPublic
 	gitHubUserHasReadPermission = thirdparty.GitHubUserHasReadPermission
+
+	repoPublicCache         ttlcache.Cache[bool] = ttlcache.WithOtel(ttlcache.NewInMemory[bool](), "github-repo-public")
+	repoReadPermissionCache ttlcache.Cache[bool] = ttlcache.NewInMemory[bool]()
 )
 
 // ValidatePatchModuleRepos returns an error if the patch's modules use repos
@@ -157,7 +165,7 @@ func (c *patchModuleRepoChecker) check(ctx context.Context, name, owner, repo st
 
 // isTrustedOnGitHub checks whether the repo is public or readable by the PR author.
 func (c *patchModuleRepoChecker) isTrustedOnGitHub(ctx context.Context, owner, repo string) (bool, error) {
-	public, err := isGitHubRepoPublic(ctx, owner, repo)
+	public, err := cachedIsGitHubRepoPublic(ctx, owner, repo)
 	if err != nil {
 		return false, errors.Wrap(err, "checking if repo is public")
 	}
@@ -165,7 +173,7 @@ func (c *patchModuleRepoChecker) isTrustedOnGitHub(ctx context.Context, owner, r
 	if public || !c.patch.IsGithubPRPatch() || prAuthor == "" {
 		return public, nil
 	}
-	canRead, err := gitHubUserHasReadPermission(ctx, owner, repo, prAuthor)
+	canRead, err := cachedGitHubUserHasReadPermission(ctx, owner, repo, prAuthor)
 	if err != nil {
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":   "checking if PR author can read patch module repo",
@@ -176,6 +184,36 @@ func (c *patchModuleRepoChecker) isTrustedOnGitHub(ctx context.Context, owner, r
 		}))
 		return false, nil
 	}
+	return canRead, nil
+}
+
+// cachedIsGitHubRepoPublic returns whether the repo is public, reusing recent
+// results across patches.
+func cachedIsGitHubRepoPublic(ctx context.Context, owner, repo string) (bool, error) {
+	key := moduleRepoKey(owner, repo)
+	if public, ok := repoPublicCache.Get(ctx, key, 0); ok {
+		return public, nil
+	}
+	public, err := isGitHubRepoPublic(ctx, owner, repo)
+	if err != nil {
+		return false, err
+	}
+	repoPublicCache.Put(ctx, key, public, time.Now().Add(repoPublicCacheTTL))
+	return public, nil
+}
+
+// cachedGitHubUserHasReadPermission returns whether the user can read the
+// repo, reusing recent results across patches.
+func cachedGitHubUserHasReadPermission(ctx context.Context, owner, repo, username string) (bool, error) {
+	key := moduleRepoKey(owner, repo) + ":" + strings.ToLower(username)
+	if canRead, ok := repoReadPermissionCache.Get(ctx, key, 0); ok {
+		return canRead, nil
+	}
+	canRead, err := gitHubUserHasReadPermission(ctx, owner, repo, username)
+	if err != nil {
+		return false, err
+	}
+	repoReadPermissionCache.Put(ctx, key, canRead, time.Now().Add(repoReadPermissionCacheTTL))
 	return canRead, nil
 }
 
