@@ -2,7 +2,6 @@ package route
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"slices"
@@ -47,7 +46,7 @@ buildvariants:
 	handler := makeValidateProject().Factory()
 	require.NoError(t, handler.Parse(t.Context(), req))
 
-	resp := handler.Run(context.Background())
+	resp := handler.Run(t.Context())
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
 
@@ -94,7 +93,7 @@ tasks:
 	handler := makeValidateProject().Factory()
 	require.NoError(t, handler.Parse(t.Context(), req))
 
-	resp := handler.Run(context.Background())
+	resp := handler.Run(t.Context())
 	require.NotNil(t, resp)
 
 	rawBytes, err := json.Marshal(resp.Data())

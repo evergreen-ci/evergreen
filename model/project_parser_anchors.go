@@ -25,8 +25,8 @@ const maxAnchorPreambleBytes = 1024 * 1024
 // maxAnchorExpansionNodes nodes.
 var errAnchorExpansionLimit = errors.Errorf("YAML anchor expansion exceeded the maximum of %d nodes per file; simplify chained anchor aliases in the project configuration", maxAnchorExpansionNodes)
 
-// errAnchorPreambleSize is returned when serializing the accumulated YAML anchors produces a
-// preamble larger than maxAnchorPreambleBytes.
+// errAnchorPreambleSize is returned when serializing the YAML anchors accumulated from the
+// main config and all included files produces a preamble larger than maxAnchorPreambleBytes.
 var errAnchorPreambleSize = errors.Errorf("YAML anchor definitions exceeded the maximum preamble size of %d bytes; reduce the number and size of anchor definitions in your configuration", maxAnchorPreambleBytes)
 
 // anchorEntry holds a single YAML anchor definition: its name (the &name tag)
@@ -174,7 +174,7 @@ func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
 		return nil, errors.Wrap(err, "building anchor preamble")
 	}
 	if len(out) > maxAnchorPreambleBytes {
-		return nil, errAnchorPreambleSize
+		return nil, errors.Wrapf(errAnchorPreambleSize, "anchor definitions total %d bytes", len(out))
 	}
 	return out, nil
 }

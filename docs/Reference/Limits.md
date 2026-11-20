@@ -66,7 +66,7 @@ usage.
 ## Cross-file YAML Anchor Limits
 
 Two limits protect the
-[cross-file YAML anchor](../Project-Configuration/Project-Configuration-Files/#YAML-Anchors)
+[cross-file YAML anchor](../Project-Configuration/Project-Configuration-Files#yaml-anchors)
 parsing that joins anchor definitions across include files:
 
 - Anchor definitions may expand to at most 100,000 nodes per include file. Deeply chained
