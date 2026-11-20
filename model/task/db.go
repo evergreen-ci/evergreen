@@ -2473,6 +2473,21 @@ func getRootTasksPipeline(versionID string, opts GetTasksByVersionOptions) ([]bs
 		},
 	})
 
+	if opts.BaseVersionID != "" {
+		// Select one root task per variant and display name when pairing with base tasks.
+		pipeline = append(pipeline,
+			bson.M{"$group": bson.M{
+				"_id": bson.M{
+					BuildVariantKey: "$" + BuildVariantKey,
+					DisplayNameKey:  "$" + DisplayNameKey,
+				},
+				"root_task": bson.M{"$first": "$$ROOT"},
+			}},
+			bson.M{"$replaceRoot": bson.M{"newRoot": "$root_task"}},
+			bson.M{"$sort": bson.M{IdKey: 1}},
+		)
+	}
+
 	if len(opts.Statuses) > 0 {
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{

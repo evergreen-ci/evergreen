@@ -1280,6 +1280,7 @@ func TestGetTasksByVersionPopulatesBaseTasksAroundPagination(t *testing.T) {
 	for _, task := range []Task{
 		{Id: "a", Version: "root", BuildVariant: "variant", DisplayName: "a", DisplayStatusCache: evergreen.TaskSucceeded},
 		{Id: "b", Version: "root", BuildVariant: "variant", DisplayName: "b", DisplayStatusCache: evergreen.TaskSucceeded},
+		{Id: "c", Version: "root", BuildVariant: "variant", DisplayName: "b", DisplayStatusCache: evergreen.TaskFailed},
 		{Id: "base-a", Version: "base", BuildVariant: "variant", DisplayName: "a", DisplayStatusCache: evergreen.TaskSucceeded},
 		{Id: "base-b", Version: "base", BuildVariant: "variant", DisplayName: "b", DisplayStatusCache: evergreen.TaskFailed},
 	} {
@@ -1295,6 +1296,9 @@ func TestGetTasksByVersionPopulatesBaseTasksAroundPagination(t *testing.T) {
 		{"ResponseOnlyPopulatesSelectedPage", GetTasksByVersionOptions{Limit: 1, Page: 1, Sorts: []TasksSortOrder{{Key: IdKey, Order: 1}}}, "b", 2},
 		{"BaseFilterAppliesBeforeLimit", GetTasksByVersionOptions{Limit: 1, BaseStatuses: []string{evergreen.TaskFailed}}, "b", 1},
 		{"BaseSortAppliesBeforeLimit", GetTasksByVersionOptions{Limit: 1, Sorts: []TasksSortOrder{{Key: BaseTaskStatusKey, Order: 1}}}, "b", 2},
+		{"TaskNameFilterPreservesUniqueRoots", GetTasksByVersionOptions{Limit: 1, TaskNames: []string{"b"}}, "b", 1},
+		{"VariantFilterPreservesUniqueRoots", GetTasksByVersionOptions{Limit: 1, Page: 1, Variants: []string{"variant"}}, "b", 2},
+		{"StatusFilterAppliesAfterRootSelection", GetTasksByVersionOptions{Limit: 1, Page: 1, Statuses: []string{evergreen.TaskSucceeded}}, "b", 2},
 		{"EmptyPagePreservesCount", GetTasksByVersionOptions{Limit: 1, Page: 2}, "", 2},
 	} {
 		t.Run(test.name, func(t *testing.T) {
