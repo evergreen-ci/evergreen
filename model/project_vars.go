@@ -808,7 +808,8 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 
 // SecretVars returns the non-empty variables that are hidden in task logs: the
 // private variables and the variables whose lowercased names contain any of
-// the redact key patterns.
+// the redact key patterns. The result maps variable names to values so that
+// redacted text can name the variable that was hidden.
 func (projectVars *ProjectVars) SecretVars(redactKeys []string) map[string]string {
 	secrets := map[string]string{}
 	for k, v := range projectVars.Vars {

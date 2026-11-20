@@ -2490,7 +2490,7 @@ func (pp *ParserProject) ClearParamsYAML() error {
 	return pp.forEachCommand(func(cmd *PluginCommandConf) error {
 		err := cmd.resolveParams()
 		cmd.ParamsYAML = ""
-		return err
+		return errors.Wrapf(err, "resolving params for command '%s'", cmd.GetDisplayName())
 	})
 }
 
@@ -2530,10 +2530,8 @@ func (pp *ParserProject) forEachCommand(fn func(*PluginCommandConf) error) error
 }
 
 // RedactSecrets replaces every occurrence of the given secret values with
-// <REDACTED:name>, matching how task logs are redacted. secrets maps variable
-// names to their values. Only values that generate.tasks can fill in are
-// redacted (command params, vars, and display names, task ps commands, and
-// variant expansions, display names, and task ps commands), so that names and
+// <REDACTED:name>, matching how task logs are redacted. The secrets map is keyed
+// by variable name because the name goes in the redacted text. Names and
 // references used by the CLI stay intact. The parser project is modified in
 // place, so it must not be saved afterwards.
 func (pp *ParserProject) RedactSecrets(secrets map[string]string) error {
@@ -2586,6 +2584,8 @@ func (c *PluginCommandConf) redactParams(redact func(string) string) error {
 			return err
 		}
 	}
+	// Redact the YAML text rather than the decoded params, since decoding can
+	// turn a secret into a number, boolean, or timestamp that no longer matches.
 	var root yaml.Node
 	if err := yaml.Unmarshal([]byte(c.ParamsYAML), &root); err != nil {
 		return errors.Wrap(err, "unmarshalling params YAML")
@@ -2613,6 +2613,7 @@ func redactYAMLValues(n *yaml.Node, redact func(string) string) bool {
 		}
 	}
 	for i, child := range n.Content {
+		// A mapping node's content alternates key, value, so even indexes are keys.
 		if n.Kind == yaml.MappingNode && i%2 == 0 {
 			continue
 		}
