@@ -6,8 +6,17 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+)
+
+var (
+	ArtifactsKey     = bsonutil.MustHaveTag(S3Usage{}, "Artifacts")
+	LogsKey          = bsonutil.MustHaveTag(S3Usage{}, "Logs")
+	PutRequestsKey   = bsonutil.MustHaveTag(S3UploadMetrics{}, "PutRequests")
+	UploadBytesKey   = bsonutil.MustHaveTag(S3UploadMetrics{}, "UploadBytes")
+	ArtifactCountKey = bsonutil.MustHaveTag(ArtifactMetrics{}, "Count")
 )
 
 // S3 log types for storage cost tracking.

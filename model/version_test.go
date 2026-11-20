@@ -21,7 +21,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
@@ -835,37 +834,48 @@ func TestGetBuildVariants(t *testing.T) {
 
 func TestUpdateAggregateTaskCosts(t *testing.T) {
 	ctx := context.Background()
-	require.NoError(t, db.ClearCollections(VersionCollection, taskCollection, oldTaskCollection))
+	require.NoError(t, db.ClearCollections(VersionCollection, task.Collection, task.OldCollection))
 
 	t.Run("AggregatesTaskAndPredictedCosts", func(t *testing.T) {
 		v := &Version{Id: "v1"}
 		require.NoError(t, v.Insert(ctx))
 
-		// Insert tasks using BSON directly to avoid import cycle
-		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-			"_id": "t1", "version": "v1", "display_only": false,
-			"cost": bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0, "on_demand_s3_artifact_put_cost": 0.05, "on_demand_s3_log_put_cost": 0.02, "adjusted_engflow_cost": 0.30},
-			"predicted_cost": bson.M{
-				"on_demand_ec2_cost": 3.0, "adjusted_ec2_cost": 2.4,
-				"adjusted_s3_artifact_put_cost": 0.10, "adjusted_s3_log_put_cost": 0.04,
+		t1 := task.Task{
+			Id:      "t1",
+			Version: v.Id,
+			TaskCost: cost.Cost{
+				OnDemandEC2Cost:           10.0,
+				AdjustedEC2Cost:           8.0,
+				OnDemandS3ArtifactPutCost: 0.05,
+				OnDemandS3LogPutCost:      0.02,
+				AdjustedEngFlowCost:       0.30,
 			},
-			"s3_usage": bson.M{
-				"artifacts": bson.M{"put_requests": 100, "upload_bytes": int64(5000), "count": 10},
-				"logs":      bson.M{"put_requests": 20, "upload_bytes": int64(1000)},
+			PredictedTaskCost: cost.Cost{
+				OnDemandEC2Cost:           3.0,
+				AdjustedEC2Cost:           2.4,
+				AdjustedS3ArtifactPutCost: 0.10,
+				AdjustedS3LogPutCost:      0.04,
 			},
-		}))
-		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-			"_id": "t2", "version": "v1", "display_only": false,
-			"cost": bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "on_demand_s3_artifact_put_cost": 0.03, "on_demand_s3_log_put_cost": 0.01, "adjusted_engflow_cost": 0.08},
-			"predicted_cost": bson.M{
-				"on_demand_ec2_cost": 2.0, "adjusted_ec2_cost": 1.6,
-				"adjusted_s3_artifact_put_cost": 0.20, "adjusted_s3_log_put_cost": 0.02,
+		}
+		require.NoError(t, t1.Insert(ctx))
+		t2 := task.Task{
+			Id:      "t2",
+			Version: v.Id,
+			TaskCost: cost.Cost{
+				OnDemandEC2Cost:           5.0,
+				AdjustedEC2Cost:           4.0,
+				OnDemandS3ArtifactPutCost: 0.03,
+				OnDemandS3LogPutCost:      0.01,
+				AdjustedEngFlowCost:       0.08,
 			},
-			"s3_usage": bson.M{
-				"artifacts": bson.M{"put_requests": 50, "upload_bytes": int64(3000), "count": 5},
-				"logs":      bson.M{"put_requests": 10, "upload_bytes": int64(500)},
+			PredictedTaskCost: cost.Cost{
+				OnDemandEC2Cost:           2.0,
+				AdjustedEC2Cost:           1.6,
+				AdjustedS3ArtifactPutCost: 0.20,
+				AdjustedS3LogPutCost:      0.02,
 			},
-		}))
+		}
+		require.NoError(t, t2.Insert(ctx))
 
 		err := v.UpdateAggregateTaskCosts(ctx)
 		require.NoError(t, err)
@@ -874,45 +884,82 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		assert.InDelta(t, 0.38, v.Cost.AdjustedEngFlowCost, 0.001)
 		assert.InDelta(t, 5.0, v.PredictedCost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 4.0, v.PredictedCost.AdjustedEC2Cost, 0.01)
+		assert.InDelta(t, 0.30, v.PredictedCost.AdjustedS3ArtifactPutCost, 0.001)
+		assert.InDelta(t, 0.06, v.PredictedCost.AdjustedS3LogPutCost, 0.001)
 	})
 
 	t.Run("ExcludesDisplayOnlyTasks", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(VersionCollection, taskCollection))
+		require.NoError(t, db.ClearCollections(VersionCollection, task.Collection))
 		v := &Version{Id: "v2"}
 		require.NoError(t, v.Insert(ctx))
 
-		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-			"_id": "t1", "version": "v2", "display_only": false,
-			"cost":     bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0, "on_demand_s3_artifact_put_cost": 0.05},
-			"s3_usage": bson.M{"artifacts": bson.M{"put_requests": 100}},
-		}))
-		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-			"_id": "display", "version": "v2", "display_only": true,
-			"cost":     bson.M{"on_demand_ec2_cost": 100.0, "adjusted_ec2_cost": 80.0, "on_demand_s3_artifact_put_cost": 9.99},
-			"s3_usage": bson.M{"artifacts": bson.M{"put_requests": 99999}},
-		}))
+		execTask := task.Task{
+			Id:      "t1",
+			Version: v.Id,
+			TaskCost: cost.Cost{
+				OnDemandEC2Cost:           10.0,
+				AdjustedEC2Cost:           8.0,
+				OnDemandS3ArtifactPutCost: 0.05,
+			},
+			S3Usage: s3usage.S3Usage{
+				Artifacts: s3usage.ArtifactMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{
+						PutRequests: 100,
+					},
+				},
+			},
+		}
+		require.NoError(t, execTask.Insert(ctx))
+		displayTask := task.Task{
+			Id:          "display",
+			Version:     v.Id,
+			DisplayOnly: true,
+			TaskCost: cost.Cost{
+				OnDemandEC2Cost:           100.0,
+				AdjustedEC2Cost:           80.0,
+				OnDemandS3ArtifactPutCost: 9.99,
+			},
+			S3Usage: s3usage.S3Usage{
+				Artifacts: s3usage.ArtifactMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{
+						PutRequests: 99999,
+					},
+				},
+			},
+		}
+		require.NoError(t, displayTask.Insert(ctx))
 
 		err := v.UpdateAggregateTaskCosts(ctx)
 		require.NoError(t, err)
 		assert.InDelta(t, 10.0, v.Cost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 8.0, v.Cost.AdjustedEC2Cost, 0.01)
+		assert.InDelta(t, 0.05, v.Cost.OnDemandS3ArtifactPutCost, 0.001)
+		assert.Equal(t, 100, v.S3Usage.Artifacts.PutRequests)
 	})
 
 	t.Run("IncludesOldTaskExecutions", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(VersionCollection, taskCollection, oldTaskCollection))
+		require.NoError(t, db.ClearCollections(VersionCollection, task.Collection, task.OldCollection))
 		v := &Version{Id: "v3"}
 		require.NoError(t, v.Insert(ctx))
 
-		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-			"_id": "t1", "version": "v3", "display_only": false,
-			"cost":     bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0, "on_demand_s3_log_put_cost": 0.01},
-			"s3_usage": bson.M{"logs": bson.M{"put_requests": 30, "upload_bytes": int64(2000)}},
-		}))
-		require.NoError(t, db.Insert(ctx, oldTaskCollection, bson.M{
-			"_id": "t1_old", "version": "v3", "display_only": false,
-			"cost":     bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "on_demand_s3_log_put_cost": 0.005},
-			"s3_usage": bson.M{"logs": bson.M{"put_requests": 10, "upload_bytes": int64(500)}},
-		}))
+		tsk := task.Task{
+			Id:      "t1",
+			Version: v.Id,
+			TaskCost: cost.Cost{
+				OnDemandEC2Cost: 10.0,
+				AdjustedEC2Cost: 8.0,
+			},
+		}
+		require.NoError(t, tsk.Insert(ctx))
+		oldTask := task.Task{
+			Id:      "t1_old",
+			Version: v.Id,
+			TaskCost: cost.Cost{
+				OnDemandEC2Cost: 5.0,
+				AdjustedEC2Cost: 4.0,
+			},
+		}
+		require.NoError(t, db.Insert(ctx, task.OldCollection, oldTask))
 
 		err := v.UpdateAggregateTaskCosts(ctx)
 		require.NoError(t, err)
@@ -921,52 +968,77 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 	})
 
 	t.Run("TasksWithoutS3DataAreAggregatedSafely", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(VersionCollection, taskCollection))
+		require.NoError(t, db.ClearCollections(VersionCollection, task.Collection))
 		v := &Version{Id: "v4"}
 		require.NoError(t, v.Insert(ctx))
 
-		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-			"_id": "t1", "version": "v4", "display_only": false,
-			"cost": bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0},
-		}))
-		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-			"_id": "t2", "version": "v4", "display_only": false,
-			"cost": bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "on_demand_s3_artifact_put_cost": 0.03},
-			"s3_usage": bson.M{
-				"artifacts": bson.M{"put_requests": 50, "upload_bytes": int64(3000), "count": 5},
+		taskWithoutS3 := task.Task{
+			Id:      "t1",
+			Version: v.Id,
+			TaskCost: cost.Cost{
+				OnDemandEC2Cost: 10.0,
+				AdjustedEC2Cost: 8.0,
 			},
-		}))
+		}
+		require.NoError(t, taskWithoutS3.Insert(ctx))
+		taskWithS3 := task.Task{
+			Id:      "t2",
+			Version: v.Id,
+			TaskCost: cost.Cost{
+				OnDemandEC2Cost:           5.0,
+				AdjustedEC2Cost:           4.0,
+				OnDemandS3ArtifactPutCost: 0.03,
+			},
+			S3Usage: s3usage.S3Usage{
+				Artifacts: s3usage.ArtifactMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{
+						PutRequests: 50,
+						UploadBytes: 3000,
+					},
+					Count: 5,
+				},
+			},
+		}
+		require.NoError(t, taskWithS3.Insert(ctx))
 
 		err := v.UpdateAggregateTaskCosts(ctx)
 		require.NoError(t, err)
 		assert.InDelta(t, 15.0, v.Cost.OnDemandEC2Cost, 0.01)
+		assert.InDelta(t, 0.03, v.Cost.OnDemandS3ArtifactPutCost, 0.001)
+		assert.Equal(t, 50, v.S3Usage.Artifacts.PutRequests)
+		assert.Equal(t, int64(3000), v.S3Usage.Artifacts.UploadBytes)
+		assert.Equal(t, 5, v.S3Usage.Artifacts.Count)
 	})
 
 	t.Run("AggregatesEBSCosts", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(VersionCollection, taskCollection))
+		require.NoError(t, db.ClearCollections(VersionCollection, task.Collection))
 		v := &Version{Id: "v5"}
 		require.NoError(t, v.Insert(ctx))
 
-		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-			"_id": "t1", "version": "v5", "display_only": false,
-			"cost": bson.M{
-				"on_demand_ec2_cost":            1.0,
-				"on_demand_ebs_throughput_cost": 0.10,
-				"adjusted_ebs_throughput_cost":  0.08,
-				"on_demand_ebs_storage_cost":    0.20,
-				"adjusted_ebs_storage_cost":     0.16,
+		t1 := task.Task{
+			Id:      "t1",
+			Version: v.Id,
+			TaskCost: cost.Cost{
+				OnDemandEC2Cost:           1.0,
+				OnDemandEBSThroughputCost: 0.10,
+				AdjustedEBSThroughputCost: 0.08,
+				OnDemandEBSStorageCost:    0.20,
+				AdjustedEBSStorageCost:    0.16,
 			},
-		}))
-		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-			"_id": "t2", "version": "v5", "display_only": false,
-			"cost": bson.M{
-				"on_demand_ec2_cost":            1.0,
-				"on_demand_ebs_throughput_cost": 0.05,
-				"adjusted_ebs_throughput_cost":  0.04,
-				"on_demand_ebs_storage_cost":    0.10,
-				"adjusted_ebs_storage_cost":     0.08,
+		}
+		require.NoError(t, t1.Insert(ctx))
+		t2 := task.Task{
+			Id:      "t2",
+			Version: v.Id,
+			TaskCost: cost.Cost{
+				OnDemandEC2Cost:           1.0,
+				OnDemandEBSThroughputCost: 0.05,
+				AdjustedEBSThroughputCost: 0.04,
+				OnDemandEBSStorageCost:    0.10,
+				AdjustedEBSStorageCost:    0.08,
 			},
-		}))
+		}
+		require.NoError(t, t2.Insert(ctx))
 
 		err := v.UpdateAggregateTaskCosts(ctx)
 		require.NoError(t, err)
@@ -977,45 +1049,71 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 	})
 
 	t.Run("AggregatesS3CostsAndUsage", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(VersionCollection, taskCollection, oldTaskCollection))
+		require.NoError(t, db.ClearCollections(VersionCollection, task.Collection, task.OldCollection))
 		v := &Version{Id: "v6"}
 		require.NoError(t, v.Insert(ctx))
 
-		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-			"_id": "t1", "version": "v6", "display_only": false,
-			"cost": bson.M{
-				"adjusted_ec2_cost":                  10.0,
-				"on_demand_s3_artifact_put_cost":     0.50,
-				"adjusted_s3_artifact_put_cost":      0.40,
-				"on_demand_s3_log_put_cost":          0.20,
-				"adjusted_s3_log_put_cost":           0.15,
-				"on_demand_s3_artifact_storage_cost": 3.00,
-				"adjusted_s3_artifact_storage_cost":  2.50,
-				"on_demand_s3_log_storage_cost":      0.30,
-				"adjusted_s3_log_storage_cost":       0.25,
+		tsk := task.Task{
+			Id:      "t1",
+			Version: v.Id,
+			TaskCost: cost.Cost{
+				AdjustedEC2Cost:               10.0,
+				OnDemandS3ArtifactPutCost:     0.50,
+				AdjustedS3ArtifactPutCost:     0.40,
+				OnDemandS3LogPutCost:          0.20,
+				AdjustedS3LogPutCost:          0.15,
+				OnDemandS3ArtifactStorageCost: 3.00,
+				AdjustedS3ArtifactStorageCost: 2.50,
+				OnDemandS3LogStorageCost:      0.30,
+				AdjustedS3LogStorageCost:      0.25,
 			},
-			"s3_usage": bson.M{
-				"artifacts": bson.M{"put_requests": 100, "upload_bytes": int64(5000), "count": 10},
-				"logs":      bson.M{"put_requests": 20, "upload_bytes": int64(1000)},
+			S3Usage: s3usage.S3Usage{
+				Artifacts: s3usage.ArtifactMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{
+						PutRequests: 100,
+						UploadBytes: 5000,
+					},
+					Count: 10,
+				},
+				Logs: s3usage.LogMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{
+						PutRequests: 20,
+						UploadBytes: 1000,
+					},
+				},
 			},
-		}))
-		require.NoError(t, db.Insert(ctx, oldTaskCollection, bson.M{
-			"_id": "t1_0", "version": "v6", "display_only": false,
-			"cost": bson.M{
-				"on_demand_s3_artifact_put_cost":     0.05,
-				"adjusted_s3_artifact_put_cost":      0.04,
-				"on_demand_s3_log_put_cost":          0.02,
-				"adjusted_s3_log_put_cost":           0.01,
-				"on_demand_s3_artifact_storage_cost": 0.30,
-				"adjusted_s3_artifact_storage_cost":  0.20,
-				"on_demand_s3_log_storage_cost":      0.03,
-				"adjusted_s3_log_storage_cost":       0.02,
+		}
+		require.NoError(t, tsk.Insert(ctx))
+		oldTask := task.Task{
+			Id:      "t1_0",
+			Version: v.Id,
+			TaskCost: cost.Cost{
+				OnDemandS3ArtifactPutCost:     0.05,
+				AdjustedS3ArtifactPutCost:     0.04,
+				OnDemandS3LogPutCost:          0.02,
+				AdjustedS3LogPutCost:          0.01,
+				OnDemandS3ArtifactStorageCost: 0.30,
+				AdjustedS3ArtifactStorageCost: 0.20,
+				OnDemandS3LogStorageCost:      0.03,
+				AdjustedS3LogStorageCost:      0.02,
 			},
-			"s3_usage": bson.M{
-				"artifacts": bson.M{"put_requests": 50, "upload_bytes": int64(3000), "count": 5},
-				"logs":      bson.M{"put_requests": 10, "upload_bytes": int64(500)},
+			S3Usage: s3usage.S3Usage{
+				Artifacts: s3usage.ArtifactMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{
+						PutRequests: 50,
+						UploadBytes: 3000,
+					},
+					Count: 5,
+				},
+				Logs: s3usage.LogMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{
+						PutRequests: 10,
+						UploadBytes: 500,
+					},
+				},
 			},
-		}))
+		}
+		require.NoError(t, db.Insert(ctx, task.OldCollection, oldTask))
 
 		require.NoError(t, v.UpdateAggregateTaskCosts(ctx))
 
@@ -1039,49 +1137,6 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 			assert.Equal(t, int64(1500), actual.S3Usage.Logs.UploadBytes)
 		}
 	})
-
-	t.Run("OverwritesPartiallyIncrementedS3CostsAndUsage", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(VersionCollection, taskCollection, oldTaskCollection))
-		v := &Version{
-			Id: "v7",
-			Cost: cost.Cost{
-				OnDemandS3ArtifactPutCost: 0.05,
-				AdjustedS3ArtifactPutCost: 0.04,
-			},
-			S3Usage: s3usage.S3Usage{
-				Artifacts: s3usage.ArtifactMetrics{
-					S3UploadMetrics: s3usage.S3UploadMetrics{
-						PutRequests: 5,
-						UploadBytes: 100,
-					},
-					Count: 1,
-				},
-			},
-		}
-		require.NoError(t, v.Insert(ctx))
-
-		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-			"_id": "t1", "version": "v7", "display_only": false,
-			"cost":     bson.M{"on_demand_s3_artifact_put_cost": 0.05, "adjusted_s3_artifact_put_cost": 0.04},
-			"s3_usage": bson.M{"artifacts": bson.M{"put_requests": 5, "upload_bytes": int64(100), "count": 1}},
-		}))
-		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-			"_id": "t2", "version": "v7", "display_only": false,
-			"cost":     bson.M{"on_demand_s3_artifact_put_cost": 0.07, "adjusted_s3_artifact_put_cost": 0.06},
-			"s3_usage": bson.M{"artifacts": bson.M{"put_requests": 7, "upload_bytes": int64(200), "count": 2}},
-		}))
-
-		require.NoError(t, v.UpdateAggregateTaskCosts(ctx))
-
-		dbVersion, err := VersionFindOneId(ctx, v.Id)
-		require.NoError(t, err)
-		require.NotNil(t, dbVersion)
-		assert.InDelta(t, 0.12, dbVersion.Cost.OnDemandS3ArtifactPutCost, 0.001, "version S3 cost should be replaced by the sum across all tasks rather than added to")
-		assert.InDelta(t, 0.10, dbVersion.Cost.AdjustedS3ArtifactPutCost, 0.001)
-		assert.Equal(t, 12, dbVersion.S3Usage.Artifacts.PutRequests, "version S3 usage should be replaced by the sum across all tasks rather than added to")
-		assert.Equal(t, int64(300), dbVersion.S3Usage.Artifacts.UploadBytes)
-		assert.Equal(t, 3, dbVersion.S3Usage.Artifacts.Count)
-	})
 }
 
 func TestTrackVersionS3CostForTask(t *testing.T) {
@@ -1101,9 +1156,9 @@ func TestTrackVersionS3CostForTask(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx := t.Context()
-			require.NoError(t, db.ClearCollections(VersionCollection, taskCollection, oldTaskCollection))
+			require.NoError(t, db.ClearCollections(VersionCollection, task.Collection, task.OldCollection))
 			t.Cleanup(func() {
-				assert.NoError(t, db.ClearCollections(VersionCollection, taskCollection, oldTaskCollection))
+				assert.NoError(t, db.ClearCollections(VersionCollection, task.Collection, task.OldCollection))
 			})
 
 			v := &Version{
@@ -1111,23 +1166,23 @@ func TestTrackVersionS3CostForTask(t *testing.T) {
 				Status: tCase.versionStatus,
 			}
 			require.NoError(t, v.Insert(ctx))
-			require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-				"_id": "t1", "version": "v1", "display_only": false,
-				"cost":     bson.M{"on_demand_s3_artifact_put_cost": 0.05},
-				"s3_usage": bson.M{"artifacts": bson.M{"put_requests": 100}},
-			}))
-
-			taskCost := cost.Cost{
-				OnDemandS3ArtifactPutCost: 0.05,
-			}
-			usage := s3usage.S3Usage{
-				Artifacts: s3usage.ArtifactMetrics{
-					S3UploadMetrics: s3usage.S3UploadMetrics{
-						PutRequests: 100,
+			tsk := task.Task{
+				Id:      "t1",
+				Version: v.Id,
+				TaskCost: cost.Cost{
+					OnDemandS3ArtifactPutCost: 0.05,
+				},
+				S3Usage: s3usage.S3Usage{
+					Artifacts: s3usage.ArtifactMetrics{
+						S3UploadMetrics: s3usage.S3UploadMetrics{
+							PutRequests: 100,
+						},
 					},
 				},
 			}
-			require.NoError(t, TrackVersionS3CostForTask(ctx, "t1", v.Id, evergreen.TaskSucceeded, taskCost, usage))
+			require.NoError(t, tsk.Insert(ctx))
+
+			require.NoError(t, TrackVersionS3CostForTask(ctx, tsk.Id, v.Id, evergreen.TaskSucceeded, tsk.TaskCost, tsk.S3Usage))
 
 			dbVersion, err := VersionFindOneId(ctx, v.Id)
 			require.NoError(t, err)
