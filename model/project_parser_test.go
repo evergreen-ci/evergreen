@@ -5299,3 +5299,50 @@ tasks:
 	assert.Contains(t, pp.parseWarnings[0], "included file 'include.yml'")
 	assert.Contains(t, pp.parseWarnings[0], "top-level YAML key '_evg_anchors'")
 }
+
+func TestCrossFileAliasSurvivesV2Fallback(t *testing.T) {
+	// second.yml has a duplicate mapping key, which yaml v3 rejects, so the
+	// file is parsed by the v2 fallback — but the fallback decodes the
+	// combined preamble+file bytes, so the cross-file alias to first.yml's
+	// anchor still resolves.
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - &common-step
+    command: shell.exec
+    params:
+      script: ./common.sh
+`, "first.yml", "second.yml")
+
+	firstYAML := `
+tasks:
+- name: first-task
+  commands:
+  - command: shell.exec
+`
+	secondYAML := `
+tasks:
+- name: second-task
+  commands:
+  - *common-step
+  commands:
+  - *common-step
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(t,
+			moduleInclude("first.yml", firstYAML),
+			moduleInclude("second.yml", secondYAML),
+		), "proj", proj)
+	require.NoError(t, err)
+
+	tasksByName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		tasksByName[task.Name] = task
+	}
+	require.Contains(t, tasksByName, "second-task")
+	require.Len(t, tasksByName["second-task"].Commands, 1)
+	assert.Equal(t, "shell.exec", tasksByName["second-task"].Commands[0].Command)
+	assert.Equal(t, "./common.sh", tasksByName["second-task"].Commands[0].Params["script"])
+}
