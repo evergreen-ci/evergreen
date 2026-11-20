@@ -209,6 +209,45 @@ func TestAttachResultsExecute(t *testing.T) {
 			assert.ErrorContains(t, cmd.Execute(t.Context(), comm, logger, conf), "opening report file")
 			assert.NoError(t, logger.Close())
 		},
+		"ExecuteWithOptionalAndMissingFileShouldNoOp": func(t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			comm := client.NewMock("url")
+			cmd := &attachResults{
+				FileLoc:  filepath.Join(cwd, "testdata", "attach", "nonexistent.json"),
+				Optional: true,
+			}
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+			require.NoError(t, logger.Close())
+			assert.Zero(t, comm.TestResultStats.TotalCount)
+		},
+		"ExecuteWithOptionalAndEmptyResultsShouldNoOp": func(t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			comm := client.NewMock("url")
+			cmd := &attachResults{
+				FileLoc:  filepath.Join(cwd, "testdata", "attach", "plugin_attach_results_empty.json"),
+				Optional: true,
+			}
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+			require.NoError(t, logger.Close())
+			assert.Zero(t, comm.TestResultStats.TotalCount)
+		},
+		"ExecuteWithOptionalAndResultsShouldAttach": func(t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			conf.Task.TaskOutputInfo = agentutil.InitializeTaskOutput(t)
+			conf.Task.TaskOutputInfo.TestResults.Version = task.TestResultServiceEvergreen
+			conf.TestResultsCreatedAt = time.Time{}
+			cmd := &attachResults{
+				FileLoc:  filepath.Join(cwd, "testdata", "attach", "plugin_attach_results_raw.json"),
+				Optional: true,
+			}
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+			require.NoError(t, logger.Close())
+			assert.Equal(t, 3, comm.TestResultStats.TotalCount)
+		},
+		"ExecuteWithEmptyResultsShouldError": func(t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			cmd := &attachResults{
+				FileLoc: filepath.Join(cwd, "testdata", "attach", "plugin_attach_results_empty.json"),
+			}
+			assert.ErrorContains(t, cmd.Execute(t.Context(), comm, logger, conf), "cannot send nil results")
+			assert.NoError(t, logger.Close())
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			logger, err := comm.GetLoggerProducer(t.Context(), &conf.Task, nil)
