@@ -19,7 +19,9 @@ input TaskFilterOptions {
   sorts: [SortOrder!]
   statuses: [String!] = []
   taskName: String
+  taskTags: [String!] = []
   variant: String
+  variantTags: [String!] = []
 }
 
 """

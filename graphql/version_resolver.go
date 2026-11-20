@@ -496,6 +496,8 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options
 		BaseStatuses: getValidTaskStatusesFilter(options.BaseStatuses),
 		Variants:     []string{variantParam},
 		TaskNames:    []string{taskNameParam},
+		TaskTags:     options.TaskTags,
+		VariantTags:  options.VariantTags,
 		Page:         pageParam,
 		Limit:        limitParam,
 		Sorts:        taskSorts,
@@ -509,6 +511,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options
 	}
 
 	var apiTasks []*restModel.APITask
+	var baseTaskIDs []string
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
 		err := apiTask.BuildFromService(ctx, &t, nil)
@@ -516,6 +519,12 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", t.Id, err.Error()))
 		}
 		apiTasks = append(apiTasks, &apiTask)
+		if t.BaseTask.Id != "" {
+			baseTaskIDs = append(baseTaskIDs, t.BaseTask.Id)
+		}
+	}
+	if graphql.HasOperationContext(ctx) && collectedFieldPathContains(graphql.GetOperationContext(ctx), graphql.CollectFieldsCtx(ctx, nil), []string{"data", "baseTask"}) {
+		loaders.PreloadTasks(ctx, baseTaskIDs)
 	}
 	versionTasks := VersionTasks{
 		Count: count,
