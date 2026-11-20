@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"github.com/shirou/gopsutil/v3/process"
 	"github.com/urfave/cli"
 )
 
@@ -119,15 +120,13 @@ func daemonProcessAlive() bool {
 	if err != nil {
 		return false
 	}
-	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	pid, err := strconv.ParseInt(strings.TrimSpace(string(data)), 10, 32)
 	if err != nil {
 		return false
 	}
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	return process.Signal(syscall.Signal(0)) == nil
+	// Signal 0 can't probe a process on Windows, so use gopsutil's cross-platform check.
+	alive, err := process.PidExists(int32(pid))
+	return err == nil && alive
 }
 
 // Debug returns the "debug" command for running Evergreen tasks locally.
@@ -487,12 +486,12 @@ func stopDebugDaemonCmd(c *cli.Context) error {
 		return errors.Wrap(err, "invalid PID in daemon.pid file")
 	}
 
-	process, err := os.FindProcess(pid)
+	proc, err := os.FindProcess(pid)
 	if err != nil {
 		return errors.Wrap(err, "finding daemon process")
 	}
 
-	if err := process.Signal(syscall.SIGTERM); err != nil {
+	if err := proc.Signal(syscall.SIGTERM); err != nil {
 		// Process might already be dead
 		grip.Info(ctx, "Daemon process not found (may have already stopped)")
 	} else {
