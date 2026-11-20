@@ -41,8 +41,8 @@ compatibility with Evergreen.
 ## Deprecation Policy
 
 As the Evergreen GraphQL API is still being developed, fields regularly need to
-be deprecated. Deprecated fields will be marked with a `@deprecated` directive. 
-Once a field has been marked deprecated, it will be maintained for 14 days, after 
+be deprecated. Deprecated fields will be marked with a `@deprecated` directive.
+Once a field has been marked deprecated, it will be maintained for 14 days, after
 which it will be deleted from the schema.
 
 Deprecated fields will be included in the GraphQL response from Evergreen under the
