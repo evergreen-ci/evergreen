@@ -99,6 +99,9 @@ func Handler(allowMutations bool, env evergreen.Environment) func(w http.Respons
 		srv.Use(DisableMutations{})
 	}
 
+	// Surface deprecated fields in "extensions".
+	srv.Use(&DetectDeprecatedFields{})
+
 	// Handler to log graphql panics to splunk
 	srv.SetRecoverFunc(func(ctx context.Context, err any) error {
 		queryPath := graphql.GetFieldContext(ctx).Path()

@@ -32,11 +32,35 @@ the caller has permissions to view a project. You can find the other directives
 
 The Evergreen GraphQL API is currently in beta and not intended for public use,
 so we cannot guarantee field consistency between releases. However, when we
-deprecate a field, we mark it with the @deprecated directive. You can configure
+deprecate a field, we mark it with the `@deprecated` directive. You can configure
 your GraphQL client to issue warnings when using these fields. Additionally,
 GraphQL's type safety ensures that you will be notified if fields change. We
 recommend staying up to date with our API changes to ensure application
 compatibility with Evergreen.
+
+## Deprecation Policy
+
+As the Evergreen GraphQL API is still being developed, fields regularly need to
+be deprecated. Deprecated fields will be marked with a `@deprecated` directive.
+Once a field has been marked deprecated, it will be maintained for 14 days, after
+which it will be deleted from the schema.
+
+Deprecated fields will be included in the GraphQL response from Evergreen under the
+`"extensions"` field. You may use this to alert on upcoming deprecations:
+
+```json
+{
+  "data": { ... },
+  "extensions": {
+    "deprecatedFields": [
+      { "field": "host.distroId", "reason": "Use distro.id instead" }
+    ]
+  }
+}
+```
+
+Evergreen will not be responsible for any errors caused after the deprecated field
+has been deleted following the 14-day grace period.
 
 ## Documentation
 
