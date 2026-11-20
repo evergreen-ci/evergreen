@@ -493,6 +493,7 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 			"total_adjusted_ebs_throughput":  bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedEBSThroughputCostKey},
 			"total_on_demand_ebs_storage":    bson.M{"$sum": "$" + taskCostKey + "." + cost.OnDemandEBSStorageCostKey},
 			"total_adjusted_ebs_storage":     bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedEBSStorageCostKey},
+			"total_adjusted_engflow":         bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedEngFlowCostKey},
 			// Predicted per-task costs (all components including S3).
 			"expected_on_demand":                          bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskOnDemandCostKey},
 			"expected_adjusted":                           bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskAdjustedCostKey},
@@ -524,6 +525,7 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		TotalAdjustedEBSThroughput float64 `bson:"total_adjusted_ebs_throughput"`
 		TotalOnDemandEBSStorage    float64 `bson:"total_on_demand_ebs_storage"`
 		TotalAdjustedEBSStorage    float64 `bson:"total_adjusted_ebs_storage"`
+		TotalAdjustedEngFlow       float64 `bson:"total_adjusted_engflow"`
 		// Predicted costs (summed from task predicted_cost).
 		PredictedOnDemand              float64 `bson:"expected_on_demand"`
 		PredictedAdjusted              float64 `bson:"expected_adjusted"`
@@ -553,6 +555,7 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		total.AdjustedEBSThroughputCost = results[0].TotalAdjustedEBSThroughput
 		total.OnDemandEBSStorageCost = results[0].TotalOnDemandEBSStorage
 		total.AdjustedEBSStorageCost = results[0].TotalAdjustedEBSStorage
+		total.AdjustedEngFlowCost = results[0].TotalAdjustedEngFlow
 
 		predicted.OnDemandEC2Cost = results[0].PredictedOnDemand
 		predicted.AdjustedEC2Cost = results[0].PredictedAdjusted
@@ -595,6 +598,7 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedEBSThroughputCostKey): total.AdjustedEBSThroughputCost,
 			bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandEBSStorageCostKey):    total.OnDemandEBSStorageCost,
 			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedEBSStorageCostKey):    total.AdjustedEBSStorageCost,
+			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedEngFlowCostKey):       total.AdjustedEngFlowCost,
 		},
 	}); err != nil {
 		return errors.Wrap(err, "updating version aggregated task costs")

@@ -323,6 +323,7 @@ type PlannerSettings struct {
 	GenerateTaskFactor        int64         `bson:"generate_task_factor" json:"generate_task_factor" mapstructure:"generate_task_factor"`
 	NumDependentsFactor       float64       `bson:"num_dependents_factor" json:"num_dependents_factor" mapstructure:"num_dependents_factor"`
 	StepbackTaskFactor        int64         `bson:"stepback_task_factor" json:"stepback_task_factor" mapstructure:"stepback_task_factor"`
+	GitTagFactor              int64         `bson:"git_tag_factor" json:"git_tag_factor" mapstructure:"git_tag_factor"`
 
 	maxDurationPerHost time.Duration
 }
@@ -425,6 +426,13 @@ func (s *PlannerSettings) GetStepbackTaskFactor() int64 {
 		return 1
 	}
 	return s.StepbackTaskFactor
+}
+
+func (s *PlannerSettings) GetGitTagFactor() int64 {
+	if s.GitTagFactor <= 0 {
+		return 1
+	}
+	return s.GitTagFactor
 }
 
 func (s *PlannerSettings) GetExpectedRuntimeFactor() int64 {
@@ -847,6 +855,9 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 
 	// StepbackTaskFactor isn't configurable by distro
 	resolved.StepbackTaskFactor = config.StepbackTaskFactor
+
+	// GitTagFactor isn't configurable by distro
+	resolved.GitTagFactor = config.GitTagFactor
 
 	if catcher.HasErrors() {
 		return PlannerSettings{}, errors.Wrapf(catcher.Resolve(), "resolving planner settings for distro '%s'", d.Id)

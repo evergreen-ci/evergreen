@@ -21,6 +21,7 @@ var (
 	AdjustedS3ArtifactStorageCostKey = bsonutil.MustHaveTag(Cost{}, "AdjustedS3ArtifactStorageCost")
 	OnDemandS3LogStorageCostKey      = bsonutil.MustHaveTag(Cost{}, "OnDemandS3LogStorageCost")
 	AdjustedS3LogStorageCostKey      = bsonutil.MustHaveTag(Cost{}, "AdjustedS3LogStorageCost")
+	AdjustedEngFlowCostKey           = bsonutil.MustHaveTag(Cost{}, "AdjustedEngFlowCost")
 )
 
 // Cost represents a cost breakdown for tasks and versions
@@ -55,11 +56,14 @@ type Cost struct {
 	OnDemandS3LogStorageCost float64 `bson:"on_demand_s3_log_storage_cost,omitempty" json:"-"`
 	// AdjustedS3LogStorageCost is the adjusted (discounted) S3 storage cost for log bytes over their retention period.
 	AdjustedS3LogStorageCost float64 `bson:"adjusted_s3_log_storage_cost,omitempty" json:"adjusted_s3_log_storage_cost,omitempty"`
+	// AdjustedEngFlowCost is the EngFlow cost reported by the producer; its rate already blends
+	// spot and on-demand pricing, so there is no on-demand variant.
+	AdjustedEngFlowCost float64 `bson:"adjusted_engflow_cost,omitempty" json:"adjusted_engflow_cost,omitempty"`
 	// ChildPatchesTotalCost is the total cost for child patches.
 	ChildPatchesTotalCost float64 `bson:"-" json:"child_patches_total_cost,omitempty"`
 }
 
-// AdjustedTotal returns the sum of the 7 base adjusted fields, excluding ChildPatchesTotalCost.
+// AdjustedTotal returns the sum of the 8 base adjusted fields, excluding ChildPatchesTotalCost.
 func (c Cost) AdjustedTotal() float64 {
 	return c.AdjustedEC2Cost +
 		c.AdjustedEBSThroughputCost +
@@ -67,10 +71,11 @@ func (c Cost) AdjustedTotal() float64 {
 		c.AdjustedS3ArtifactPutCost +
 		c.AdjustedS3LogPutCost +
 		c.AdjustedS3ArtifactStorageCost +
-		c.AdjustedS3LogStorageCost
+		c.AdjustedS3LogStorageCost +
+		c.AdjustedEngFlowCost
 }
 
-// RoundedBase returns a new Cost with the 7 adjusted fields individually rounded.
+// RoundedBase returns a new Cost with the 8 adjusted fields individually rounded.
 func (c Cost) RoundedBase() Cost {
 	return Cost{
 		AdjustedEC2Cost:               RoundCost(c.AdjustedEC2Cost),
@@ -80,6 +85,7 @@ func (c Cost) RoundedBase() Cost {
 		AdjustedS3LogPutCost:          RoundCost(c.AdjustedS3LogPutCost),
 		AdjustedS3ArtifactStorageCost: RoundCost(c.AdjustedS3ArtifactStorageCost),
 		AdjustedS3LogStorageCost:      RoundCost(c.AdjustedS3LogStorageCost),
+		AdjustedEngFlowCost:           RoundCost(c.AdjustedEngFlowCost),
 	}
 }
 
@@ -126,5 +132,6 @@ func (c Cost) IsZero() bool {
 		c.AdjustedS3LogPutCost == 0 &&
 		c.AdjustedS3ArtifactStorageCost == 0 &&
 		c.AdjustedS3LogStorageCost == 0 &&
+		c.AdjustedEngFlowCost == 0 &&
 		c.ChildPatchesTotalCost == 0
 }

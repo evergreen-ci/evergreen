@@ -36,6 +36,7 @@ mutation Runners {
         expectedRuntimeFactor: 1
         futureHostFraction: 0.1
         generateTaskFactor: 1
+        gitTagFactor: 1
         groupVersions: false
         hostAllocator: UTILIZATION
         hostAllocatorFeedbackRule: WAITS_OVER_THRESH
@@ -93,6 +94,7 @@ mutation Runners {
       expectedRuntimeFactor
       futureHostFraction
       generateTaskFactor
+      gitTagFactor
       groupVersions
       hostAllocator
       hostAllocatorFeedbackRule

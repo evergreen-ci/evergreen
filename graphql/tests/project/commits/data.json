@@ -1,0 +1,60 @@
+{
+  "versions": [
+    {
+      "_id": "repo-version-4",
+      "identifier": "mci",
+      "r": "gitter_request",
+      "activated": true,
+      "order": 4
+    },
+    {
+      "_id": "tag-version-3",
+      "identifier": "mci",
+      "r": "git_tag_request",
+      "activated": true,
+      "order": 3
+    },
+    {
+      "_id": "repo-version-2",
+      "identifier": "mci",
+      "r": "gitter_request",
+      "activated": true,
+      "order": 2
+    },
+    {
+      "_id": "repo-version-1",
+      "identifier": "mci",
+      "r": "gitter_request",
+      "activated": true,
+      "order": 1
+    },
+    {
+      "_id": "trailing-inactive-version-4",
+      "identifier": "evergreen",
+      "r": "gitter_request",
+      "activated": true,
+      "order": 4
+    },
+    {
+      "_id": "trailing-inactive-version-3",
+      "identifier": "evergreen",
+      "r": "gitter_request",
+      "activated": false,
+      "order": 3
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "mci",
+      "identifier": "project-commits-test"
+    },
+    {
+      "_id": "repo_sandbox",
+      "identifier": "empty-project"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "trailing-inactive-project"
+    }
+  ]
+}

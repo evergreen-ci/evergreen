@@ -631,6 +631,7 @@ const (
 	VersionAdjustedS3LogPutCostOtelAttribute     = "evergreen.version.s3_cost.adjusted_log_put_cost"
 	VersionOnDemandS3LogStorageCostOtelAttribute = "evergreen.version.s3_cost.on_demand_log_storage_cost"
 	VersionAdjustedS3LogStorageCostOtelAttribute = "evergreen.version.s3_cost.adjusted_log_storage_cost"
+	VersionAdjustedEngFlowCostOtelAttribute      = "evergreen.version.engflow_cost.adjusted_cost"
 
 	// patch otel attributes
 	PatchIsReconfiguredOtelAttribute = "evergreen.patch.is_reconfigured"
