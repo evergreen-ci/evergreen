@@ -1319,6 +1319,53 @@ func TestGetTasksByVersionSortingAndPaginationPreserveCount(t *testing.T) {
 	}
 }
 
+func TestGetTasksByVersionTagFilters(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	t.Cleanup(func() { require.NoError(t, db.ClearCollections(Collection)) })
+	for _, task := range []Task{
+		{Id: "a", Version: "root", DisplayName: "compile", BuildVariant: "linux", Tags: []string{"build", "shared"}, BuildVariantTags: []string{"linux", "shared"}},
+		{Id: "b", Version: "root", DisplayName: "test", BuildVariant: "windows", Tags: []string{"test", "shared"}, BuildVariantTags: []string{"windows", "shared"}},
+		{Id: "c", Version: "root", DisplayName: "untagged", BuildVariant: "linux"},
+		{Id: "base-a", Version: "base", DisplayName: "compile", BuildVariant: "linux", Tags: []string{"build", "shared"}, BuildVariantTags: []string{"linux", "shared"}},
+	} {
+		task.DisplayTaskId = utility.ToStringPtr("")
+		task.DisplayStatusCache = evergreen.TaskSucceeded
+		require.NoError(t, task.Insert(t.Context()))
+	}
+	for _, test := range []struct {
+		name string
+		opts GetTasksByVersionOptions
+		ids  []string
+	}{
+		{"TaskTagsMatchAnySelectedTag", GetTasksByVersionOptions{TaskTags: []string{"missing", "build"}}, []string{"a"}},
+		{"VariantTagsMatchAnySelectedTag", GetTasksByVersionOptions{VariantTags: []string{"missing", "windows"}}, []string{"b"}},
+		{"CombinedTagsRequireBothFilters", GetTasksByVersionOptions{TaskTags: []string{"shared"}, VariantTags: []string{"linux"}}, []string{"a"}},
+		{"ConflictingTagsReturnNoTasks", GetTasksByVersionOptions{TaskTags: []string{"build"}, VariantTags: []string{"windows"}}, []string{}},
+		{"EmptyTagsDoNotFilterTasks", GetTasksByVersionOptions{TaskTags: []string{""}, VariantTags: []string{""}}, []string{"a", "b", "c"}},
+		{"TagsCombineWithNameAndVariantFilters", GetTasksByVersionOptions{TaskTags: []string{"shared"}, VariantTags: []string{"shared"}, TaskNames: []string{"compile"}, Variants: []string{"linux"}}, []string{"a"}},
+		{"TagsPreserveBaseTaskPairing", GetTasksByVersionOptions{TaskTags: []string{"build"}, VariantTags: []string{"linux"}, BaseVersionID: "base"}, []string{"a"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			opts := test.opts
+			opts.IncludeNeverActivatedTasks = true
+			opts.Limit = 1
+			opts.Sorts = []TasksSortOrder{{Key: IdKey, Order: 1}}
+			tasks, count, err := GetTasksByVersion(t.Context(), "root", opts)
+			require.NoError(t, err)
+			assert.Equal(t, len(test.ids), count)
+			if len(test.ids) == 0 {
+				assert.Empty(t, tasks)
+				return
+			}
+			require.Len(t, tasks, 1)
+			assert.Equal(t, test.ids[0], tasks[0].Id)
+			if opts.BaseVersionID != "" {
+				assert.Equal(t, "base-a", tasks[0].BaseTask.Id)
+			}
+		})
+	}
+}
+
 func TestGetTasksByVersionErrorHandling(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 

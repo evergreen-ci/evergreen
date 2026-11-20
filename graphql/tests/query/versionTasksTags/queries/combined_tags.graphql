@@ -1,0 +1,8 @@
+query {
+  version(versionId: "tag-version") {
+    tasks(options: { taskTags: ["build"], variantTags: ["linux"], limit: 10 }) {
+      count
+      data { id }
+    }
+  }
+}

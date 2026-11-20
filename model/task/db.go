@@ -2334,6 +2334,8 @@ type GetTasksByVersionOptions struct {
 	BaseStatuses               []string
 	Variants                   []string
 	TaskNames                  []string
+	TaskTags                   []string
+	VariantTags                []string
 	Page                       int
 	Limit                      int
 	FieldsToProject            []string
@@ -2359,6 +2361,14 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	if hasTaskNameFilter {
 		taskNamesAsRegex := strings.Join(nonEmptyTaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
+	}
+	taskTags := utility.FilterSlice(opts.TaskTags, func(s string) bool { return s != "" })
+	if len(taskTags) > 0 {
+		match[TagsKey] = bson.M{"$in": taskTags}
+	}
+	variantTags := utility.FilterSlice(opts.VariantTags, func(s string) bool { return s != "" })
+	if len(variantTags) > 0 {
+		match[BuildVariantTagsKey] = bson.M{"$in": variantTags}
 	}
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
 	if !opts.IncludeNeverActivatedTasks {

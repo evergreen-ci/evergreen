@@ -1,0 +1,20 @@
+{
+  "tests": [
+    {
+      "query_file": "task_tags.graphql",
+      "result": { "data": { "version": { "tasks": { "count": 2, "data": [{ "id": "build-linux" }, { "id": "build-windows" }] } } } }
+    },
+    {
+      "query_file": "variant_tags.graphql",
+      "result": { "data": { "version": { "tasks": { "count": 2, "data": [{ "id": "build-linux" }, { "id": "test-linux" }] } } } }
+    },
+    {
+      "query_file": "combined_tags.graphql",
+      "result": { "data": { "version": { "tasks": { "count": 1, "data": [{ "id": "build-linux" }] } } } }
+    },
+    {
+      "query_file": "conflicting_tags.graphql",
+      "result": { "data": { "version": { "tasks": { "count": 0, "data": [] } } } }
+    }
+  ]
+}

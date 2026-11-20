@@ -496,6 +496,8 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options
 		BaseStatuses: getValidTaskStatusesFilter(options.BaseStatuses),
 		Variants:     []string{variantParam},
 		TaskNames:    []string{taskNameParam},
+		TaskTags:     options.TaskTags,
+		VariantTags:  options.VariantTags,
 		Page:         pageParam,
 		Limit:        limitParam,
 		Sorts:        taskSorts,
