@@ -34,20 +34,22 @@ func makeTasksByProjectAndCommitHandler(parsleyURL string) gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-//	@Summary		List tasks by project and commit
-//	@Description	List all tasks within a mainline commit of a given project (excludes patch tasks)
-//	@Tags			tasks
-//	@Router			/projects/{project_name}/revisions/{commit_hash}/tasks [get]
-//	@Security		Api-User || Api-Key
-//	@Param			project_name	path	string	true	"project name"
-//	@Param			commit_hash		path	string	true	"commit hash"
-//	@Param			start_at		query	string	false	"The identifier of the task to start at in the pagination"
-//	@Param			limit			query	int		false	"The number of tasks to be returned per page of pagination. Defaults to 100"
-//	@Param			variant			query	string	false	"Only return tasks within this variant"
-//	@Param			variant_regex	query	string	false	"Only return tasks within variants that match this regex"
-//	@Param			task_name		query	string	false	"Only return tasks with this display name"
-//	@Param			status			query	string	false	"Only return tasks with this status"
-//	@Success		200				{array}	model.APITask
+//	@Summary			List tasks by project and commit
+//	@Description		List all tasks within a mainline commit of a given project (excludes patch tasks)
+//	@Tags				tasks
+//	@Router				/projects/{project_name}/revisions/{commit_hash}/tasks [get]
+//	@Security			Api-User || Api-Key
+//	@Param				project_name	path		string	true	"project name"
+//	@Param				commit_hash		path		string	true	"commit hash"
+//	@Param				start_at		query		string	false	"ID of the first task on the next page. Defaults to the first task."
+//	@Param				limit			query		int		false	"The number of tasks to be returned per page of pagination. Defaults to 100"
+//	@Param				variant			query		string	false	"Only return tasks within this variant"
+//	@Param				variant_regex	query		string	false	"Only return tasks within variants that match this regex"
+//	@Param				task_name		query		string	false	"Only return tasks with this display name"
+//	@Param				status			query		string	false	"Only return tasks with this status"
+//	@Success			200				{array}		model.APITask
+//	@Header				200				{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."
+//	@x-pagination-type	"task-id-cursor"
 func (tph *tasksByProjectHandler) Factory() gimlet.RouteHandler {
 	return &tasksByProjectHandler{
 		parsleyURL: tph.parsleyURL}
