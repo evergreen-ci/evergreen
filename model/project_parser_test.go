@@ -3043,10 +3043,12 @@ workstation_config:
 build_baron_settings:
   ticket_create_project: EVG
   ticket_search_projects: [EVG]
+version_makespan_tags: [workload_a]
 `
 		includedYaml := `
 workstation_config:
   git_clone: false
+version_makespan_tags: [workload_b]
 `
 		p1, _, err := createIntermediateProject([]byte(mainYaml), false, nil)
 		require.NoError(t, err)
@@ -3054,12 +3056,12 @@ workstation_config:
 		require.NoError(t, err)
 
 		p1.mergeProjectConfigFields(p2)
-		assert.Equal(t, []string{"workstation_config"}, p1.redefinedProjectConfigSettings)
+		assert.Equal(t, []string{"version_makespan_tags", "workstation_config"}, p1.redefinedProjectConfigSettings)
 		require.NotNil(t, p1.projectConfigFields)
 		require.NotNil(t, p1.projectConfigFields.WorkstationConfig)
 		assert.True(t, utility.FromBoolPtr(p1.projectConfigFields.WorkstationConfig.GitClone))
+		assert.Equal(t, []string{"workload_a"}, p1.projectConfigFields.VersionMakespanTags)
 		assert.NotNil(t, p1.projectConfigFields.BuildBaronSettings)
-		assert.Equal(t, []string{"workstation_config"}, p1.redefinedProjectConfigSettings)
 	})
 }
 
