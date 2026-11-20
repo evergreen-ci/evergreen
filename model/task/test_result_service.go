@@ -50,13 +50,11 @@ func (s *testResultService) AppendTestResultMetadata(ctx context.Context, failed
 	return errors.Wrap(err, "appending DB test results")
 }
 
-// AppendQuarantinedTests upserts the task's test results record, appending
-// the tests to its quarantined-tests snapshot and incrementing the
-// snapshot count by the number of tests.
-func (s *testResultService) AppendQuarantinedTests(ctx context.Context, record testresult.DbTaskTestResults, quarantinedTests []testresult.QuarantinedTest) error {
-	update := appendQuarantinedTestsUpdate(record.Info, quarantinedTests)
-	_, err := s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: record.ID}, update, options.Update().SetUpsert(true))
-	return errors.Wrap(err, "appending quarantined tests to DB test results")
+// AppendTestSelectionResults upserts the task's test results record with the
+// test selection results update.
+func (s *testResultService) AppendTestSelectionResults(ctx context.Context, record testresult.DbTaskTestResults, update TestSelectionResultsUpdate) error {
+	_, err := s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: record.ID}, appendTestSelectionResultsUpdate(record.Info, update), options.Update().SetUpsert(true))
+	return errors.Wrap(err, "appending test selection results to DB test results")
 }
 
 func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, tasks []Task) (testresult.TaskTestResultsStats, error) {
@@ -92,21 +90,8 @@ func (s *testResultService) Get(ctx context.Context, tasks []Task, getOpts GetTa
 		{Key: bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoTaskIDKey), Value: 1},
 		{Key: bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoExecutionKey), Value: 1},
 	})
-	if len(getOpts.Fields) > 0 {
-		projection := bson.M{}
-		for _, field := range getOpts.Fields {
-			projection[field] = 1
-		}
-		if getOpts.QuarantinedTestsLimit != nil {
-			if *getOpts.QuarantinedTestsLimit == 0 {
-				delete(projection, testresult.QuarantinedTestsKey)
-			} else if *getOpts.QuarantinedTestsLimit > 0 {
-				projection[testresult.QuarantinedTestsKey] = bson.M{"$slice": *getOpts.QuarantinedTestsLimit}
-			}
-		}
+	if projection := testResultsProjection(getOpts); projection != nil {
 		opts.SetProjection(projection)
-	} else if !getOpts.IncludeQuarantinedTests {
-		opts.SetProjection(bson.M{testresult.QuarantinedTestsKey: 0})
 	}
 
 	var allDBTaskResults []testresult.DbTaskTestResults

@@ -798,7 +798,7 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 	return savedResults
 }
 
-func TestAppendQuarantinedTests(t *testing.T) {
+func TestAppendTestSelectionResults(t *testing.T) {
 	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 
@@ -829,7 +829,7 @@ func TestAppendQuarantinedTests(t *testing.T) {
 			{TestName: "q0"},
 			{TestName: "q1", DisplayTestName: "q1_display"},
 		}
-		require.NoError(t, svc.AppendQuarantinedTests(ctx, record, quarantinedTests))
+		require.NoError(t, svc.AppendTestSelectionResults(ctx, record, TestSelectionResultsUpdate{QuarantinedTests: quarantinedTests}))
 
 		taskResults := getRecord(t)
 		assert.Equal(t, record.Info, taskResults.Info)
