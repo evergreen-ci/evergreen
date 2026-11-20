@@ -3354,7 +3354,7 @@ func (t *Task) GetTestResultsTasks(ctx context.Context) ([]Task, error) {
 		} else {
 			query := ByIds(t.ExecutionTasks)
 			query["$or"] = hasResults
-			execTasksWithResults, err = FindWithFields(ctx, query, ExecutionKey, ResultsServiceKey, HasTestResultsKey, TaskOutputInfoKey)
+			execTasksWithResults, err = FindWithFields(ctx, query, ExecutionKey, ResultsServiceKey, HasTestResultsKey, TaskOutputInfoKey, TestSelectionEnabledKey)
 		}
 		if err != nil {
 			return nil, errors.Wrap(err, "getting execution tasks for display task")

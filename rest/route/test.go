@@ -147,7 +147,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test results"))
 	}
 
-	if err := data.DecorateQuarantineStatus(ctx, tgh.task, results.Results); err != nil {
+	if err := data.DecorateQuarantineStatus(ctx, tgh.env, tgh.task, results.Results); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "decorating test quarantine statuses",
 			"task_id": tgh.task.Id,
