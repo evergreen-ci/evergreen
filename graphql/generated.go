@@ -2239,6 +2239,7 @@ type ComplexityRoot struct {
 
 	TestResult struct {
 		BaseStatus            func(childComplexity int) int
+		CanQuarantine         func(childComplexity int) int
 		Duration              func(childComplexity int) int
 		EndTime               func(childComplexity int) int
 		Execution             func(childComplexity int) int
@@ -12299,6 +12300,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TestResult.BaseStatus(childComplexity), true
+	case "TestResult.canQuarantine":
+		if e.complexity.TestResult.CanQuarantine == nil {
+			break
+		}
+
+		return e.complexity.TestResult.CanQuarantine(childComplexity), true
 	case "TestResult.duration":
 		if e.complexity.TestResult.Duration == nil {
 			break
@@ -41845,6 +41852,8 @@ func (ec *executionContext) fieldContext_Mutation_quarantineTest(ctx context.Con
 				return ec.fieldContext_TestResult_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_TestResult_baseStatus(ctx, field)
+			case "canQuarantine":
+				return ec.fieldContext_TestResult_canQuarantine(ctx, field)
 			case "duration":
 				return ec.fieldContext_TestResult_duration(ctx, field)
 			case "endTime":
@@ -41914,6 +41923,8 @@ func (ec *executionContext) fieldContext_Mutation_unquarantineTest(ctx context.C
 				return ec.fieldContext_TestResult_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_TestResult_baseStatus(ctx, field)
+			case "canQuarantine":
+				return ec.fieldContext_TestResult_canQuarantine(ctx, field)
 			case "duration":
 				return ec.fieldContext_TestResult_duration(ctx, field)
 			case "endTime":
@@ -73067,6 +73078,8 @@ func (ec *executionContext) fieldContext_TaskTestResult_testResults(_ context.Co
 				return ec.fieldContext_TestResult_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_TestResult_baseStatus(ctx, field)
+			case "canQuarantine":
+				return ec.fieldContext_TestResult_canQuarantine(ctx, field)
 			case "duration":
 				return ec.fieldContext_TestResult_duration(ctx, field)
 			case "endTime":
@@ -73758,6 +73771,35 @@ func (ec *executionContext) fieldContext_TestResult_baseStatus(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestResult_canQuarantine(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestResult_canQuarantine,
+		func(ctx context.Context) (any, error) {
+			return obj.CanQuarantine, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestResult_canQuarantine(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -112985,6 +113027,11 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			}
 		case "baseStatus":
 			out.Values[i] = ec._TestResult_baseStatus(ctx, field, obj)
+		case "canQuarantine":
+			out.Values[i] = ec._TestResult_canQuarantine(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "duration":
 			out.Values[i] = ec._TestResult_duration(ctx, field, obj)
 		case "endTime":
