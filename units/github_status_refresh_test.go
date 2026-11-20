@@ -158,6 +158,64 @@ func (s *githubStatusRefreshSuite) TestRunFailureDoesNotClearGitHubStatusResync(
 	s.NotNil(resync)
 }
 
+func (s *githubStatusRefreshSuite) runResync(sender send.Sender) *githubStatusRefreshJob {
+	job, ok := NewGithubStatusResyncRefreshJob(s.patchDoc.Id.Hex(), time.Now()).(*githubStatusRefreshJob)
+	s.Require().True(ok)
+	job.env = &eventSendEnvironment{Environment: s.env, githubSender: sender}
+	job.Run(s.ctx)
+	return job
+}
+
+func (s *githubStatusRefreshSuite) TestResyncSendsOnlyFinishedStatusesAndClearsMark() {
+	s.Require().NoError(evergreen.SetServiceFlags(s.ctx, evergreen.ServiceFlags{GitHubStatusResyncEnabled: true}))
+	startTime := time.Now()
+	for _, b := range []build.Build{
+		{Id: "b-running", BuildVariant: "running", Version: s.patchDoc.Version, Status: evergreen.BuildStarted, Activated: true},
+		{Id: "b-done", BuildVariant: "done", Version: s.patchDoc.Version, Status: evergreen.BuildSucceeded, Activated: true, StartTime: startTime, FinishTime: startTime.Add(time.Minute)},
+	} {
+		s.Require().NoError(b.Insert(s.ctx))
+	}
+	s.markGitHubStatusResync()
+
+	job := s.runResync(s.env.InternalSender)
+	s.Require().NoError(job.Error())
+
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/done", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+	_, ok := s.env.InternalSender.GetMessageSafe()
+	s.False(ok, "pending patch and build statuses should not be resent")
+
+	resync, err := patch.FindGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
+	s.Require().NoError(err)
+	s.Nil(resync)
+}
+
+func (s *githubStatusRefreshSuite) TestResyncDoesNothingWhenResyncIsDisabled() {
+	s.markGitHubStatusResync()
+
+	job := s.runResync(s.env.InternalSender)
+	s.Require().NoError(job.Error())
+
+	_, ok := s.env.InternalSender.GetMessageSafe()
+	s.False(ok)
+	resync, err := patch.FindGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
+	s.Require().NoError(err)
+	s.NotNil(resync)
+}
+
+func (s *githubStatusRefreshSuite) TestResyncJobsForTheSamePatchShareAnEnqueueScope() {
+	ts := time.Now()
+	first := NewGithubStatusResyncRefreshJob("patch", ts)
+	later := NewGithubStatusResyncRefreshJob("patch", ts.Add(5*time.Minute))
+	other := NewGithubStatusResyncRefreshJob("other-patch", ts)
+
+	s.NotEqual(first.ID(), later.ID())
+	s.True(first.EnqueueAllScopes())
+	s.Equal(first.Scopes(), later.Scopes())
+	s.NotEqual(first.Scopes(), other.Scopes())
+}
+
 func (s *githubStatusRefreshSuite) TestRunStopsSendingAtGitHubRateLimit() {
 	for _, id := range []string{"b1", "b2"} {
 		b := build.Build{
