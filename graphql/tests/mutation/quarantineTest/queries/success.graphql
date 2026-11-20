@@ -3,6 +3,7 @@ mutation {
     id
     taskId
     testFile
+    canQuarantine
     isManuallyQuarantined
   }
 }

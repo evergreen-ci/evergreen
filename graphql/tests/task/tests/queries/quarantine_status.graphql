@@ -4,6 +4,7 @@
     tests(opts: {statuses: ["fail"], sort: [{sortBy: TEST_NAME, direction: ASC}]}) {
       testResults {
         testFile
+        canQuarantine
         isManuallyQuarantined
       }
     }
@@ -13,6 +14,7 @@
     tests(opts: {statuses: ["fail"], sort: [{sortBy: TEST_NAME, direction: ASC}]}) {
       testResults {
         testFile
+        canQuarantine
         isManuallyQuarantined
       }
     }
