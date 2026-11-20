@@ -1,0 +1,25 @@
+{
+  "tests": [
+    {
+      "query_file": "can_quarantine.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "canQuarantine": true
+          }
+        }
+      }
+    },
+    {
+      "query_file": "can_quarantine.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": {
+          "task": {
+            "canQuarantine": false
+          }
+        }
+      }
+    }
+  ]
+}

@@ -28,7 +28,8 @@ Service users cannot be managed through MANA. Instead, they have a special
 role called `api_user_access`. This role grants them permission to submit
 patches and to edit tasks (restart, set priority, abort) in unrestricted
 projects. If a service user needs permission to submit patches on behalf
-of another user, the Evergreen team must grant this explicitly.
+of another user or to quarantine tests, the Evergreen team must grant this
+explicitly.
 
 ### Permissions Requested with MANA
 

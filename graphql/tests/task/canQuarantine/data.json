@@ -1,0 +1,14 @@
+{
+  "tasks": [
+    {
+      "_id": "task1",
+      "branch": "spruce"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ]
+}

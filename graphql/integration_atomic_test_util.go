@@ -332,6 +332,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 			evergreen.PermissionPatches:         evergreen.PatchNone.Value,
 			evergreen.PermissionLogs:            evergreen.LogsView.Value,
 			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
+			evergreen.PermissionTestQuarantine:  evergreen.TestQuarantineEdit.Value,
 		},
 	}
 	err = roleManager.UpdateRole(t.Context(), adminProjectAccessRole)
@@ -416,6 +417,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
 		evergreen.PermissionPatches:         evergreen.PatchSubmitAdmin.Value,
 		evergreen.PermissionLogs:            evergreen.LogsView.Value,
+		evergreen.PermissionTestQuarantine:  evergreen.TestQuarantineEdit.Value,
 	}
 
 	projectSpruceScope := gimlet.Scope{
