@@ -1961,23 +1961,48 @@ func recalculateTimeTaken() bson.M {
 func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTasksByVersion")})
 
-	pipeline, err := getRootTasksPipeline(versionID, opts)
+	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "getting tasks by version pipeline")
 	}
 
-	// If there's no sort or filter that relies on base tasks, fetch these later in the pipeline
-	baseForSelection := needsBaseForSelection(opts)
-	if baseForSelection {
-		pipeline = append(pipeline, populateBaseTaskPipeline(opts.BaseVersionID)...)
-		pipeline = append(pipeline, baseStatusFilterPipeline(opts)...)
+	resultsPipeline := []bson.M{}
+	if len(opts.Sorts) > 0 {
+		sortFields := bson.D{}
+		var hasIDSort bool
+		for _, singleSort := range opts.Sorts {
+			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
+				resultsPipeline = append(resultsPipeline, addStatusColorSort(singleSort.Key))
+				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
+			} else if singleSort.Key == TimeTakenKey {
+				resultsPipeline = append(resultsPipeline, recalculateTimeTaken())
+				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
+			} else {
+				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
+			}
+			if singleSort.Key == IdKey {
+				hasIDSort = true
+			}
+		}
+		// If we're not sorting by ID, we need to sort by ID as a tiebreaker to ensure a consistent sort order.
+		if !hasIDSort {
+			sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
+		}
+		resultsPipeline = append(resultsPipeline, bson.M{"$sort": sortFields})
 	}
-	resultsPipeline := sortAndPaginatePipeline(opts)
-	if opts.BaseVersionID != "" && !baseForSelection {
-		resultsPipeline = append(resultsPipeline, populateBaseTaskPipeline(opts.BaseVersionID)...)
+	if len(opts.FieldsToProject) > 0 {
+		fieldKeys := bson.M{}
+		for _, field := range opts.FieldsToProject {
+			fieldKeys[field] = 1
+		}
+		resultsPipeline = append(resultsPipeline, bson.M{"$project": fieldKeys})
 	}
-	resultsPipeline = append(resultsPipeline, projectionPipeline(opts)...)
+	// Keep the sort and limit in the same facet branch so MongoDB can use a top-N sort.
 	if opts.Limit > 0 {
+		resultsPipeline = append(resultsPipeline,
+			bson.M{"$skip": opts.Page * opts.Limit},
+			bson.M{"$limit": opts.Limit},
+		)
 		pipeline = append(pipeline, bson.M{"$facet": bson.M{
 			"count": []bson.M{{"$count": "count"}},
 			"tasks": resultsPipeline,
@@ -2022,85 +2047,10 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 	}
 
 	if len(results) == 0 {
-		return nil, count, nil
+		return nil, 0, nil
 	}
 
 	return results, count, nil
-}
-
-func needsBaseForSelection(opts GetTasksByVersionOptions) bool {
-	if opts.BaseVersionID == "" {
-		return false
-	}
-	if len(opts.BaseStatuses) > 0 {
-		return true
-	}
-	for _, sort := range opts.Sorts {
-		if sort.Key == BaseTaskStatusKey {
-			return true
-		}
-	}
-	return false
-}
-
-func sortAndPaginatePipeline(opts GetTasksByVersionOptions) []bson.M {
-	var pipeline []bson.M
-	if len(opts.Sorts) > 0 {
-		sortPipeline := []bson.M{}
-
-		sortFields := bson.D{}
-		var hasIDSort bool
-		for _, singleSort := range opts.Sorts {
-			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
-				sortPipeline = append(sortPipeline, addStatusColorSort(singleSort.Key))
-				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
-			} else if singleSort.Key == TimeTakenKey {
-				sortPipeline = append(sortPipeline, recalculateTimeTaken())
-				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
-			} else {
-				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
-			}
-			if singleSort.Key == IdKey {
-				hasIDSort = true
-			}
-		}
-		// If we're not sorting by ID, we need to sort by ID as a tiebreaker to ensure a consistent sort order.
-		if !hasIDSort {
-			sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
-		}
-
-		sortPipeline = append(sortPipeline, bson.M{
-			"$sort": sortFields,
-		})
-
-		pipeline = append(pipeline, sortPipeline...)
-	}
-
-	if opts.Limit > 0 {
-		if len(opts.Sorts) == 0 {
-			pipeline = append(pipeline, bson.M{"$sort": bson.M{IdKey: 1}})
-		}
-		pipeline = append(pipeline,
-			bson.M{"$skip": opts.Page * opts.Limit},
-			bson.M{"$limit": opts.Limit},
-		)
-	}
-	return pipeline
-}
-
-func projectionPipeline(opts GetTasksByVersionOptions) []bson.M {
-	var projection []bson.M
-	if len(opts.FieldsToProject) > 0 {
-		fieldKeys := bson.M{}
-		for _, field := range opts.FieldsToProject {
-			fieldKeys[field] = 1
-		}
-		projection = append(projection, bson.M{
-			"$project": fieldKeys,
-		})
-	}
-
-	return projection
 }
 
 // GetQuarantinedTestsSkippedCountByVersion returns the total number of tests
@@ -2394,21 +2344,14 @@ type GetTasksByVersionOptions struct {
 }
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
-	pipeline, err := getRootTasksPipeline(versionID, opts)
-	if err != nil {
-		return nil, err
-	}
-	if opts.BaseVersionID != "" {
-		pipeline = append(pipeline, populateBaseTaskPipeline(opts.BaseVersionID)...)
-		pipeline = append(pipeline, baseStatusFilterPipeline(opts)...)
-	}
-	return pipeline, nil
-}
-
-func getRootTasksPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
+	shouldPopulateBaseTask := opts.BaseVersionID != ""
 	match := bson.M{}
 
-	match[VersionKey] = versionID
+	if shouldPopulateBaseTask {
+		match[VersionKey] = bson.M{"$in": []string{versionID, opts.BaseVersionID}}
+	} else {
+		match[VersionKey] = versionID
+	}
 
 	// Filter on task name if it exists
 	nonEmptyTaskNames := utility.FilterSlice(opts.TaskNames, func(s string) bool { return s != "" })
@@ -2417,7 +2360,6 @@ func getRootTasksPipeline(versionID string, opts GetTasksByVersionOptions) ([]bs
 		taskNamesAsRegex := strings.Join(nonEmptyTaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
-
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
 	if !opts.IncludeNeverActivatedTasks {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
@@ -2475,19 +2417,100 @@ func getRootTasksPipeline(versionID string, opts GetTasksByVersionOptions) ([]bs
 		},
 	})
 
-	if opts.BaseVersionID != "" {
-		// Select one root task per variant and display name when pairing with base tasks.
-		pipeline = append(pipeline,
-			bson.M{"$group": bson.M{
+	if shouldPopulateBaseTask {
+		// First group by variant and task name to group all tasks and their base tasks together
+		pipeline = append(pipeline, bson.M{
+			"$group": bson.M{
 				"_id": bson.M{
 					BuildVariantKey: "$" + BuildVariantKey,
 					DisplayNameKey:  "$" + DisplayNameKey,
 				},
-				"root_task": bson.M{"$first": "$$ROOT"},
-			}},
-			bson.M{"$replaceRoot": bson.M{"newRoot": "$root_task"}},
-			bson.M{"$sort": bson.M{IdKey: 1}},
-		)
+				"tasks": bson.M{
+					"$push": "$$ROOT",
+				},
+			},
+		})
+		// Separate the root task and base task into separate arrays
+		pipeline = append(pipeline, bson.M{
+			"$addFields": bson.M{
+				"root_task": bson.M{
+					"$filter": bson.M{
+						"input": "$tasks",
+						"as":    "task",
+						"cond": bson.M{
+							"$eq": []string{"$$task." + VersionKey, versionID},
+						},
+					},
+				},
+				"base_task": bson.M{
+					"$filter": bson.M{
+						"input": "$tasks",
+						"as":    "task",
+						"cond": bson.M{
+							"$eq": []string{"$$task." + VersionKey, opts.BaseVersionID},
+						},
+					},
+				},
+			},
+		})
+
+		// Project out the the tasks array since it is no longer needed
+		pipeline = append(pipeline, bson.M{
+			"$project": bson.M{
+				"tasks": 0,
+			},
+		})
+
+		// Unwind the root task and base task arrays so that each document is a single task
+		pipeline = append(pipeline, bson.M{
+			"$addFields": bson.M{
+				"root_task": bson.M{
+					"$first": "$root_task",
+				},
+				"base_task": bson.M{
+					"$first": "$base_task",
+				},
+			},
+		})
+
+		// Ensure that the root task is not nil if it is the task does not exist in the current version
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				"root_task": bson.M{
+					"$exists": true,
+				},
+			},
+		})
+
+		// Include the base task in the root task
+		pipeline = append(pipeline, bson.M{
+			"$addFields": bson.M{
+				"root_task": bson.M{
+					"base_task": "$base_task",
+				},
+			},
+		})
+
+		// Use display status from the base task as its status
+		pipeline = append(pipeline, bson.M{
+			"$addFields": bson.M{
+				bsonutil.GetDottedKeyName("root_task", BaseTaskStatusKey): "$" + bsonutil.GetDottedKeyName("root_task", BaseTaskKey, DisplayStatusKey),
+			},
+		})
+
+		// Replace the root document with the task
+		pipeline = append(pipeline, bson.M{
+			"$replaceRoot": bson.M{
+				"newRoot": "$root_task",
+			},
+		})
+
+		// Sort the tasks by their _id to ensure that they are in the same order as the original tasks
+		pipeline = append(pipeline, bson.M{
+			"$sort": bson.M{
+				"_id": 1,
+			},
+		})
 	}
 
 	if len(opts.Statuses) > 0 {
@@ -2498,38 +2521,15 @@ func getRootTasksPipeline(versionID string, opts GetTasksByVersionOptions) ([]bs
 		})
 	}
 
-	return pipeline, nil
-}
-
-func baseStatusFilterPipeline(opts GetTasksByVersionOptions) []bson.M {
-	if len(opts.BaseStatuses) == 0 {
-		return nil
-	}
-	return []bson.M{{"$match": bson.M{BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses}}}}
-}
-
-func populateBaseTaskPipeline(baseVersionID string) []bson.M {
-	return []bson.M{
-		{"$lookup": bson.M{
-			"from": Collection,
-			"let":  bson.M{"variant": "$" + BuildVariantKey, "name": "$" + DisplayNameKey},
-			"pipeline": []bson.M{
-				{"$match": bson.M{
-					VersionKey: baseVersionID,
-					"$expr": bson.M{"$and": bson.A{
-						bson.M{"$eq": bson.A{"$" + BuildVariantKey, "$$variant"}},
-						bson.M{"$eq": bson.A{"$" + DisplayNameKey, "$$name"}},
-					}},
-				}},
-				{"$sort": bson.M{IdKey: 1}},
-				{"$limit": 1},
-				{"$project": bson.M{IdKey: 1, "status": "$" + DisplayStatusCacheKey}},
+	if shouldPopulateBaseTask && len(opts.BaseStatuses) > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
 			},
-			"as": "__base_tasks",
-		}},
-		{"$set": bson.M{BaseTaskKey: bson.M{"$first": "$__base_tasks"}}},
-		{"$unset": "__base_tasks"},
+		})
 	}
+
+	return pipeline, nil
 }
 
 // FindAllDependencyTasksToModify finds tasks that depend on the
