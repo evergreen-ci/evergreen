@@ -2,9 +2,10 @@ package route
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -45,7 +46,7 @@ buildvariants:
 	handler := makeValidateProject().Factory()
 	require.NoError(t, handler.Parse(t.Context(), req))
 
-	resp := handler.Run(context.Background())
+	resp := handler.Run(t.Context())
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
 
@@ -61,4 +62,49 @@ buildvariants:
 		messages += validationErr.Message
 	}
 	assert.Contains(t, messages, "buildvariant 'my_build_variant' references a nonexistent distro or container named 'not_real'")
+}
+
+func TestValidateProjectHandlerReportsParseWarnings(t *testing.T) {
+	// A user-defined top-level _evg_anchors key parses fine but surfaces a
+	// warning, since the key is reserved for Evergreen's internal use when
+	// applying cross-file YAML anchors.
+	yml := `
+_evg_anchors:
+  - &unused
+    x: 1
+tasks:
+  - name: my_task
+`
+
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+	ref := model.ProjectRef{Id: "proj"}
+	require.NoError(t, ref.Insert(t.Context()))
+
+	input := validator.ValidationInput{
+		ProjectYaml: []byte(yml),
+		ProjectID:   "proj",
+	}
+	bodyBytes, err := json.Marshal(input)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPost, "/validate", bytes.NewBuffer(bodyBytes))
+	require.NoError(t, err)
+
+	handler := makeValidateProject().Factory()
+	require.NoError(t, handler.Parse(t.Context(), req))
+
+	resp := handler.Run(t.Context())
+	require.NotNil(t, resp)
+
+	rawBytes, err := json.Marshal(resp.Data())
+	require.NoError(t, err)
+
+	var results validator.ValidationErrors
+	require.NoError(t, json.Unmarshal(rawBytes, &results))
+
+	// CheckProject contributes its own warnings; assert that the parse warning
+	// from the reserved key is surfaced among them.
+	assert.True(t, slices.ContainsFunc(results, func(e validator.ValidationError) bool {
+		return e.Level == validator.Warning && strings.Contains(e.Message, "top-level YAML key '_evg_anchors'")
+	}), "expected the reserved _evg_anchors key warning in %v", results)
 }
