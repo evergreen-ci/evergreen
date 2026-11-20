@@ -57,6 +57,16 @@ type GitHubCheckRunConfig {
   checkRunLimit: Int
 }
 
+input GitHubRecoveryAppConfigInput {
+  appId: Int @redactSecrets
+  privateKey: String @redactSecrets
+}
+
+type GitHubRecoveryAppConfig {
+  appId: Int @requireAdmin
+  privateKey: String @requireAdmin
+}
+
 input HostJasperConfigInput {
   binaryName: String
   downloadFileName: String
