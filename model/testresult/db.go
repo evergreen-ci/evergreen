@@ -30,7 +30,11 @@ type DbTaskTestResults struct {
 	// QuarantinedTests is the snapshot of tests skipped because they were
 	// quarantined in TSS at execution time.
 	QuarantinedTests []QuarantinedTest `bson:"quarantined_tests,omitempty"`
-	Results          []TestResult      `bson:"-"`
+	// TestSelectionCheckedTests holds the tests that test selection checked
+	// during the task run. Only these tests can be quarantined from the task
+	// run's results.
+	TestSelectionCheckedTests *TestNameFilter `bson:"test_selection_checked_tests,omitempty"`
+	Results                   []TestResult    `bson:"-"`
 }
 
 // QuarantinedTest represents a test skipped because it was quarantined in TSS.
@@ -70,6 +74,8 @@ var (
 	TestResultsFailedTestsSampleKey   = bsonutil.MustHaveTag(DbTaskTestResults{}, "FailedTestsSample")
 	QuarantinedTestsCountKey          = bsonutil.MustHaveTag(DbTaskTestResults{}, "QuarantinedTestsCount")
 	QuarantinedTestsKey               = bsonutil.MustHaveTag(DbTaskTestResults{}, "QuarantinedTests")
+	TestSelectionCheckedTestsKey      = bsonutil.MustHaveTag(DbTaskTestResults{}, "TestSelectionCheckedTests")
+	TestNameFilterBitsKey             = bsonutil.MustHaveTag(TestNameFilter{}, "Bits")
 	TestResultsInfoTaskIDKey          = bsonutil.MustHaveTag(TestResultsInfo{}, "TaskID")
 	TestResultsInfoExecutionKey       = bsonutil.MustHaveTag(TestResultsInfo{}, "Execution")
 	QuarantinedTestNameKey            = bsonutil.MustHaveTag(QuarantinedTest{}, "TestName")
