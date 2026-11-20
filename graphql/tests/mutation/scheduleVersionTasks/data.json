@@ -1,0 +1,155 @@
+{
+  "tasks": [
+    {
+      "_id": "blank_filter_unscheduled_display_task",
+      "version": "blank_filter_version",
+      "branch": "mci",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "blank filter unscheduled display task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "unscheduled",
+      "activated": false,
+      "display_only": true,
+      "execution_tasks": ["exec1"]
+    },
+    {
+      "_id": "unscheduled_display_task",
+      "version": "task_ids_version",
+      "branch": "mci",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "unscheduled display task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "unscheduled",
+      "activated": false,
+      "display_only": true,
+      "execution_tasks": ["exec1"]
+    },
+    {
+      "_id": "filtered_unscheduled_display_task",
+      "version": "filter_version",
+      "branch": "mci",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "filtered unscheduled display task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "unscheduled",
+      "activated": false,
+      "display_only": true,
+      "execution_tasks": ["exec1"]
+    },
+    {
+      "_id": "excluded_unscheduled_display_task",
+      "version": "filter_with_exclusions_version",
+      "branch": "mci",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "excluded unscheduled display task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "unscheduled",
+      "activated": false,
+      "display_only": true,
+      "execution_tasks": ["exec1"]
+    },
+    {
+      "_id": "included_unscheduled_display_task",
+      "version": "filter_with_exclusions_version",
+      "branch": "mci",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "included unscheduled display task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "unscheduled",
+      "activated": false,
+      "display_only": true,
+      "execution_tasks": ["exec1"]
+    }
+  ],
+  "versions": [
+    {
+      "_id": "blank_filter_version",
+      "identifier": "sandbox_project_id"
+    },
+    {
+      "_id": "filter_with_exclusions_version",
+      "identifier": "sandbox_project_id"
+    },
+    {
+      "_id": "filter_version",
+      "identifier": "sandbox_project_id"
+    },
+    {
+      "_id": "no_permissions",
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "task_ids_version",
+      "identifier": "sandbox_project_id"
+    },
+    {
+      "_id": "unmatching_version",
+      "identifier": "sandbox_project_id"
+    }
+  ],
+  "builds": [
+    {
+      "_id": "some_thang",
+      "version": "5d2661149dbe326298fee2a3",
+      "build_variant": "ubuntu1604-docker",
+      "status": "failed",
+      "activated": false,
+      "tasks": [
+        {
+          "id": "unscheduled_display_task",
+          "s": "undispatched",
+          "a": false
+        },
+        {
+          "id": "filtered_unscheduled_display_task",
+          "s": "undispatched",
+          "a": false
+        },
+        {
+          "id": "excluded_unscheduled_display_task",
+          "s": "undispatched",
+          "a": false
+        },
+        {
+          "id": "included_unscheduled_display_task",
+          "s": "undispatched",
+          "a": false
+        },
+        {
+          "id": "blank_filter_unscheduled_display_task",
+          "s": "undispatched",
+          "a": false
+        }
+      ]
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ]
+}

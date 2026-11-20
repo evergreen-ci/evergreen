@@ -1588,6 +1588,13 @@ func Find(ctx context.Context, filter bson.M) ([]Task, error) {
 	return tasks, err
 }
 
+func FindAllByIdsAndVersion(ctx context.Context, ids []string, versionID string, fields ...string) ([]Task, error) {
+	return FindAll(ctx, db.Query(bson.M{
+		IdKey:      bson.M{"$in": ids},
+		VersionKey: versionID,
+	}).WithFields(fields...))
+}
+
 func FindWithFields(ctx context.Context, filter bson.M, fields ...string) ([]Task, error) {
 	tasks := []Task{}
 	_, exists := filter[DisplayOnlyKey]
@@ -2357,11 +2364,16 @@ type GetTasksByVersionOptions struct {
 	IncludeExecutionTasks      bool
 	IncludeNeverActivatedTasks bool // NeverActivated tasks are tasks that lack an activation time
 	BaseVersionID              string
+	ExcludeTaskIDs             []string
 }
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
 	shouldPopulateBaseTask := opts.BaseVersionID != ""
 	match := bson.M{}
+
+	if len(opts.ExcludeTaskIDs) > 0 {
+		match[IdKey] = bson.M{"$nin": opts.ExcludeTaskIDs}
+	}
 
 	if shouldPopulateBaseTask {
 		match[VersionKey] = bson.M{"$in": []string{versionID, opts.BaseVersionID}}

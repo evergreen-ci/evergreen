@@ -1612,6 +1612,37 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, ve
 	return scheduledTasks, nil
 }
 
+// ScheduleVersionTasks is the resolver for the scheduleVersionTasks field.
+func (r *mutationResolver) ScheduleVersionTasks(ctx context.Context, versionID string, selection TaskSelection) (*BulkTaskOperationResult, error) {
+	selectedTasks, taskErrors, err := resolveTaskSelection(ctx, versionID, selection)
+	if err != nil {
+		return nil, err
+	}
+	taskIDsToSchedule, unschedulableErrors := getSchedulableTaskIDs(selectedTasks)
+	taskErrors = append(taskErrors, unschedulableErrors...)
+	result := &BulkTaskOperationResult{
+		ModifiedTasks: []*restModel.APITask{},
+		TaskErrors:    taskErrors,
+	}
+	if len(taskIDsToSchedule) == 0 {
+		return result, nil
+	}
+	if len(taskIDsToSchedule) > maxTasksToSchedule {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot schedule more than %d tasks at once, but the selection contains %d schedulable tasks; narrow the filter", maxTasksToSchedule, len(taskIDsToSchedule)))
+	}
+	tasksToSchedule, err := findAllTasksByIds(ctx, taskIDsToSchedule...)
+	if err != nil {
+		return nil, err
+	}
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+	scheduled, err := setTasksScheduled(ctx, logURL, true, tasksToSchedule)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("scheduling tasks: %s", err.Error()))
+	}
+	result.ModifiedTasks = scheduled
+	return result, nil
+}
+
 // SetVersionPriority is the resolver for the setVersionPriority field.
 func (r *mutationResolver) SetVersionPriority(ctx context.Context, versionID string, priority int) (*string, error) {
 	modifications := model.VersionModification{

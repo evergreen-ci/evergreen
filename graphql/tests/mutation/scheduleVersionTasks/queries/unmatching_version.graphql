@@ -1,0 +1,12 @@
+mutation {
+    scheduleVersionTasks(selection: {taskIds: ["unscheduled_display_task"]}, versionId: "unmatching_version") {
+      modifiedTasks {
+        id
+        status
+      }
+      taskErrors {
+        taskId
+        reason
+      }
+    }
+}

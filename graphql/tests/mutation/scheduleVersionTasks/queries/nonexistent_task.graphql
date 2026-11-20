@@ -1,0 +1,12 @@
+mutation {
+    scheduleVersionTasks(selection: {taskIds: ["non-existent"]}, versionId: "task_ids_version") {
+      modifiedTasks {
+        id
+        status
+      }
+      taskErrors {
+        taskId
+        reason
+      }
+    }
+}
