@@ -58,7 +58,7 @@ func scheduleSelectedTasks(ctx context.Context, selectedTasks []task.Task) (*Bul
 		ModifiedTasks: []*restModel.APITask{},
 		TaskErrors:    []*TaskError{},
 	}
-	taskIDs := getTaskIDsToSchedule(selectedTasks)
+	taskIDs := getTaskIDsToModify(selectedTasks)
 	if len(taskIDs) == 0 {
 		return result, nil
 	}
@@ -83,9 +83,8 @@ func scheduleSelectedTasks(ctx context.Context, selectedTasks []task.Task) (*Bul
 	return result, nil
 }
 
-// getTaskIDsToSchedule returns the unique IDs of the tasks to schedule. Execution tasks can't be scheduled
-// individually, so they're replaced by their display task.
-func getTaskIDsToSchedule(tasks []task.Task) []string {
+// getTaskIDsToSchedule returns the unique IDs of the tasks to schedule. Execution tasks can't generally be operated on.
+func getTaskIDsToModify(tasks []task.Task) []string {
 	seen := make(map[string]bool, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
@@ -117,4 +116,49 @@ func getSchedulableTasks(tasks []task.Task) ([]task.Task, []*TaskError) {
 		schedulable = append(schedulable, t)
 	}
 	return schedulable, taskErrors
+}
+
+// unscheduleSelectedTasks unschedules the schedulable tasks among the selected tasks and reports the rest as task errors.
+func unscheduleSelectedTasks(ctx context.Context, selectedTasks []task.Task) (*BulkTaskOperationResult, error) {
+	result := &BulkTaskOperationResult{
+		ModifiedTasks: []*restModel.APITask{},
+		TaskErrors:    []*TaskError{},
+	}
+	taskIDs := getTaskIDsToModify(selectedTasks)
+	if len(taskIDs) == 0 {
+		return result, nil
+	}
+	if len(taskIDs) > maxTasksToModify {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot schedule more than %d tasks at once, but the selection contains %d tasks; narrow the selection", maxTasksToModify, len(taskIDs)))
+	}
+	tasks, err := findAllTasksByIds(ctx, taskIDs...)
+	if err != nil {
+		return nil, err
+	}
+	tasksToSchedule, taskErrors := getSchedulableTasks(tasks)
+	result.TaskErrors = taskErrors
+	if len(tasksToSchedule) == 0 {
+		return result, nil
+	}
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+	scheduled, err := setTasksScheduled(ctx, logURL, false, tasksToSchedule)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("scheduling tasks: %s", err.Error()))
+	}
+	result.ModifiedTasks = scheduled
+	return result, nil
+}
+
+// getSchedulableTasks returns the tasks that can be scheduled and an error for each task that can't be.
+func getUnschedulableTasks(tasks []task.Task) ([]task.Task, []*TaskError) {
+	unschedulable := make([]task.Task, 0, len(tasks))
+	taskErrors := []*TaskError{}
+	for _, t := range tasks {
+		if t.Activated && t.Status == evergreen.TaskUndispatched && t.ParentPatchID == "" {
+			taskErrors = append(taskErrors, &TaskError{TaskID: t.Id, Reason: "task is part of an active display task and cannot be unscheduled individually"})
+			continue
+		}
+		unschedulable = append(unschedulable, t)
+	}
+	return unschedulable, taskErrors
 }
