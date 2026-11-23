@@ -139,6 +139,7 @@ func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, err
 	return tasks, nil
 }
 
+// TODO: Deprecate this function in favor of setTasksScheduled. Depends on DEVPROD-44506.
 func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskIDs ...string) ([]*restModel.APITask, error) {
 	tasks, err := findAllTasksByIds(ctx, taskIDs...)
 	if err != nil {
@@ -163,12 +164,12 @@ func setTasksScheduled(ctx context.Context, url string, isActive bool, tasks []t
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
 	}
-	tasks, err := findAllTasksByIds(ctx, taskIDs...)
+	updatedTasks, err := findAllTasksByIds(ctx, taskIDs...)
 	if err != nil {
 		return nil, err
 	}
 	apiTasks := []*restModel.APITask{}
-	for _, t := range tasks {
+	for _, t := range updatedTasks {
 		apiTask := restModel.APITask{}
 		err = apiTask.BuildFromService(ctx, &t, &restModel.APITaskArgs{
 			LogURL: url,

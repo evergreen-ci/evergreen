@@ -174,6 +174,8 @@ func TestGetSchedulableTaskIDs(t *testing.T) {
 	unscheduledExec1 := task.Task{Id: "exec1", Status: evergreen.TaskUndispatched, DisplayTaskId: utility.ToStringPtr("display")}
 	unscheduledExec2 := task.Task{Id: "exec2", Status: evergreen.TaskUndispatched, DisplayTaskId: utility.ToStringPtr("display")}
 	scheduledExec := task.Task{Id: "scheduledExec", Status: evergreen.TaskUndispatched, Activated: true, DisplayTaskId: utility.ToStringPtr("display")}
+	mergeQueueExec := task.Task{Id: "mergeQueueExec", Status: evergreen.TaskUndispatched, Requester: evergreen.GithubMergeRequester, DisplayTaskId: utility.ToStringPtr("mergeQueueDisplay")}
+	unscheduledExec3 :=task.Task{Id: "exec3", Status: evergreen.TaskUndispatched, DisplayTaskId: utility.ToStringPtr("scheduledDisplay")}
 
 	for testName, testCase := range map[string]struct {
 		tasks            []task.Task
@@ -204,6 +206,10 @@ func TestGetSchedulableTaskIDs(t *testing.T) {
 			tasks:       []task.Task{unscheduledExec1},
 			expectedIDs: []string{"display"},
 		},
+		"ScheduledExecutionTaskIsReplacedByItsDisplayTask": {
+			tasks:       []task.Task{scheduledExec},
+			expectedIDs: []string{"display"},
+		},
 		"SiblingExecutionTasksCollapseToOneDisplayTask": {
 			tasks:       []task.Task{unscheduledExec1, unscheduledExec2},
 			expectedIDs: []string{"display"},
@@ -212,9 +218,17 @@ func TestGetSchedulableTaskIDs(t *testing.T) {
 			tasks:       []task.Task{unscheduledDisplay, unscheduledExec1},
 			expectedIDs: []string{"display"},
 		},
-		"ScheduledExecutionTaskIsNotSchedulable": {
-			tasks:            []task.Task{scheduledExec},
-			expectedErrorIDs: []string{"scheduledExec"},
+		"MergeQueueExecutionTaskIsNotSchedulable": {
+			tasks:            []task.Task{mergeQueueExec},
+			expectedErrorIDs: []string{"mergeQueueExec"},
+		},
+		"ExecutionTaskOfUnschedulableDisplayTaskIsNotReturnedOrReportedTwice": {
+			tasks:            []task.Task{scheduledDisplay, unscheduledExec3},
+			expectedErrorIDs: []string{"scheduledDisplay"},
+		},
+		"DuplicateTasksAreDeduplicated": {
+			tasks:       []task.Task{unscheduled, unscheduled},
+			expectedIDs: []string{"unscheduled"},
 		},
 		"MixedTasksAreSplitBySchedulability": {
 			tasks:            []task.Task{unscheduled, finished, unscheduledDisplay, scheduledDisplay},

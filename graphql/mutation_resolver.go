@@ -1627,8 +1627,8 @@ func (r *mutationResolver) ScheduleVersionTasks(ctx context.Context, versionID s
 	if len(taskIDsToSchedule) == 0 {
 		return result, nil
 	}
-	if len(taskIDsToSchedule) > maxTasksToSchedule {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot schedule more than %d tasks at once, but the selection contains %d schedulable tasks; narrow the filter", maxTasksToSchedule, len(taskIDsToSchedule)))
+	if len(taskIDsToSchedule) > maxTasksToModify {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot schedule more than %d tasks at once, but the selection contains %d schedulable tasks; narrow the filter", maxTasksToModify, len(taskIDsToSchedule)))
 	}
 	tasksToSchedule, err := findAllTasksByIds(ctx, taskIDsToSchedule...)
 	if err != nil {

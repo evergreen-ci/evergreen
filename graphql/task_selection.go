@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	maxSelectedTaskIDs = 1000
-	maxTasksToSchedule = 1000
+	maxTasksToModify = 1000
 )
 
 var taskSelectionFields = []string{
@@ -31,8 +30,8 @@ func resolveTaskSelection(ctx context.Context, versionID string, selection TaskS
 		return nil, nil, InputValidationError.Send(ctx, "exactly one of 'taskIds' or 'filter' must be set in a task selection")
 	}
 	if hasTaskIDs {
-		if len(selection.TaskIds) > maxSelectedTaskIDs {
-			return nil, nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot select more than %d tasks by ID, use a filter instead", maxSelectedTaskIDs))
+		if len(selection.TaskIds) > maxTasksToModify {
+			return nil, nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot select more than %d tasks by ID, use a filter instead", maxTasksToModify))
 		}
 		return resolveTasksByIDs(ctx, versionID, selection.TaskIds)
 	}
@@ -82,29 +81,40 @@ func resolveTasksByFilter(ctx context.Context, versionID string, f *TaskFilterOp
 }
 
 // getSchedulableTaskIDs returns the unique IDs of the tasks to schedule and an error for each given task that can't be
-// scheduled.
+// scheduled. Execution tasks can't be scheduled individually, so they're replaced by their display task.
 func getSchedulableTaskIDs(tasks []task.Task) ([]string, []*TaskError) {
 	seen := make(map[string]bool, len(tasks))
+	rejected := make(map[string]bool, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
 	taskErrors := []*TaskError{}
 	for _, t := range tasks {
-		if evergreen.IsGithubMergeQueueRequester(t.Requester) {
-			taskErrors = append(taskErrors, &TaskError{TaskID: t.Id, Reason: "merge queue tasks cannot be manually scheduled"})
-			continue
+		id := t.Id
+		displayTaskID := utility.FromStringPtr(t.DisplayTaskId)
+		if displayTaskID != "" {
+			id = displayTaskID
 		}
-		if !t.IsUnscheduled() {
+
+		if displayTaskID == "" && !t.IsUnscheduled() {
+			rejected[id] = true
 			taskErrors = append(taskErrors, &TaskError{TaskID: t.Id, Reason: "task is already scheduled or has already run"})
 			continue
 		}
-		id := t.Id
-		// Use display task ID if it's an execution task.
-		if displayTaskID := utility.FromStringPtr(t.DisplayTaskId); displayTaskID != "" {
-			id = displayTaskID
+		if evergreen.IsGithubMergeQueueRequester(t.Requester) {
+			rejected[id] = true
+			taskErrors = append(taskErrors, &TaskError{TaskID: t.Id, Reason: "merge queue tasks cannot be manually scheduled"})
+			continue
 		}
 		if !seen[id] {
 			seen[id] = true
 			taskIDs = append(taskIDs, id)
 		}
 	}
-	return taskIDs, taskErrors
+
+	schedulableIDs := make([]string, 0, len(taskIDs))
+	for _, id := range taskIDs {
+		if !rejected[id] {
+			schedulableIDs = append(schedulableIDs, id)
+		}
+	}
+	return schedulableIDs, taskErrors
 }
