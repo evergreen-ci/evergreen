@@ -16,10 +16,12 @@ func TestMarkGitHubStatusResync(t *testing.T) {
 		PatchID:      "existing",
 		DirtySince:   dirtySince,
 		LastFailedAt: dirtySince,
+		Contexts:     []string{"evergreen/ubuntu"},
 	}))
 
-	require.NoError(t, MarkGitHubStatusResync(t.Context(), "existing", true))
-	require.NoError(t, MarkGitHubStatusResync(t.Context(), "new", false))
+	require.NoError(t, MarkGitHubStatusResync(t.Context(), "existing", true, "evergreen"))
+	require.NoError(t, MarkGitHubStatusResync(t.Context(), "existing", true, "evergreen"))
+	require.NoError(t, MarkGitHubStatusResync(t.Context(), "new", false, "evergreen/ubuntu"))
 
 	existing, err := FindGitHubStatusResync(t.Context(), "existing")
 	require.NoError(t, err)
@@ -27,6 +29,7 @@ func TestMarkGitHubStatusResync(t *testing.T) {
 	assert.True(t, existing.IsMergeQueue)
 	assert.True(t, dirtySince.Equal(existing.DirtySince))
 	assert.WithinDuration(t, time.Now(), existing.LastFailedAt, time.Minute)
+	assert.ElementsMatch(t, []string{"evergreen/ubuntu", "evergreen"}, existing.Contexts)
 
 	created, err := FindGitHubStatusResync(t.Context(), "new")
 	require.NoError(t, err)
@@ -34,12 +37,14 @@ func TestMarkGitHubStatusResync(t *testing.T) {
 	assert.False(t, created.IsMergeQueue)
 	assert.WithinDuration(t, time.Now(), created.DirtySince, time.Minute)
 	assert.True(t, created.DirtySince.Equal(created.LastFailedAt))
+	assert.Equal(t, []string{"evergreen/ubuntu"}, created.Contexts)
 }
 
 func TestFindDueGitHubStatusResyncs(t *testing.T) {
 	require.NoError(t, db.ClearCollections(GitHubStatusResyncCollection))
 	now := time.Now()
 	for _, resync := range []GitHubStatusResync{
+		{PatchID: "attempted-pr", DirtySince: now.Add(-4 * time.Hour), LastFailedAt: now.Add(-time.Minute)},
 		{PatchID: "old-pr", DirtySince: now.Add(-3 * time.Hour), LastFailedAt: now.Add(-time.Minute)},
 		{PatchID: "new-pr", DirtySince: now.Add(-time.Hour), LastFailedAt: now.Add(-time.Minute)},
 		{PatchID: "merge-queue", IsMergeQueue: true, DirtySince: now.Add(-time.Minute), LastFailedAt: now.Add(-time.Minute)},
@@ -47,13 +52,15 @@ func TestFindDueGitHubStatusResyncs(t *testing.T) {
 	} {
 		require.NoError(t, db.Insert(t.Context(), GitHubStatusResyncCollection, resync))
 	}
+	require.NoError(t, MarkGitHubStatusResyncAttempted(t.Context(), "attempted-pr"))
 
 	resyncs, err := FindDueGitHubStatusResyncs(t.Context(), 10)
 	require.NoError(t, err)
-	require.Len(t, resyncs, 3)
+	require.Len(t, resyncs, 4)
 	assert.Equal(t, "merge-queue", resyncs[0].PatchID)
 	assert.Equal(t, "old-pr", resyncs[1].PatchID)
 	assert.Equal(t, "new-pr", resyncs[2].PatchID)
+	assert.Equal(t, "attempted-pr", resyncs[3].PatchID)
 
 	resyncs, err = FindDueGitHubStatusResyncs(t.Context(), 2)
 	require.NoError(t, err)
@@ -64,24 +71,20 @@ func TestFindDueGitHubStatusResyncs(t *testing.T) {
 
 func TestClearGitHubStatusResync(t *testing.T) {
 	require.NoError(t, db.ClearCollections(GitHubStatusResyncCollection))
-	jobStart := time.Now().Truncate(time.Millisecond)
-	require.NoError(t, db.Insert(t.Context(), GitHubStatusResyncCollection, GitHubStatusResync{
-		PatchID:      "failed-before",
-		LastFailedAt: jobStart.Add(-time.Minute),
-	}))
-	require.NoError(t, db.Insert(t.Context(), GitHubStatusResyncCollection, GitHubStatusResync{
-		PatchID:      "failed-during",
-		LastFailedAt: jobStart,
-	}))
+	lastFailedAt := time.Now().Truncate(time.Millisecond)
+	for _, resync := range []GitHubStatusResync{
+		{PatchID: "failed-before", LastFailedAt: lastFailedAt.Add(-time.Minute)},
+		{PatchID: "failed-at", LastFailedAt: lastFailedAt},
+		{PatchID: "failed-after", LastFailedAt: lastFailedAt.Add(time.Millisecond)},
+	} {
+		require.NoError(t, db.Insert(t.Context(), GitHubStatusResyncCollection, resync))
+		require.NoError(t, ClearGitHubStatusResync(t.Context(), resync.PatchID, lastFailedAt))
+	}
+	require.NoError(t, ClearGitHubStatusResync(t.Context(), "not-marked", lastFailedAt))
 
-	require.NoError(t, ClearGitHubStatusResync(t.Context(), "failed-before", jobStart))
-	require.NoError(t, ClearGitHubStatusResync(t.Context(), "failed-during", jobStart))
-	require.NoError(t, ClearGitHubStatusResync(t.Context(), "not-marked", jobStart))
-
-	failedBefore, err := FindGitHubStatusResync(t.Context(), "failed-before")
-	require.NoError(t, err)
-	assert.Nil(t, failedBefore)
-	failedDuring, err := FindGitHubStatusResync(t.Context(), "failed-during")
-	require.NoError(t, err)
-	assert.NotNil(t, failedDuring)
+	for patchID, shouldClear := range map[string]bool{"failed-before": true, "failed-at": true, "failed-after": false} {
+		resync, err := FindGitHubStatusResync(t.Context(), patchID)
+		require.NoError(t, err)
+		assert.Equal(t, shouldClear, resync == nil, patchID)
+	}
 }

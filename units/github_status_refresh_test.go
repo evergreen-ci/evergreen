@@ -21,6 +21,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type githubStatusRefreshSuite struct {
@@ -119,12 +120,17 @@ func (s *githubStatusRefreshSuite) TestSendErrorIsReported() {
 	s.EqualError(job.Error(), "GitHub unavailable")
 }
 
-func (s *githubStatusRefreshSuite) markGitHubStatusResync() {
+func (s *githubStatusRefreshSuite) markGitHubStatusResync(contexts ...string) {
+	s.markGitHubStatusResyncForPatch(s.patchDoc.Id.Hex(), contexts...)
+}
+
+func (s *githubStatusRefreshSuite) markGitHubStatusResyncForPatch(patchID string, contexts ...string) {
 	failedAt := time.Now().Add(-time.Minute)
 	s.Require().NoError(db.Insert(s.ctx, patch.GitHubStatusResyncCollection, patch.GitHubStatusResync{
-		PatchID:      s.patchDoc.Id.Hex(),
+		PatchID:      patchID,
 		DirtySince:   failedAt,
 		LastFailedAt: failedAt,
+		Contexts:     contexts,
 	}))
 }
 
@@ -159,40 +165,179 @@ func (s *githubStatusRefreshSuite) TestRunFailureDoesNotClearGitHubStatusResync(
 }
 
 func (s *githubStatusRefreshSuite) runResync(sender send.Sender) *githubStatusRefreshJob {
-	job, ok := NewGithubStatusResyncRefreshJob(s.patchDoc.Id.Hex(), time.Now()).(*githubStatusRefreshJob)
+	return s.runResyncForPatch(s.patchDoc.Id.Hex(), sender)
+}
+
+func (s *githubStatusRefreshSuite) runResyncForPatch(patchID string, sender send.Sender) *githubStatusRefreshJob {
+	job, ok := NewGithubStatusResyncRefreshJob(patchID, time.Now()).(*githubStatusRefreshJob)
 	s.Require().True(ok)
 	job.env = &eventSendEnvironment{Environment: s.env, githubSender: sender}
 	job.Run(s.ctx)
 	return job
 }
 
-func (s *githubStatusRefreshSuite) TestResyncSendsOnlyFinishedStatusesAndClearsMark() {
+func (s *githubStatusRefreshSuite) enableResync() {
 	s.Require().NoError(evergreen.SetServiceFlags(s.ctx, evergreen.ServiceFlags{GitHubStatusResyncEnabled: true}))
+}
+
+func (s *githubStatusRefreshSuite) setPatchStatus(status string) {
+	s.Require().NoError(db.UpdateId(s.ctx, patch.Collection, s.patchDoc.Id, bson.M{"$set": bson.M{patch.StatusKey: status}}))
+}
+
+func (s *githubStatusRefreshSuite) insertFinishedBuild(variant string) {
 	startTime := time.Now()
-	for _, b := range []build.Build{
-		{Id: "b-running", BuildVariant: "running", Version: s.patchDoc.Version, Status: evergreen.BuildStarted, Activated: true},
-		{Id: "b-done", BuildVariant: "done", Version: s.patchDoc.Version, Status: evergreen.BuildSucceeded, Activated: true, StartTime: startTime, FinishTime: startTime.Add(time.Minute)},
-	} {
-		s.Require().NoError(b.Insert(s.ctx))
+	b := build.Build{
+		Id:           "b-" + variant,
+		BuildVariant: variant,
+		Version:      s.patchDoc.Version,
+		Status:       evergreen.BuildSucceeded,
+		Activated:    true,
+		StartTime:    startTime,
+		FinishTime:   startTime.Add(time.Minute),
 	}
-	s.markGitHubStatusResync()
+	s.Require().NoError(b.Insert(s.ctx))
+}
+
+func (s *githubStatusRefreshSuite) TestResyncSendsOnlyFailedFinishedStatusesAndClearsMark() {
+	s.enableResync()
+	s.setPatchStatus(evergreen.VersionSucceeded)
+	s.insertFinishedBuild("done")
+	s.insertFinishedBuild("sent")
+	running := build.Build{Id: "b-running", BuildVariant: "running", Version: s.patchDoc.Version, Status: evergreen.BuildStarted, Activated: true}
+	s.Require().NoError(running.Insert(s.ctx))
+	otherProject := model.ProjectRef{Id: "otherChildProject", Identifier: "otherChildProjectIdentifier"}
+	s.Require().NoError(otherProject.Insert(s.ctx))
+	s.insertChildPatch(evergreen.VersionSucceeded)
+	otherChild := s.insertChildPatch(evergreen.VersionSucceeded)
+	s.Require().NoError(db.UpdateId(s.ctx, patch.Collection, otherChild.Id, bson.M{"$set": bson.M{patch.ProjectKey: otherProject.Id}}))
+	s.Require().NoError(s.patchDoc.SetChildPatches(s.ctx))
+	s.markGitHubStatusResync("evergreen/myChildProjectIdentifier", "evergreen/running", "evergreen/done")
 
 	job := s.runResync(s.env.InternalSender)
 	s.Require().NoError(job.Error())
 
 	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
+	s.Equal(message.GithubStateSuccess, status.State)
+	status = s.getAndValidateStatus(s.env.InternalSender)
 	s.Equal("evergreen/done", status.Context)
 	s.Equal(message.GithubStateSuccess, status.State)
 	_, ok := s.env.InternalSender.GetMessageSafe()
-	s.False(ok, "pending patch and build statuses should not be resent")
+	s.False(ok, "pending statuses and statuses that didn't fail should not be resent")
 
 	resync, err := patch.FindGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
 	s.Require().NoError(err)
 	s.Nil(resync)
 }
 
+func (s *githubStatusRefreshSuite) TestResyncSendsFailedPatchStatus() {
+	s.enableResync()
+	s.setPatchStatus(evergreen.VersionFailed)
+	s.markGitHubStatusResync("evergreen")
+
+	job := s.runResync(s.env.InternalSender)
+	s.Require().NoError(job.Error())
+
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStateFailure, status.State)
+	_, ok := s.env.InternalSender.GetMessageSafe()
+	s.False(ok)
+}
+
+func (s *githubStatusRefreshSuite) TestResyncChildPatchErrorStillSendsBuildStatusesAndKeepsMark() {
+	s.enableResync()
+	s.insertFinishedBuild("done")
+	child := s.insertChildPatch(evergreen.VersionSucceeded)
+	s.Require().NoError(db.UpdateId(s.ctx, patch.Collection, child.Id, bson.M{"$set": bson.M{patch.ProjectKey: "deleted-project"}}))
+	s.Require().NoError(s.patchDoc.SetChildPatches(s.ctx))
+	s.markGitHubStatusResync("evergreen/done")
+
+	job := s.runResync(s.env.InternalSender)
+	s.ErrorContains(job.Error(), "project 'deleted-project' does not exist")
+
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal("evergreen/done", status.Context)
+	resync, err := patch.FindGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
+	s.Require().NoError(err)
+	s.Require().NotNil(resync)
+	s.False(resync.LastAttemptedAt.IsZero(), "a failed resync should move the patch behind others that haven't failed")
+}
+
+func (s *githubStatusRefreshSuite) TestResyncClearsMarkWhenGitHubRejectsStatus() {
+	s.enableResync()
+	s.insertFinishedBuild("done")
+	s.markGitHubStatusResync("evergreen/done")
+	errSender := &eventSendErrorSender{
+		Sender: s.env.InternalSender,
+		err:    &send.GitHubSendError{StatusCode: http.StatusUnprocessableEntity, Attempts: 1, Err: errors.New("invalid status")},
+	}
+
+	job := s.runResync(errSender)
+	s.Require().NoError(job.Error())
+
+	s.Equal(1, errSender.sends)
+	resync, err := patch.FindGitHubStatusResync(s.ctx, s.patchDoc.Id.Hex())
+	s.Require().NoError(err)
+	s.Nil(resync)
+}
+
+func (s *githubStatusRefreshSuite) TestResyncClearsMarkWithoutSendingWhenStatusesCannotOrNeedNotBeResent() {
+	s.enableResync()
+	s.insertFinishedBuild("done")
+
+	for tName, setup := range map[string]func() string{
+		"PRHasNewerPatch": func() string {
+			newer := patch.Patch{
+				Id:              mgobson.NewObjectId(),
+				CreateTime:      time.Now(),
+				GithubPatchData: s.patchDoc.GithubPatchData,
+			}
+			newer.GithubPatchData.HeadHash = "0d4f6f2c1b8e9a7d6c5b4a3f2e1d0c9b8a7f6e5d"
+			s.Require().NoError(newer.Insert(s.ctx))
+			return s.patchDoc.Id.Hex()
+		},
+		"PatchNotFound": func() string {
+			return mgobson.NewObjectId().Hex()
+		},
+		"PatchHasNoGitHubTarget": func() string {
+			p := patch.Patch{Id: mgobson.NewObjectId()}
+			s.Require().NoError(p.Insert(s.ctx))
+			return p.Id.Hex()
+		},
+	} {
+		s.Run(tName, func() {
+			s.Require().NoError(db.ClearCollections(patch.GitHubStatusResyncCollection))
+			s.Require().NoError(db.RemoveAll(s.ctx, patch.Collection, bson.M{"_id": bson.M{"$ne": s.patchDoc.Id}}))
+			patchID := setup()
+			s.markGitHubStatusResyncForPatch(patchID, "evergreen/done")
+
+			job := s.runResyncForPatch(patchID, s.env.InternalSender)
+			s.Require().NoError(job.Error())
+
+			_, ok := s.env.InternalSender.GetMessageSafe()
+			s.False(ok)
+			resync, err := patch.FindGitHubStatusResync(s.ctx, patchID)
+			s.Require().NoError(err)
+			s.Nil(resync)
+		})
+	}
+}
+
+func (s *githubStatusRefreshSuite) TestResyncWithoutMarkSendsNothing() {
+	s.enableResync()
+	s.insertFinishedBuild("done")
+
+	job := s.runResync(s.env.InternalSender)
+	s.Require().NoError(job.Error())
+
+	_, ok := s.env.InternalSender.GetMessageSafe()
+	s.False(ok)
+}
+
 func (s *githubStatusRefreshSuite) TestResyncDoesNothingWhenResyncIsDisabled() {
-	s.markGitHubStatusResync()
+	s.insertFinishedBuild("done")
+	s.markGitHubStatusResync("evergreen/done")
 
 	job := s.runResync(s.env.InternalSender)
 	s.Require().NoError(job.Error())
@@ -207,9 +352,11 @@ func (s *githubStatusRefreshSuite) TestResyncDoesNothingWhenResyncIsDisabled() {
 func (s *githubStatusRefreshSuite) TestResyncJobsForTheSamePatchShareAnEnqueueScope() {
 	ts := time.Now()
 	first := NewGithubStatusResyncRefreshJob("patch", ts)
+	sameRun := NewGithubStatusResyncRefreshJob("patch", ts)
 	later := NewGithubStatusResyncRefreshJob("patch", ts.Add(5*time.Minute))
 	other := NewGithubStatusResyncRefreshJob("other-patch", ts)
 
+	s.Equal(first.ID(), sameRun.ID())
 	s.NotEqual(first.ID(), later.ID())
 	s.True(first.EnqueueAllScopes())
 	s.Equal(first.Scopes(), later.Scopes())

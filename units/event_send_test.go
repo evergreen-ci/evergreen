@@ -518,6 +518,7 @@ func (s *eventNotificationSuite) TestGitHubStatusSendMarksPatchForResync() {
 			}
 			s.Require().NotNil(resync)
 			s.Equal(tCase.mergeQueue, resync.IsMergeQueue)
+			s.Equal([]string{"evergreen"}, resync.Contexts)
 		})
 	}
 }

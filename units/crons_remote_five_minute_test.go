@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -19,16 +18,8 @@ func TestGitHubStatusResyncJobs(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(patch.GitHubStatusResyncCollection, evergreen.ConfigCollection))
 	})
 	now := time.Now()
-	for i := range githubStatusResyncBatchSize {
-		require.NoError(t, db.Insert(t.Context(), patch.GitHubStatusResyncCollection, patch.GitHubStatusResync{
-			PatchID:      fmt.Sprintf("pr-%d", i),
-			DirtySince:   now.Add(-time.Hour),
-			LastFailedAt: now,
-		}))
-	}
 	require.NoError(t, db.Insert(t.Context(), patch.GitHubStatusResyncCollection, patch.GitHubStatusResync{
-		PatchID:      "merge-queue",
-		IsMergeQueue: true,
+		PatchID:      "patch",
 		DirtySince:   now,
 		LastFailedAt: now,
 	}))
@@ -36,27 +27,14 @@ func TestGitHubStatusResyncJobs(t *testing.T) {
 	enabled := evergreen.ServiceFlags{GitHubStatusResyncEnabled: true}
 	require.NoError(t, evergreen.SetServiceFlags(t.Context(), enabled))
 
-	t.Run("ReturnsDuePatchesUpToCapWithMergeQueueFirst", func(t *testing.T) {
+	t.Run("ReturnsResyncJobForMarkedPatch", func(t *testing.T) {
 		jobs, err := githubStatusResyncJobs(t.Context(), ts)
 		require.NoError(t, err)
-		require.Len(t, jobs, githubStatusResyncBatchSize)
+		require.Len(t, jobs, 1)
 		job, ok := jobs[0].(*githubStatusRefreshJob)
 		require.True(t, ok)
-		assert.Equal(t, "merge-queue", job.FetchID)
-	})
-	t.Run("JobIDsAreStableWithinARun", func(t *testing.T) {
-		jobs, err := githubStatusResyncJobs(t.Context(), ts)
-		require.NoError(t, err)
-		require.NotEmpty(t, jobs)
-		sameRunJobs, err := githubStatusResyncJobs(t.Context(), ts)
-		require.NoError(t, err)
-		require.NotEmpty(t, sameRunJobs)
-		nextRunJobs, err := githubStatusResyncJobs(t.Context(), ts.Add(5*time.Minute))
-		require.NoError(t, err)
-		require.NotEmpty(t, nextRunJobs)
-
-		assert.Equal(t, jobs[0].ID(), sameRunJobs[0].ID())
-		assert.NotEqual(t, jobs[0].ID(), nextRunJobs[0].ID())
+		assert.Equal(t, "patch", job.FetchID)
+		assert.True(t, job.IsResync)
 	})
 	for tName, flags := range map[string]evergreen.ServiceFlags{
 		"ResyncNotEnabledReturnsNoJobs":  {},
