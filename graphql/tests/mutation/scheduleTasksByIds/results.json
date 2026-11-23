@@ -23,7 +23,7 @@
           "scheduleTasksByIds": {
             "modifiedTasks": [
               {
-                "id": "unscheduled_display_task",
+                "id": "exec_display_task",
                 "status": "undispatched"
               }
             ],
@@ -43,7 +43,7 @@
                 "status": "undispatched"
               },
               {
-                "id": "unscheduled_display_task",
+                "id": "parent_display_task",
                 "status": "undispatched"
               }
             ],

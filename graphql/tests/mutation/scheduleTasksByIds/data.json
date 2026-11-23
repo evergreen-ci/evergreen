@@ -13,6 +13,21 @@
       "display_status_cache": "unscheduled",
       "activated": false,
       "display_only": true,
+      "execution_tasks": []
+    },
+    {
+      "_id": "exec_display_task",
+      "version": "parent_version",
+      "branch": "sandbox_project_id",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "exec display task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "unscheduled",
+      "activated": false,
+      "display_only": true,
       "execution_tasks": ["unscheduled_exec_task"]
     },
     {
@@ -27,7 +42,22 @@
       "status": "undispatched",
       "display_status_cache": "unscheduled",
       "activated": false,
-      "display_task_id": "unscheduled_display_task"
+      "display_task_id": "exec_display_task"
+    },
+    {
+      "_id": "parent_display_task",
+      "version": "parent_version",
+      "branch": "sandbox_project_id",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "parent display task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "unscheduled",
+      "activated": false,
+      "display_only": true,
+      "execution_tasks": []
     },
     {
       "_id": "child_patch_display_task",
@@ -42,7 +72,7 @@
       "display_status_cache": "unscheduled",
       "activated": false,
       "display_only": true,
-      "execution_tasks": ["child_patch_exec_task"]
+      "execution_tasks": []
     },
     {
       "_id": "no_permissions_task",
@@ -57,7 +87,21 @@
       "display_status_cache": "unscheduled",
       "activated": false,
       "display_only": true,
-      "execution_tasks": ["no_permissions_exec_task"]
+      "execution_tasks": []
+    }
+  ],
+  "versions": [
+    {
+      "_id": "parent_version",
+      "identifier": "sandbox_project_id"
+    },
+    {
+      "_id": "child_version",
+      "identifier": "sandbox_project_id"
+    },
+    {
+      "_id": "no_permissions_version",
+      "identifier": "evergreen"
     }
   ],
   "builds": [
@@ -74,7 +118,12 @@
           "a": false
         },
         {
-          "id": "unscheduled_exec_task",
+          "id": "exec_display_task",
+          "s": "undispatched",
+          "a": false
+        },
+        {
+          "id": "parent_display_task",
           "s": "undispatched",
           "a": false
         },
