@@ -2367,14 +2367,6 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		taskNamesAsRegex := strings.Join(nonEmptyTaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
-	taskTags := utility.FilterSlice(opts.TaskTags, func(s string) bool { return s != "" })
-	if len(taskTags) > 0 {
-		match[TagsKey] = bson.M{"$in": taskTags}
-	}
-	variantTags := utility.FilterSlice(opts.VariantTags, func(s string) bool { return s != "" })
-	if len(variantTags) > 0 {
-		match[BuildVariantTagsKey] = bson.M{"$in": variantTags}
-	}
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
 	if !opts.IncludeNeverActivatedTasks {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
@@ -2526,6 +2518,20 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 				"$sort": bson.M{IdKey: 1},
 			})
 		}
+	}
+
+	// Filter tags after pairing so base tasks with different or missing tags remain available.
+	tagMatch := bson.M{}
+	taskTags := utility.FilterSlice(opts.TaskTags, func(s string) bool { return s != "" })
+	if len(taskTags) > 0 {
+		tagMatch[TagsKey] = bson.M{"$in": taskTags}
+	}
+	variantTags := utility.FilterSlice(opts.VariantTags, func(s string) bool { return s != "" })
+	if len(variantTags) > 0 {
+		tagMatch[BuildVariantTagsKey] = bson.M{"$in": variantTags}
+	}
+	if len(tagMatch) > 0 {
+		pipeline = append(pipeline, bson.M{"$match": tagMatch})
 	}
 
 	if len(opts.Statuses) > 0 {

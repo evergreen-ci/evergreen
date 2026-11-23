@@ -1,6 +1,7 @@
 {
   "versions": [
-    { "_id": "tag-version", "identifier": "spruce", "r": "gitter_request" }
+    { "_id": "tag-version", "identifier": "spruce", "r": "gitter_request", "order": 2 },
+    { "_id": "base-version", "identifier": "spruce", "r": "gitter_request", "order": 1 }
   ],
   "project_ref": [
     { "_id": "spruce", "identifier": "spruce" }
@@ -20,6 +21,16 @@
       "_id": "test-linux", "version": "tag-version", "branch": "spruce",
       "display_name": "test", "build_variant": "linux", "display_task_id": "",
       "tags": ["test"], "build_variant_tags": ["linux"], "display_status_cache": "success"
+    },
+    {
+      "_id": "base-build-linux", "version": "base-version", "branch": "spruce",
+      "display_name": "compile", "build_variant": "linux", "display_task_id": "",
+      "display_status_cache": "success"
+    },
+    {
+      "_id": "base-build-windows", "version": "base-version", "branch": "spruce",
+      "display_name": "compile", "build_variant": "windows", "display_task_id": "",
+      "tags": ["old-task-tag"], "build_variant_tags": ["old-variant-tag"], "display_status_cache": "success"
     }
   ]
 }

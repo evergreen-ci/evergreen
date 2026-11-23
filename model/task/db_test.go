@@ -1351,7 +1351,8 @@ func TestGetTasksByVersionTagFilters(t *testing.T) {
 		{Id: "a", Version: "root", DisplayName: "compile", BuildVariant: "linux", Tags: []string{"build", "shared"}, BuildVariantTags: []string{"linux", "shared"}},
 		{Id: "b", Version: "root", DisplayName: "test", BuildVariant: "windows", Tags: []string{"test", "shared"}, BuildVariantTags: []string{"windows", "shared"}},
 		{Id: "c", Version: "root", DisplayName: "untagged", BuildVariant: "linux"},
-		{Id: "base-a", Version: "base", DisplayName: "compile", BuildVariant: "linux", Tags: []string{"build", "shared"}, BuildVariantTags: []string{"linux", "shared"}},
+		{Id: "base-a", Version: "base", DisplayName: "compile", BuildVariant: "linux"},
+		{Id: "base-b", Version: "base", DisplayName: "test", BuildVariant: "windows", Tags: []string{"old-task-tag"}, BuildVariantTags: []string{"old-variant-tag"}},
 	} {
 		task.DisplayTaskId = utility.ToStringPtr("")
 		task.DisplayStatusCache = evergreen.TaskSucceeded
@@ -1369,6 +1370,9 @@ func TestGetTasksByVersionTagFilters(t *testing.T) {
 		{"EmptyTagsDoNotFilterTasks", GetTasksByVersionOptions{TaskTags: []string{""}, VariantTags: []string{""}}, []string{"a", "b", "c"}},
 		{"TagsCombineWithNameAndVariantFilters", GetTasksByVersionOptions{TaskTags: []string{"shared"}, VariantTags: []string{"shared"}, TaskNames: []string{"compile"}, Variants: []string{"linux"}}, []string{"a"}},
 		{"TagsPreserveBaseTaskPairing", GetTasksByVersionOptions{TaskTags: []string{"build"}, VariantTags: []string{"linux"}, BaseVersionID: "base"}, []string{"a"}},
+		{"MissingBaseTagsPreserveBaseStatusFiltering", GetTasksByVersionOptions{TaskTags: []string{"build"}, VariantTags: []string{"linux"}, BaseVersionID: "base", BaseStatuses: []string{evergreen.TaskSucceeded}}, []string{"a"}},
+		{"DifferentBaseTagsPreserveBaseStatusFiltering", GetTasksByVersionOptions{TaskTags: []string{"test"}, VariantTags: []string{"windows"}, BaseVersionID: "base", BaseStatuses: []string{evergreen.TaskSucceeded}}, []string{"b"}},
+		{"MatchingBaseTagsDoNotIncludeUntaggedRoot", GetTasksByVersionOptions{TaskTags: []string{"old-task-tag"}, VariantTags: []string{"old-variant-tag"}, BaseVersionID: "base"}, []string{}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			opts := test.opts
@@ -1385,7 +1389,8 @@ func TestGetTasksByVersionTagFilters(t *testing.T) {
 			require.Len(t, tasks, 1)
 			assert.Equal(t, test.ids[0], tasks[0].Id)
 			if opts.BaseVersionID != "" {
-				assert.Equal(t, "base-a", tasks[0].BaseTask.Id)
+				assert.Equal(t, "base-"+tasks[0].Id, tasks[0].BaseTask.Id)
+				assert.Equal(t, evergreen.TaskSucceeded, tasks[0].BaseTask.Status)
 			}
 		})
 	}
