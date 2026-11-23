@@ -27,19 +27,18 @@ import (
 const sourceCacheNamespaceAttribute = "evergreen.command.git_get_project.source_cache.namespace"
 
 // sourceCacheEnabledForTask reports whether the task may use the source cache:
-// the admin opt-out list always wins, then all projects when
-// SourceCacheAllProjectsEnabled is set, else the project's own source_cache_mode.
-func sourceCacheEnabledForTask(ctx context.Context, settings *evergreen.Settings, pRef *model.ProjectRef, t *task.Task) (bool, *evergreen.ServiceFlags) {
+// the admin opt-out list always wins, then all projects are enabled when the
+// fleet-wide SourceCacheAllProjectsEnabled flag is set.
+func sourceCacheEnabledForTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) (bool, *evergreen.ServiceFlags) {
 	if slices.Contains(settings.Buckets.SourceCacheOptOutProjects, t.Project) {
 		return false, nil
 	}
-	projectEnabled := model.SourceCacheEnabled(pRef.GetSourceCacheMode(), t.IsPatchRequest())
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		grip.Error(ctx, errors.Wrap(err, "getting service flags"))
-		return projectEnabled, nil
+		return false, nil
 	}
-	return projectEnabled || flags.SourceCacheAllProjectsEnabled, flags
+	return flags.SourceCacheAllProjectsEnabled, flags
 }
 
 // sourceCacheClaimedAttribute records whether a save claim granted the task the right to produce the artifact.
@@ -69,7 +68,7 @@ func resolveSourceCacheScope(ctx context.Context, taskID string, settings *everg
 			Message:    fmt.Sprintf("project '%s' not found for task '%s'", t.Project, taskID),
 		})
 	}
-	if enabled, _ := sourceCacheEnabledForTask(ctx, settings, pRef, t); !enabled {
+	if enabled, _ := sourceCacheEnabledForTask(ctx, settings, t); !enabled {
 		return nil, nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusConflict,
 			Message:    fmt.Sprintf("source cache is disabled for project '%s'", t.Project),

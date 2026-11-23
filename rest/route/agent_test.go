@@ -163,27 +163,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			assert.Equal(t, map[string]bool{"b": true}, data.PrivateVars)
 			assert.Equal(t, []string{"pass", "secret"}, data.RedactKeys)
 		},
-		"RunReturnsSourceCacheBucketForEnabledProject": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
-			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
-			require.NoError(t, db.Update(ctx, model.ProjectRefCollection, mgobson.M{model.ProjectRefIdKey: "p1"}, mgobson.M{"$set": mgobson.M{model.ProjectRefSourceCacheModeKey: model.SourceCacheModeAll}}))
-			rh.taskID = "t1"
-			resp := rh.Run(ctx)
-			require.NotZero(t, resp)
-			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
-			require.True(t, ok)
-			assert.Equal(t, "source-cache", data.SourceCacheBucket.Name)
-		},
-		"RunReturnsNoSourceCacheBucketForDisabledProject": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
-			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
-			require.NoError(t, db.Update(ctx, model.ProjectRefCollection, mgobson.M{model.ProjectRefIdKey: "p1"}, mgobson.M{"$set": mgobson.M{model.ProjectRefSourceCacheModeKey: model.SourceCacheModeDisabled}}))
-			rh.taskID = "t1"
-			resp := rh.Run(ctx)
-			require.NotZero(t, resp)
-			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
-			require.True(t, ok)
-			assert.Zero(t, data.SourceCacheBucket)
-		},
-		"RunReturnsSourceCacheBucketWhenFlagOverridesProjectSetting": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
+		"RunReturnsSourceCacheBucketWhenFleetFlagEnabled": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
 			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
 			require.NoError(t, flags.Set(ctx))
@@ -196,6 +176,15 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
 			require.True(t, ok)
 			assert.Equal(t, "source-cache", data.SourceCacheBucket.Name)
+		},
+		"RunReturnsNoSourceCacheBucketWhenFleetFlagDisabled": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
+			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
+			rh.taskID = "t1"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+			require.True(t, ok)
+			assert.Zero(t, data.SourceCacheBucket)
 		},
 		"RunReturnsNoSourceCacheBucketForOptedOutProject": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
@@ -212,9 +201,8 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.True(t, ok)
 			assert.Zero(t, data.SourceCacheBucket)
 		},
-		"RunReturnsSourceCacheBucketForPatchWhenFlagOverridesProjectSetting": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
+		"RunReturnsSourceCacheBucketForPatchWhenFleetFlagEnabled": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.settings.Buckets.SourceCacheBucket = evergreen.BucketConfig{Name: "source-cache"}
-			require.NoError(t, db.Update(ctx, model.ProjectRefCollection, mgobson.M{model.ProjectRefIdKey: "p1"}, mgobson.M{"$set": mgobson.M{model.ProjectRefSourceCacheModeKey: model.SourceCacheModeDisabled}}))
 			require.NoError(t, db.Update(ctx, task.Collection, mgobson.M{task.IdKey: "t1"}, mgobson.M{"$set": mgobson.M{task.RequesterKey: evergreen.PatchVersionRequester}}))
 			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
 			require.NoError(t, flags.Set(ctx))

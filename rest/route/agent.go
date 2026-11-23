@@ -373,7 +373,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		}
 	}
 
-	pRef, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, false)
+	pRef, err := model.FindBranchProjectRef(ctx, t.Project)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project ref '%s'", t.Project))
 	}
@@ -450,7 +450,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	res.SourceCacheBucket = h.settings.Buckets.SourceCacheBucket
-	sourceCacheEnabled, sourceCacheFlags := sourceCacheEnabledForTask(ctx, h.settings, pRef, t)
+	sourceCacheEnabled, sourceCacheFlags := sourceCacheEnabledForTask(ctx, h.settings, t)
 	if !sourceCacheEnabled {
 		res.SourceCacheBucket = evergreen.BucketConfig{}
 	}
@@ -461,7 +461,6 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 			"message":      "no source cache bucket for task",
 			"task":         t.Id,
 			"project":      t.Project,
-			"mode":         pRef.GetSourceCacheMode(),
 			"flag_enabled": sourceCacheFlags != nil && sourceCacheFlags.SourceCacheAllProjectsEnabled,
 			"bucket_name":  h.settings.Buckets.SourceCacheBucket.Name,
 		})

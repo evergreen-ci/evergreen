@@ -5441,23 +5441,6 @@ func TestGetAllowedSingleTaskDistroTasksForProject(t *testing.T) {
 	})
 }
 
-func TestValidateSourceCacheMode(t *testing.T) {
-	ref := &model.ProjectRef{}
-	assert.Empty(t, validateSourceCacheMode(t.Context(), nil, nil, ref, false))
-
-	ref.SourceCacheMode = model.SourceCacheModeDisabled
-	assert.Empty(t, validateSourceCacheMode(t.Context(), nil, nil, ref, false))
-
-	ref.SourceCacheMode = model.SourceCacheModeAll
-	assert.Empty(t, validateSourceCacheMode(t.Context(), nil, nil, ref, false))
-
-	ref.SourceCacheMode = model.SourceCacheModeWaterfall
-	assert.Empty(t, validateSourceCacheMode(t.Context(), nil, nil, ref, false))
-
-	ref.SourceCacheMode = model.SourceCacheMode("LATEST_AND_GREATEST")
-	assert.NotEmpty(t, validateSourceCacheMode(t.Context(), nil, nil, ref, false))
-}
-
 func TestHasPathTraversal(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		prefix       string

@@ -63,11 +63,11 @@ func setupSourceCacheCredentialsHandler(t *testing.T, settings *evergreen.Settin
 }
 
 // insertSourceCacheTask inserts a task and its project ref. An empty owner or repo
-// leaves them unset on the project ref. An empty mode is left unset on the project.
-func insertSourceCacheTask(t *testing.T, requester, versionID, revision, owner, repo string, mode model.SourceCacheMode) {
+// leaves them unset on the project ref.
+func insertSourceCacheTask(t *testing.T, requester, versionID, revision, owner, repo string) {
 	tsk := task.Task{Id: sourceCacheTaskID, Project: sourceCacheProjectID, Requester: requester, Version: versionID, Revision: revision}
 	require.NoError(t, tsk.Insert(t.Context()))
-	pRef := model.ProjectRef{Id: sourceCacheProjectID, Owner: owner, Repo: repo, SourceCacheMode: mode}
+	pRef := model.ProjectRef{Id: sourceCacheProjectID, Owner: owner, Repo: repo}
 	require.NoError(t, pRef.Insert(t.Context()))
 }
 
@@ -87,39 +87,31 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 		revision        string
 		insertPatchDoc  func(t *testing.T, versionID string)
 		owner, repo     string
-		sourceCacheMode model.SourceCacheMode
-		setFlag         bool
+		noFlag          bool
 		expectedStatus  int
 		wantRestoreKeys [][2]string
 	}{
 		"UnknownTaskIsNotFound": {
 			expectedStatus: http.StatusNotFound,
 		},
-		"ProjectWithSourceCacheDisabledIsRefused": {
+		"ProjectIsRefusedWhenFleetFlagDisabled": {
 			insertTask: true, owner: "some-org", repo: "some-repo",
-			sourceCacheMode: model.SourceCacheModeDisabled,
-			expectedStatus:  http.StatusConflict,
-		},
-		"FlagOverridesDisabledProjectMode": {
-			insertTask: true, revision: "abc123", owner: "some-org", repo: "some-repo",
-			sourceCacheMode: model.SourceCacheModeDisabled,
-			setFlag:         true,
-			expectedStatus:  http.StatusOK,
-			wantRestoreKeys: [][2]string{{"base", "abc123"}},
+			noFlag:         true,
+			expectedStatus: http.StatusConflict,
 		},
 		"OptedOutProjectIsRefusedEvenWithFlag": {
 			insertTask: true, revision: "abc123", owner: "some-org", repo: "some-repo",
 			mutateSettings: func(s *evergreen.Settings) {
 				s.Buckets.SourceCacheOptOutProjects = []string{sourceCacheProjectID}
 			},
-			setFlag:        true,
 			expectedStatus: http.StatusConflict,
 		},
-		"OptedOutProjectIsRefusedWithAllMode": {
+		"OptedOutProjectIsRefusedWithoutFlag": {
 			insertTask: true, revision: "abc123", owner: "some-org", repo: "some-repo",
 			mutateSettings: func(s *evergreen.Settings) {
 				s.Buckets.SourceCacheOptOutProjects = []string{sourceCacheProjectID}
 			},
+			noFlag:         true,
 			expectedStatus: http.StatusConflict,
 		},
 		"BucketWithNoRoleIsRefused": {
@@ -148,17 +140,6 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 		},
 		"MainlineTaskGetsARestorePlan": {
 			insertTask: true, revision: "abc123", owner: "some-org", repo: "some-repo",
-			expectedStatus:  http.StatusOK,
-			wantRestoreKeys: [][2]string{{"base", "abc123"}},
-		},
-		"WaterfallModeRefusesPatchTask": {
-			insertTask: true, requester: evergreen.GithubPRRequester, revision: "abc123", owner: "some-org", repo: "some-repo",
-			sourceCacheMode: model.SourceCacheModeWaterfall,
-			expectedStatus:  http.StatusConflict,
-		},
-		"WaterfallModeAllowsMainlineTask": {
-			insertTask: true, revision: "abc123", owner: "some-org", repo: "some-repo",
-			sourceCacheMode: model.SourceCacheModeWaterfall,
 			expectedStatus:  http.StatusOK,
 			wantRestoreKeys: [][2]string{{"base", "abc123"}},
 		},
@@ -212,7 +193,7 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 				tCase.mutateSettings(settings)
 			}
 			handler := setupSourceCacheCredentialsHandler(t, settings)
-			if tCase.setFlag {
+			if !tCase.noFlag {
 				flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
 				require.NoError(t, flags.Set(t.Context()))
 				t.Cleanup(func() {
@@ -228,11 +209,7 @@ func TestSourceCacheCredentialsRun(t *testing.T) {
 				if versionID == "" {
 					versionID = "5bedc62ee4055d31f0340b1d"
 				}
-				mode := tCase.sourceCacheMode
-				if mode == "" {
-					mode = model.SourceCacheModeAll
-				}
-				insertSourceCacheTask(t, requester, versionID, tCase.revision, tCase.owner, tCase.repo, mode)
+				insertSourceCacheTask(t, requester, versionID, tCase.revision, tCase.owner, tCase.repo)
 				if tCase.insertPatchDoc != nil {
 					tCase.insertPatchDoc(t, versionID)
 				}
