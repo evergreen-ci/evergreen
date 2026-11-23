@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
 
@@ -14,70 +15,67 @@ const (
 	maxTasksToModify = 1000
 )
 
-var taskSelectionFields = []string{
-	task.IdKey,
-	task.StatusKey,
-	task.ActivatedKey,
-	task.RequesterKey,
-	task.DisplayTaskIdKey,
+// resolveTasksByIDs returns the tasks with the given IDs, which may belong to different versions.
+func resolveTasksByIDs(ctx context.Context, taskIDs []string) ([]task.Task, error) {
+	if len(taskIDs) > maxTasksToModify {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot select more than %d tasks by ID, use a filter instead", maxTasksToModify))
+	}
+	return findAllTasksByIds(ctx, taskIDs...)
 }
 
-// resolveTaskSelection returns the tasks in the version that the selection refers to, along with any task errors encountered.
-func resolveTaskSelection(ctx context.Context, versionID string, selection TaskSelection) ([]task.Task, []*TaskError, error) {
-	hasTaskIDs := selection.TaskIds != nil
-	hasFilters := selection.Filter != nil
-	if hasTaskIDs == hasFilters {
-		return nil, nil, InputValidationError.Send(ctx, "exactly one of 'taskIds' or 'filter' must be set in a task selection")
-	}
-	if hasTaskIDs {
-		if len(selection.TaskIds) > maxTasksToModify {
-			return nil, nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot select more than %d tasks by ID, use a filter instead", maxTasksToModify))
-		}
-		return resolveTasksByIDs(ctx, versionID, selection.TaskIds)
-	}
-	return resolveTasksByFilter(ctx, versionID, selection.Filter)
-}
-
-func resolveTasksByIDs(ctx context.Context, versionID string, taskIDs []string) ([]task.Task, []*TaskError, error) {
-	tasks, err := task.FindAllByIdsAndVersion(ctx, taskIDs, versionID, taskSelectionFields...)
-	if err != nil {
-		return nil, nil, InternalServerError.Send(ctx, fmt.Sprintf("finding tasks in version '%s': %s", versionID, err.Error()))
-	}
-	found := make(map[string]bool, len(tasks))
-	for _, t := range tasks {
-		found[t.Id] = true
-	}
-	taskErrors := []*TaskError{}
-	for _, id := range taskIDs {
-		if found[id] {
-			continue
-		}
-		found[id] = true
-		taskErrors = append(taskErrors, &TaskError{TaskID: id, Reason: fmt.Sprintf("task not found in version '%s'", versionID)})
-	}
-	return tasks, taskErrors, nil
-}
-
-func resolveTasksByFilter(ctx context.Context, versionID string, f *TaskFilterOptions) ([]task.Task, []*TaskError, error) {
+// resolveTasksByFilter returns the tasks in the version that match the filter.
+func resolveTasksByFilter(ctx context.Context, versionID string, f TaskFilterOptions) ([]task.Task, error) {
 	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
-		return nil, nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
 	}
 	if v == nil {
-		return nil, nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
 
-	opts, err := getTasksByVersionOptions(ctx, v, *f)
+	opts, err := getTasksByVersionOptions(ctx, v, f)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	opts.FieldsToProject = taskSelectionFields
+	opts.FieldsToProject = []string{
+		task.IdKey,
+		task.StatusKey,
+		task.ActivatedKey,
+		task.RequesterKey,
+		task.DisplayTaskIdKey,
+	}
 
 	tasks, _, err := task.GetTasksByVersion(ctx, versionID, opts)
 	if err != nil {
-		return nil, nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for version '%s': %s", versionID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for version '%s': %s", versionID, err.Error()))
 	}
-	return tasks, []*TaskError{}, nil
+	return tasks, nil
+}
+
+// scheduleSelectedTasks schedules the schedulable tasks among the selected tasks and reports the rest as task errors.
+func scheduleSelectedTasks(ctx context.Context, selectedTasks []task.Task) (*BulkTaskOperationResult, error) {
+	taskIDsToSchedule, taskErrors := getSchedulableTaskIDs(selectedTasks)
+	result := &BulkTaskOperationResult{
+		ModifiedTasks: []*restModel.APITask{},
+		TaskErrors:    taskErrors,
+	}
+	if len(taskIDsToSchedule) == 0 {
+		return result, nil
+	}
+	if len(taskIDsToSchedule) > maxTasksToModify {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot schedule more than %d tasks at once, but the selection contains %d schedulable tasks; narrow the selection", maxTasksToModify, len(taskIDsToSchedule)))
+	}
+	tasksToSchedule, err := findAllTasksByIds(ctx, taskIDsToSchedule...)
+	if err != nil {
+		return nil, err
+	}
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+	scheduled, err := setTasksScheduled(ctx, logURL, true, tasksToSchedule)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("scheduling tasks: %s", err.Error()))
+	}
+	result.ModifiedTasks = scheduled
+	return result, nil
 }
 
 // getSchedulableTaskIDs returns the unique IDs of the tasks to schedule and an error for each given task that can't be

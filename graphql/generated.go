@@ -1074,8 +1074,9 @@ type ComplexityRoot struct {
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch                 func(childComplexity int, patchID string, configure PatchConfigure) int
 		ScheduleTasks                 func(childComplexity int, versionID string, taskIds []string) int
+		ScheduleTasksByFilter         func(childComplexity int, versionID string, filter TaskFilterOptions) int
+		ScheduleTasksByIds            func(childComplexity int, taskIds []string) int
 		ScheduleUndispatchedBaseTasks func(childComplexity int, versionID string) int
-		ScheduleVersionTasks          func(childComplexity int, versionID string, selection TaskSelection) int
 		SetAnnotationMetadataLinks    func(childComplexity int, taskID string, execution int, metadataLinks []*model.APIMetadataLink) int
 		SetLastRevision               func(childComplexity int, opts SetLastRevisionInput) int
 		SetPatchVisibility            func(childComplexity int, patchIds []string, hidden bool) int
@@ -2663,7 +2664,8 @@ type MutationResolver interface {
 	RefreshGitHubStatuses(ctx context.Context, opts RefreshGitHubStatusesInput) (*RefreshGitHubStatusesPayload, error)
 	RestartVersions(ctx context.Context, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) ([]*model1.Version, error)
 	ScheduleUndispatchedBaseTasks(ctx context.Context, versionID string) ([]*model.APITask, error)
-	ScheduleVersionTasks(ctx context.Context, versionID string, selection TaskSelection) (*BulkTaskOperationResult, error)
+	ScheduleTasksByIds(ctx context.Context, taskIds []string) (*BulkTaskOperationResult, error)
+	ScheduleTasksByFilter(ctx context.Context, versionID string, filter TaskFilterOptions) (*BulkTaskOperationResult, error)
 	SetVersionPriority(ctx context.Context, versionID string, priority int) (*string, error)
 	UnscheduleVersionTasks(ctx context.Context, versionID string, abort bool) (*string, error)
 }
@@ -7036,6 +7038,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.ScheduleTasks(childComplexity, args["versionId"].(string), args["taskIds"].([]string)), true
+	case "Mutation.scheduleTasksByFilter":
+		if e.complexity.Mutation.ScheduleTasksByFilter == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_scheduleTasksByFilter_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ScheduleTasksByFilter(childComplexity, args["versionId"].(string), args["filter"].(TaskFilterOptions)), true
+	case "Mutation.scheduleTasksByIds":
+		if e.complexity.Mutation.ScheduleTasksByIds == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_scheduleTasksByIds_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ScheduleTasksByIds(childComplexity, args["taskIds"].([]string)), true
 	case "Mutation.scheduleUndispatchedBaseTasks":
 		if e.complexity.Mutation.ScheduleUndispatchedBaseTasks == nil {
 			break
@@ -7047,17 +7071,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.ScheduleUndispatchedBaseTasks(childComplexity, args["versionId"].(string)), true
-	case "Mutation.scheduleVersionTasks":
-		if e.complexity.Mutation.ScheduleVersionTasks == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_scheduleVersionTasks_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.ScheduleVersionTasks(childComplexity, args["versionId"].(string), args["selection"].(TaskSelection)), true
 	case "Mutation.setAnnotationMetadataLinks":
 		if e.complexity.Mutation.SetAnnotationMetadataLinks == nil {
 			break
@@ -13743,7 +13756,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTaskLimitsConfigInput,
 		ec.unmarshalInputTaskOwnershipSettingsInput,
 		ec.unmarshalInputTaskPriority,
-		ec.unmarshalInputTaskSelection,
 		ec.unmarshalInputTaskSpecifierInput,
 		ec.unmarshalInputTestFilter,
 		ec.unmarshalInputTestFilterOptions,
@@ -15489,6 +15501,138 @@ func (ec *executionContext) field_Mutation_schedulePatch_argsPatchID(
 	}
 }
 
+func (ec *executionContext) field_Mutation_scheduleTasksByFilter_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+
+	arg0, err := ec.field_Mutation_scheduleTasksByFilter_argsVersionID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["versionId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "filter", ec.unmarshalNTaskFilterOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskFilterOptions)
+	if err != nil {
+		return nil, err
+	}
+	args["filter"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_scheduleTasksByFilter_argsVersionID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["versionId"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("versionId"))
+	directive0 := func(ctx context.Context) (any, error) {
+		tmp, ok := rawArgs["versionId"]
+		if !ok {
+			var zeroVal string
+			return zeroVal, nil
+		}
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	directive1 := func(ctx context.Context) (any, error) {
+		permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+		if err != nil {
+			var zeroVal string
+			return zeroVal, err
+		}
+		access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+		if err != nil {
+			var zeroVal string
+			return zeroVal, err
+		}
+		if ec.directives.RequireProjectAccess == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requireProjectAccess is not implemented")
+		}
+		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+	}
+
+	tmp, err := directive1(ctx)
+	if err != nil {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, err)
+	}
+	if data, ok := tmp.(string); ok {
+		return data, nil
+	} else {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+	}
+}
+
+func (ec *executionContext) field_Mutation_scheduleTasksByIds_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+
+	arg0, err := ec.field_Mutation_scheduleTasksByIds_argsTaskIds(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["taskIds"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_scheduleTasksByIds_argsTaskIds(
+	ctx context.Context,
+	rawArgs map[string]any,
+) ([]string, error) {
+	if _, ok := rawArgs["taskIds"]; !ok {
+		var zeroVal []string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("taskIds"))
+	directive0 := func(ctx context.Context) (any, error) {
+		tmp, ok := rawArgs["taskIds"]
+		if !ok {
+			var zeroVal []string
+			return zeroVal, nil
+		}
+		return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+	}
+
+	directive1 := func(ctx context.Context) (any, error) {
+		permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+		if err != nil {
+			var zeroVal []string
+			return zeroVal, err
+		}
+		access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+		if err != nil {
+			var zeroVal []string
+			return zeroVal, err
+		}
+		if ec.directives.RequireProjectAccessForTasks == nil {
+			var zeroVal []string
+			return zeroVal, errors.New("directive requireProjectAccessForTasks is not implemented")
+		}
+		return ec.directives.RequireProjectAccessForTasks(ctx, rawArgs, directive0, permission, access)
+	}
+
+	tmp, err := directive1(ctx)
+	if err != nil {
+		var zeroVal []string
+		return zeroVal, graphql.ErrorOnPath(ctx, err)
+	}
+	if data, ok := tmp.([]string); ok {
+		return data, nil
+	} else if tmp == nil {
+		var zeroVal []string
+		return zeroVal, nil
+	} else {
+		var zeroVal []string
+		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
+	}
+}
+
 func (ec *executionContext) field_Mutation_scheduleTasks_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -15569,73 +15713,6 @@ func (ec *executionContext) field_Mutation_scheduleUndispatchedBaseTasks_args(ct
 }
 
 func (ec *executionContext) field_Mutation_scheduleUndispatchedBaseTasks_argsVersionID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["versionId"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("versionId"))
-	directive0 := func(ctx context.Context) (any, error) {
-		tmp, ok := rawArgs["versionId"]
-		if !ok {
-			var zeroVal string
-			return zeroVal, nil
-		}
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	directive1 := func(ctx context.Context) (any, error) {
-		permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
-		if err != nil {
-			var zeroVal string
-			return zeroVal, err
-		}
-		access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-		if err != nil {
-			var zeroVal string
-			return zeroVal, err
-		}
-		if ec.directives.RequireProjectAccess == nil {
-			var zeroVal string
-			return zeroVal, errors.New("directive requireProjectAccess is not implemented")
-		}
-		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-	}
-
-	tmp, err := directive1(ctx)
-	if err != nil {
-		var zeroVal string
-		return zeroVal, graphql.ErrorOnPath(ctx, err)
-	}
-	if data, ok := tmp.(string); ok {
-		return data, nil
-	} else {
-		var zeroVal string
-		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
-	}
-}
-
-func (ec *executionContext) field_Mutation_scheduleVersionTasks_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-
-	arg0, err := ec.field_Mutation_scheduleVersionTasks_argsVersionID(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["versionId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "selection", ec.unmarshalNTaskSelection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSelection)
-	if err != nil {
-		return nil, err
-	}
-	args["selection"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_scheduleVersionTasks_argsVersionID(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (string, error) {
@@ -43484,15 +43561,15 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_scheduleVersionTasks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_scheduleTasksByIds(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Mutation_scheduleVersionTasks,
+		ec.fieldContext_Mutation_scheduleTasksByIds,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().ScheduleVersionTasks(ctx, fc.Args["versionId"].(string), fc.Args["selection"].(TaskSelection))
+			return ec.resolvers.Mutation().ScheduleTasksByIds(ctx, fc.Args["taskIds"].([]string))
 		},
 		nil,
 		ec.marshalNBulkTaskOperationResult2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBulkTaskOperationResult,
@@ -43501,7 +43578,7 @@ func (ec *executionContext) _Mutation_scheduleVersionTasks(ctx context.Context, 
 	)
 }
 
-func (ec *executionContext) fieldContext_Mutation_scheduleVersionTasks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_scheduleTasksByIds(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -43524,7 +43601,54 @@ func (ec *executionContext) fieldContext_Mutation_scheduleVersionTasks(ctx conte
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_scheduleVersionTasks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_scheduleTasksByIds_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_scheduleTasksByFilter(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_scheduleTasksByFilter,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().ScheduleTasksByFilter(ctx, fc.Args["versionId"].(string), fc.Args["filter"].(TaskFilterOptions))
+		},
+		nil,
+		ec.marshalNBulkTaskOperationResult2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBulkTaskOperationResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_scheduleTasksByFilter(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "modifiedTasks":
+				return ec.fieldContext_BulkTaskOperationResult_modifiedTasks(ctx, field)
+			case "taskErrors":
+				return ec.fieldContext_BulkTaskOperationResult_taskErrors(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BulkTaskOperationResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_scheduleTasksByFilter_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -93209,40 +93333,6 @@ func (ec *executionContext) unmarshalInputTaskPriority(ctx context.Context, obj 
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputTaskSelection(ctx context.Context, obj any) (TaskSelection, error) {
-	var it TaskSelection
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"taskIds", "filter"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "taskIds":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskIds"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TaskIds = data
-		case "filter":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filter"))
-			data, err := ec.unmarshalOTaskFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskFilterOptions(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Filter = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputTaskSpecifierInput(ctx context.Context, obj any) (model.APITaskSpecifier, error) {
 	var it model.APITaskSpecifier
 	asMap := map[string]any{}
@@ -102216,9 +102306,16 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_scheduleUndispatchedBaseTasks(ctx, field)
 			})
-		case "scheduleVersionTasks":
+		case "scheduleTasksByIds":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_scheduleVersionTasks(ctx, field)
+				return ec._Mutation_scheduleTasksByIds(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "scheduleTasksByFilter":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_scheduleTasksByFilter(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -121637,11 +121734,6 @@ func (ec *executionContext) marshalNTaskQueueItem2ᚖgithubᚗcomᚋevergreenᚑ
 	return ec._TaskQueueItem(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNTaskSelection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSelection(ctx context.Context, v any) (TaskSelection, error) {
-	res, err := ec.unmarshalInputTaskSelection(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) unmarshalNTaskSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSortCategory(ctx context.Context, v any) (TaskSortCategory, error) {
 	var res TaskSortCategory
 	err := res.UnmarshalGQL(v)
@@ -126187,14 +126279,6 @@ func (ec *executionContext) marshalOTaskExecutionStep2ᚕᚖgithubᚗcomᚋeverg
 	}
 
 	return ret
-}
-
-func (ec *executionContext) unmarshalOTaskFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskFilterOptions(ctx context.Context, v any) (*TaskFilterOptions, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputTaskFilterOptions(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOTaskHostOverrides2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskHostOverrides(ctx context.Context, sel ast.SelectionSet, v *model.APITaskHostOverrides) graphql.Marshaler {

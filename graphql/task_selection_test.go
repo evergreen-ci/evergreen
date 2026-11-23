@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestResolveTaskSelection(t *testing.T) {
+func TestResolveTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(model.VersionCollection, task.Collection))
 	t.Cleanup(func() {
 		assert.NoError(t, db.ClearCollections(model.VersionCollection, task.Collection))
@@ -52,79 +52,49 @@ func TestResolveTaskSelection(t *testing.T) {
 
 	failedFilter := &TaskFilterOptions{Statuses: []string{evergreen.TaskFailed}}
 
-	t.Run("InvalidTaskSelection", func(t *testing.T) {
-		for testName, testCase := range map[string]struct {
-			versionID   string
-			selection   TaskSelection
-			expectedErr string
-		}{
-			"NeitherTaskIDsNorFilterErrors": {
-				versionID:   "v1",
-				selection:   TaskSelection{},
-				expectedErr: "exactly one of 'taskIds' or 'filter' must be set in a task selection",
-			},
-			"BothTaskIDsAndFilterErrors": {
-				versionID:   "v1",
-				selection:   TaskSelection{TaskIds: []string{"failed1"}, Filter: failedFilter},
-				expectedErr: "exactly one of 'taskIds' or 'filter' must be set in a task selection",
-			},
-			"TooManyTaskIDsErrors": {
-				versionID:   "v1",
-				selection:   TaskSelection{TaskIds: make([]string, maxSelectedTaskIDs+1)},
-				expectedErr: "cannot select more than 1000 tasks by ID, use a filter instead",
-			},
-			"FilterOnUnknownVersionErrors": {
-				versionID:   "nonexistent",
-				selection:   TaskSelection{Filter: failedFilter},
-				expectedErr: "version 'nonexistent' not found",
-			},
-		} {
-			t.Run(testName, func(t *testing.T) {
-				_, _, err := resolveTaskSelection(t.Context(), testCase.versionID, testCase.selection)
-				require.Error(t, err)
-				assert.ErrorContains(t, err, testCase.expectedErr)
-			})
-		}
+	t.Run("TooManyTaskIDsShouldError", func(t *testing.T) {
+		_, err := resolveTasksByIDs(t.Context(), make([]string, maxTasksToModify+1))
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "cannot select more than 1000 tasks by ID, use a filter instead")
 	})
 
-	t.Run("TaskSelectionWithTaskIds", func(t *testing.T) {
+	t.Run("FilterOnUnknownVersionShouldError", func(t *testing.T) {
+		_, err := resolveTasksByFilter(t.Context(), "nonexistent", *failedFilter)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "version 'nonexistent' not found")
+	})
+
+	t.Run("TasksByIds", func(t *testing.T) {
 		for testName, testCase := range map[string]struct {
-			taskIDs          []string
-			expectedIDs      []string
-			expectedErrorIDs []string
+			taskIDs     []string
+			expectedIDs []string
 		}{
 			"ReturnsOnlyTheRequestedTasks": {
 				taskIDs:     []string{"failed1", "succeeded1"},
 				expectedIDs: []string{"failed1", "succeeded1"},
 			},
-			"TasksInAnotherVersionAreReportedAsTaskErrors": {
-				taskIDs:          []string{"failed1", "other_version"},
-				expectedIDs:      []string{"failed1"},
-				expectedErrorIDs: []string{"other_version"},
+			"ReturnsTasksFromDifferentVersions": {
+				taskIDs:     []string{"failed1", "other_version"},
+				expectedIDs: []string{"failed1", "other_version"},
 			},
-			"NonexistentTasksAreReportedAsTaskErrorsOnce": {
-				taskIDs:          []string{"nonexistent", "nonexistent"},
-				expectedErrorIDs: []string{"nonexistent"},
+			"OmitsNonexistentTasks": {
+				taskIDs:     []string{"failed1", "nonexistent"},
+				expectedIDs: []string{"failed1"},
 			},
 		} {
 			t.Run(testName, func(t *testing.T) {
-				resolved, taskErrors, err := resolveTaskSelection(t.Context(), "v1", TaskSelection{TaskIds: testCase.taskIDs})
+				resolved, err := resolveTasksByIDs(t.Context(), testCase.taskIDs)
 				require.NoError(t, err)
 				taskIDs := make([]string, 0, len(resolved))
 				for _, t := range resolved {
 					taskIDs = append(taskIDs, t.Id)
 				}
 				assert.ElementsMatch(t, testCase.expectedIDs, taskIDs)
-				errorIDs := []string{}
-				for _, e := range taskErrors {
-					errorIDs = append(errorIDs, e.TaskID)
-				}
-				assert.ElementsMatch(t, testCase.expectedErrorIDs, errorIDs)
 			})
 		}
 	})
 
-	t.Run("TaskSelectionWithFilter", func(t *testing.T) {
+	t.Run("TasksByFilter", func(t *testing.T) {
 		for testName, testCase := range map[string]struct {
 			filter      *TaskFilterOptions
 			expectedIDs []string
@@ -150,14 +120,13 @@ func TestResolveTaskSelection(t *testing.T) {
 			},
 		} {
 			t.Run(testName, func(t *testing.T) {
-				resolved, taskErrors, err := resolveTaskSelection(t.Context(), "v1", TaskSelection{Filter: testCase.filter})
+				resolved, err := resolveTasksByFilter(t.Context(), "v1", *testCase.filter)
 				require.NoError(t, err)
 				taskIDs := make([]string, 0, len(resolved))
 				for _, t := range resolved {
 					taskIDs = append(taskIDs, t.Id)
 				}
 				assert.ElementsMatch(t, testCase.expectedIDs, taskIDs)
-				assert.Empty(t, taskErrors)
 			})
 		}
 	})
@@ -175,7 +144,7 @@ func TestGetSchedulableTaskIDs(t *testing.T) {
 	unscheduledExec2 := task.Task{Id: "exec2", Status: evergreen.TaskUndispatched, DisplayTaskId: utility.ToStringPtr("display")}
 	scheduledExec := task.Task{Id: "scheduledExec", Status: evergreen.TaskUndispatched, Activated: true, DisplayTaskId: utility.ToStringPtr("display")}
 	mergeQueueExec := task.Task{Id: "mergeQueueExec", Status: evergreen.TaskUndispatched, Requester: evergreen.GithubMergeRequester, DisplayTaskId: utility.ToStringPtr("mergeQueueDisplay")}
-	unscheduledExec3 :=task.Task{Id: "exec3", Status: evergreen.TaskUndispatched, DisplayTaskId: utility.ToStringPtr("scheduledDisplay")}
+	unscheduledExec3 := task.Task{Id: "exec3", Status: evergreen.TaskUndispatched, DisplayTaskId: utility.ToStringPtr("scheduledDisplay")}
 
 	for testName, testCase := range map[string]struct {
 		tasks            []task.Task

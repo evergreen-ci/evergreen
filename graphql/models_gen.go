@@ -63,7 +63,7 @@ type BuildVariantOptions struct {
 	Variants                   []string `json:"variants,omitempty"`
 }
 
-// BulkTaskOperationResult is the result of an operation applied to a TaskSelection. Tasks that could not be modified are
+// BulkTaskOperationResult is the result of an operation applied to a set of tasks. Tasks that could not be modified are
 // reported in taskErrors rather than failing the whole operation.
 type BulkTaskOperationResult struct {
 	ModifiedTasks []*model.APITask `json:"modifiedTasks"`
@@ -658,13 +658,6 @@ type TaskQueueDistro struct {
 	ID        string `json:"id"`
 	HostCount int    `json:"hostCount"`
 	TaskCount int    `json:"taskCount"`
-}
-
-// TaskSelection describes which tasks in a Version a bulk operation applies to. Exactly one of taskIds or filter must be
-// set.
-type TaskSelection struct {
-	TaskIds []string           `json:"taskIds,omitempty"`
-	Filter  *TaskFilterOptions `json:"filter,omitempty"`
 }
 
 // TaskTestResult is the return value for the task.Tests resolver.

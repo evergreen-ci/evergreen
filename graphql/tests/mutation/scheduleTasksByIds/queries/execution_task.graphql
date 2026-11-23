@@ -1,5 +1,5 @@
 mutation {
-    scheduleVersionTasks(selection: {taskIds: ["non-existent"]}, versionId: "task_ids_version") {
+    scheduleTasksByIds(taskIds: ["unscheduled_exec_task"]) {
       modifiedTasks {
         id
         status

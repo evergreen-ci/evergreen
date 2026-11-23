@@ -16,21 +16,6 @@
       "execution_tasks": ["exec1"]
     },
     {
-      "_id": "unscheduled_display_task",
-      "version": "task_ids_version",
-      "branch": "mci",
-      "build_id": "some_thang",
-      "distro": "distro",
-      "build_variant": "variant",
-      "display_name": "unscheduled display task",
-      "r": "patch_request",
-      "status": "undispatched",
-      "display_status_cache": "unscheduled",
-      "activated": false,
-      "display_only": true,
-      "execution_tasks": ["exec1"]
-    },
-    {
       "_id": "filtered_unscheduled_display_task",
       "version": "filter_version",
       "branch": "mci",
@@ -92,14 +77,6 @@
     {
       "_id": "no_permissions",
       "identifier": "evergreen"
-    },
-    {
-      "_id": "task_ids_version",
-      "identifier": "sandbox_project_id"
-    },
-    {
-      "_id": "unmatching_version",
-      "identifier": "sandbox_project_id"
     }
   ],
   "builds": [
@@ -110,11 +87,6 @@
       "status": "failed",
       "activated": false,
       "tasks": [
-        {
-          "id": "unscheduled_display_task",
-          "s": "undispatched",
-          "a": false
-        },
         {
           "id": "filtered_unscheduled_display_task",
           "s": "undispatched",

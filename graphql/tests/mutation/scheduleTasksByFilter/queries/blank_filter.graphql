@@ -1,5 +1,5 @@
 mutation {
-    scheduleVersionTasks(selection: {filter: {statuses: ["unscheduled"]}}, versionId: "filter_version") {
+    scheduleTasksByFilter(filter: {}, versionId: "blank_filter_version") {
       modifiedTasks {
         id
         status

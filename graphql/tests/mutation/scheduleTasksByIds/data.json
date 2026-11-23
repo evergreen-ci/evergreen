@@ -1,0 +1,108 @@
+{
+  "tasks": [
+    {
+      "_id": "unscheduled_display_task",
+      "version": "parent_version",
+      "branch": "sandbox_project_id",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "unscheduled display task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "unscheduled",
+      "activated": false,
+      "display_only": true,
+      "execution_tasks": ["unscheduled_exec_task"]
+    },
+    {
+      "_id": "unscheduled_exec_task",
+      "version": "parent_version",
+      "branch": "sandbox_project_id",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "unscheduled exec task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "unscheduled",
+      "activated": false,
+      "display_task_id": "unscheduled_display_task"
+    },
+    {
+      "_id": "child_patch_display_task",
+      "version": "child_version",
+      "branch": "sandbox_project_id",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "child patch display task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "unscheduled",
+      "activated": false,
+      "display_only": true,
+      "execution_tasks": ["child_patch_exec_task"]
+    },
+    {
+      "_id": "no_permissions_task",
+      "version": "no_permissions_version",
+      "branch": "evergreen",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "no permissions task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "unscheduled",
+      "activated": false,
+      "display_only": true,
+      "execution_tasks": ["no_permissions_exec_task"]
+    }
+  ],
+  "builds": [
+    {
+      "_id": "some_thang",
+      "version": "5d2661149dbe326298fee2a3",
+      "build_variant": "ubuntu1604-docker",
+      "status": "failed",
+      "activated": false,
+      "tasks": [
+        {
+          "id": "unscheduled_display_task",
+          "s": "undispatched",
+          "a": false
+        },
+        {
+          "id": "unscheduled_exec_task",
+          "s": "undispatched",
+          "a": false
+        },
+        {
+          "id": "child_patch_display_task",
+          "s": "undispatched",
+          "a": false
+        },
+        {
+          "id": "no_permissions_task",
+          "s": "undispatched",
+          "a": false
+        }
+      ]
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ]
+}

@@ -24,16 +24,7 @@ input TaskFilterOptions {
 }
 
 """
-TaskSelection describes which tasks in a Version a bulk operation applies to. Exactly one of taskIds or filter must be
-set.
-"""
-input TaskSelection {
-  taskIds: [String!]
-  filter: TaskFilterOptions
-}
-
-"""
-BulkTaskOperationResult is the result of an operation applied to a TaskSelection. Tasks that could not be modified are
+BulkTaskOperationResult is the result of an operation applied to a set of tasks. Tasks that could not be modified are
 reported in taskErrors rather than failing the whole operation.
 """
 type BulkTaskOperationResult {
