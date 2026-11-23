@@ -1275,6 +1275,31 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 
 }
 
+func TestGetTasksByVersionPipelineSkipsDefaultSortWhenExplicitSortProvided(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		sorts []TasksSortOrder
+		count int
+	}{
+		{"NoExplicitSortPreservesDefaultOrder", nil, 1},
+		{"ExplicitNameSortSkipsDefaultSort", []TasksSortOrder{{Key: DisplayNameKey, Order: 1}}, 0},
+		{"ExplicitBaseStatusSortSkipsDefaultSort", []TasksSortOrder{{Key: BaseTaskStatusKey, Order: 1}}, 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			pipeline, err := getTasksByVersionPipeline("root", GetTasksByVersionOptions{BaseVersionID: "base", Sorts: test.sorts})
+			require.NoError(t, err)
+			var sorts int
+			for _, stage := range pipeline {
+				if _, ok := stage["$sort"]; ok {
+					sorts++
+					assert.Equal(t, bson.M{IdKey: 1}, stage["$sort"])
+				}
+			}
+			assert.Equal(t, test.count, sorts)
+		})
+	}
+}
+
 func TestGetTasksByVersionSortingAndPaginationPreserveCount(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	for _, task := range []Task{

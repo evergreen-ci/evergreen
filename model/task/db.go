@@ -2520,12 +2520,12 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 
-		// Sort the tasks by their _id to ensure that they are in the same order as the original tasks
-		pipeline = append(pipeline, bson.M{
-			"$sort": bson.M{
-				"_id": 1,
-			},
-		})
+		if len(opts.Sorts) == 0 {
+			// Preserve task order when no explicit sort is applied later.
+			pipeline = append(pipeline, bson.M{
+				"$sort": bson.M{IdKey: 1},
+			})
+		}
 	}
 
 	if len(opts.Statuses) > 0 {
