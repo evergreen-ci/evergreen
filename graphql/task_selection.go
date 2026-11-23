@@ -54,20 +54,25 @@ func resolveTasksByFilter(ctx context.Context, versionID string, f TaskFilterOpt
 
 // scheduleSelectedTasks schedules the schedulable tasks among the selected tasks and reports the rest as task errors.
 func scheduleSelectedTasks(ctx context.Context, selectedTasks []task.Task) (*BulkTaskOperationResult, error) {
-	taskIDsToSchedule, taskErrors := getSchedulableTaskIDs(selectedTasks)
 	result := &BulkTaskOperationResult{
 		ModifiedTasks: []*restModel.APITask{},
-		TaskErrors:    taskErrors,
+		TaskErrors:    []*TaskError{},
 	}
-	if len(taskIDsToSchedule) == 0 {
+	taskIDs := getTaskIDsToSchedule(selectedTasks)
+	if len(taskIDs) == 0 {
 		return result, nil
 	}
-	if len(taskIDsToSchedule) > maxTasksToModify {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot schedule more than %d tasks at once, but the selection contains %d schedulable tasks; narrow the selection", maxTasksToModify, len(taskIDsToSchedule)))
+	if len(taskIDs) > maxTasksToModify {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot schedule more than %d tasks at once, but the selection contains %d tasks; narrow the selection", maxTasksToModify, len(taskIDs)))
 	}
-	tasksToSchedule, err := findAllTasksByIds(ctx, taskIDsToSchedule...)
+	tasks, err := findAllTasksByIds(ctx, taskIDs...)
 	if err != nil {
 		return nil, err
+	}
+	tasksToSchedule, taskErrors := getSchedulableTasks(tasks)
+	result.TaskErrors = taskErrors
+	if len(tasksToSchedule) == 0 {
+		return result, nil
 	}
 	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
 	scheduled, err := setTasksScheduled(ctx, logURL, true, tasksToSchedule)
@@ -78,41 +83,38 @@ func scheduleSelectedTasks(ctx context.Context, selectedTasks []task.Task) (*Bul
 	return result, nil
 }
 
-// getSchedulableTaskIDs returns the unique IDs of the tasks to schedule and an error for each given task that can't be
-// scheduled. Execution tasks can't be scheduled individually, so they're replaced by their display task.
-func getSchedulableTaskIDs(tasks []task.Task) ([]string, []*TaskError) {
+// getTaskIDsToSchedule returns the unique IDs of the tasks to schedule. Execution tasks can't be scheduled
+// individually, so they're replaced by their display task.
+func getTaskIDsToSchedule(tasks []task.Task) []string {
 	seen := make(map[string]bool, len(tasks))
-	rejected := make(map[string]bool, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
-	taskErrors := []*TaskError{}
 	for _, t := range tasks {
 		id := t.Id
-		displayTaskID := utility.FromStringPtr(t.DisplayTaskId)
-		if displayTaskID != "" {
+		if displayTaskID := utility.FromStringPtr(t.DisplayTaskId); displayTaskID != "" {
 			id = displayTaskID
-		}
-
-		if displayTaskID == "" && !t.IsUnscheduled() {
-			rejected[id] = true
-			taskErrors = append(taskErrors, &TaskError{TaskID: t.Id, Reason: "task is already scheduled or has already run"})
-			continue
-		}
-		if evergreen.IsGithubMergeQueueRequester(t.Requester) {
-			rejected[id] = true
-			taskErrors = append(taskErrors, &TaskError{TaskID: t.Id, Reason: "merge queue tasks cannot be manually scheduled"})
-			continue
 		}
 		if !seen[id] {
 			seen[id] = true
 			taskIDs = append(taskIDs, id)
 		}
 	}
+	return taskIDs
+}
 
-	schedulableIDs := make([]string, 0, len(taskIDs))
-	for _, id := range taskIDs {
-		if !rejected[id] {
-			schedulableIDs = append(schedulableIDs, id)
+// getSchedulableTasks returns the tasks that can be scheduled and an error for each task that can't be.
+func getSchedulableTasks(tasks []task.Task) ([]task.Task, []*TaskError) {
+	schedulable := make([]task.Task, 0, len(tasks))
+	taskErrors := []*TaskError{}
+	for _, t := range tasks {
+		if evergreen.IsGithubMergeQueueRequester(t.Requester) {
+			taskErrors = append(taskErrors, &TaskError{TaskID: t.Id, Reason: "merge queue tasks cannot be manually scheduled"})
+			continue
 		}
+		if !t.IsUnscheduled() {
+			taskErrors = append(taskErrors, &TaskError{TaskID: t.Id, Reason: "task is already scheduled or has already run"})
+			continue
+		}
+		schedulable = append(schedulable, t)
 	}
-	return schedulableIDs, taskErrors
+	return schedulable, taskErrors
 }
