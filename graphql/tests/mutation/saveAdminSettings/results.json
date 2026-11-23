@@ -429,6 +429,9 @@
             "githubCheckRun": {
               "checkRunLimit": 10
             },
+            "githubRecoveryApp": {
+              "appId": 1234
+            },
             "releaseMode": {
               "distroMaxHostsFactor": 1.5,
               "targetTimeSecondsOverride": 300,

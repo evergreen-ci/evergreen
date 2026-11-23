@@ -2343,11 +2343,16 @@ type GetTasksByVersionOptions struct {
 	IncludeExecutionTasks      bool
 	IncludeNeverActivatedTasks bool // NeverActivated tasks are tasks that lack an activation time
 	BaseVersionID              string
+	ExcludeTaskIDs             []string
 }
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
 	shouldPopulateBaseTask := opts.BaseVersionID != ""
 	match := bson.M{}
+
+	if len(opts.ExcludeTaskIDs) > 0 {
+		match[IdKey] = bson.M{"$nin": opts.ExcludeTaskIDs}
+	}
 
 	if shouldPopulateBaseTask {
 		match[VersionKey] = bson.M{"$in": []string{versionID, opts.BaseVersionID}}

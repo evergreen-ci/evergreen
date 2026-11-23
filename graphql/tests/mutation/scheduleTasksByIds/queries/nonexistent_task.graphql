@@ -1,0 +1,12 @@
+mutation {
+    scheduleTasksByIds(taskIds: ["non-existent"]) {
+      modifiedTasks {
+        id
+        status
+      }
+      taskErrors {
+        taskId
+        reason
+      }
+    }
+}

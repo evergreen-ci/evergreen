@@ -460,6 +460,10 @@ func MockConfig() *evergreen.Settings {
 		GitHubCheckRun: evergreen.GitHubCheckRunConfig{
 			CheckRunLimit: 0,
 		},
+		GitHubRecoveryApp: evergreen.GitHubRecoveryAppConfig{
+			AppID:      1234,
+			PrivateKey: "recovery_private_key",
+		},
 		Sage: evergreen.SageConfig{
 			BaseURL: "https://sage.example.com",
 		},

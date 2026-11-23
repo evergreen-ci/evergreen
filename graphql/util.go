@@ -139,8 +139,8 @@ func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, err
 	return tasks, nil
 }
 
+// TODO: Deprecate this function in favor of setTasksScheduled. Depends on DEVPROD-44506.
 func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskIDs ...string) ([]*restModel.APITask, error) {
-	usr := mustHaveUser(ctx)
 	tasks, err := findAllTasksByIds(ctx, taskIDs...)
 	if err != nil {
 		return nil, err
@@ -150,17 +150,26 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 			return nil, InputValidationError.Send(ctx, "Merge queue tasks cannot be manually scheduled.")
 		}
 	}
-	if err = model.SetActiveState(ctx, usr.Username(), isActive, tasks...); err != nil {
+	return setTasksScheduled(ctx, url, isActive, tasks)
+}
+
+func setTasksScheduled(ctx context.Context, url string, isActive bool, tasks []task.Task) ([]*restModel.APITask, error) {
+	usr := mustHaveUser(ctx)
+	if err := model.SetActiveState(ctx, usr.Username(), isActive, tasks...); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
 	// Get the modified tasks back out of the db
-	tasks, err = findAllTasksByIds(ctx, taskIDs...)
+	taskIDs := make([]string, 0, len(tasks))
+	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.Id)
+	}
+	updatedTasks, err := findAllTasksByIds(ctx, taskIDs...)
 	if err != nil {
 		return nil, err
 	}
 	apiTasks := []*restModel.APITask{}
-	for _, t := range tasks {
+	for _, t := range updatedTasks {
 		apiTask := restModel.APITask{}
 		err = apiTask.BuildFromService(ctx, &t, &restModel.APITaskArgs{
 			LogURL: url,
@@ -1810,4 +1819,27 @@ func requiresDBRead(ctx context.Context, availableFields []string) bool {
 		}
 	}
 	return false
+}
+
+// getTasksByVersionOptions converts task filter options into the query options for fetching a version's tasks.
+func getTasksByVersionOptions(ctx context.Context, v *model.Version, f TaskFilterOptions) (task.GetTasksByVersionOptions, error) {
+	opts := task.GetTasksByVersionOptions{
+		Statuses:       getValidTaskStatusesFilter(f.Statuses),
+		BaseStatuses:   getValidTaskStatusesFilter(f.BaseStatuses),
+		Variants:       []string{utility.FromStringPtr(f.Variant)},
+		TaskNames:      []string{utility.FromStringPtr(f.TaskName)},
+		TaskTags:       f.TaskTags,
+		VariantTags:    f.VariantTags,
+		ExcludeTaskIDs: f.ExcludeTaskIds,
+		// If the version is mainline, include never-activated tasks regardless of the user's preference.
+		IncludeNeverActivatedTasks: utility.FromBoolPtr(f.IncludeNeverActivatedTasks) || !evergreen.IsPatchRequester(v.Requester),
+	}
+	baseVersion, err := v.FindBaseVersion(ctx, false)
+	if err != nil {
+		return task.GetTasksByVersionOptions{}, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", v.Id, err.Error()))
+	}
+	if baseVersion != nil {
+		opts.BaseVersionID = baseVersion.Id
+	}
+	return opts, nil
 }

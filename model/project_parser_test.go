@@ -3815,12 +3815,37 @@ func TestCollectAnchorsExpansionBombErrors(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "exceeded the maximum")
 
-	// The file must still parse via fallback, with the reason in decodeErr.
+	// Breaching the expansion limit is a fatal error, not a silent fallback.
+	pp, decodeErr, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
+	require.ErrorIs(t, err, errAnchorExpansionLimit)
+	assert.Nil(t, pp)
+	assert.NoError(t, decodeErr)
+}
+
+func TestCreateIntermediateProjectPreambleLimitErrors(t *testing.T) {
+	// A registry entry large enough that marshalling it exceeds the preamble cap.
+	big := strings.Repeat("x", maxAnchorPreambleBytes+1)
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(fmt.Sprintf("a: &a %q", big)), &node))
+
+	registry := &anchorRegistry{}
+	require.NoError(t, registry.mergeAnchorsFrom(&node))
+	require.Greater(t, registry.Length(), 0)
+
+	pp, decodeErr, err := createIntermediateProject([]byte("b: *a\n"), false, registry)
+	require.ErrorIs(t, err, errAnchorPreambleSize)
+	assert.Nil(t, pp)
+	assert.NoError(t, decodeErr)
+}
+
+func TestCreateIntermediateProjectNonLimitFailureFallsBack(t *testing.T) {
+	yml := "tasks:\n  - name: t1\ntasks:\n  - name: t2\n"
 	pp, decodeErr, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
 	require.NoError(t, err)
 	require.NotNil(t, pp)
 	require.Error(t, decodeErr)
-	assert.Contains(t, decodeErr.Error(), "exceeded the maximum")
+	assert.NotErrorIs(t, decodeErr, errAnchorExpansionLimit)
+	assert.NotErrorIs(t, decodeErr, errAnchorPreambleSize)
 }
 
 func TestExpandAliases(t *testing.T) {
@@ -4012,8 +4037,8 @@ tasks:
 }
 
 // TestBuildAnchorPreambleOversizedErrors verifies the preamble size cap: a
-// registry whose serialized form exceeds maxAnchorPreambleBytes must error so
-// the caller falls back to parsing without the preamble.
+// registry whose serialized form exceeds maxAnchorPreambleBytes must fail with
+// errAnchorPreambleSize.
 func TestBuildAnchorPreambleOversizedErrors(t *testing.T) {
 	registry := &anchorRegistry{
 		entries: []anchorEntry{
@@ -4026,8 +4051,7 @@ func TestBuildAnchorPreambleOversizedErrors(t *testing.T) {
 	}
 
 	_, err := buildAnchorPreamble(registry)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "exceeds the maximum")
+	require.ErrorIs(t, err, errAnchorPreambleSize)
 }
 
 // TestBasicCrossFileAnchor verifies that an anchor defined in the main project
@@ -5185,4 +5209,108 @@ tasks:
 	require.Len(t, pp.Modules, 2)
 	assert.Equal(t, 1, pp.Modules[0].CloneDepth)
 	assert.Zero(t, pp.Modules[1].CloneDepth)
+}
+
+func TestLoadProjectIntoWarnsWhenCrossFileAnchorParsingFallsBack(t *testing.T) {
+	// yaml v3 rejects duplicate mapping keys, but the fallback parse accepts
+	// them via the yaml v2 fallback, so this file forces the fallback path.
+	yml := `
+functions:
+  f:
+    command: shell.exec
+functions:
+  g:
+    command: shell.exec
+`
+	t.Run("FallbackEmitsWarning", func(t *testing.T) {
+		opts := &GetProjectOpts{}
+		pp, err := LoadProjectInto(t.Context(), []byte(yml), opts, "proj", &Project{})
+		require.NoError(t, err)
+		require.NotNil(t, pp)
+		require.Len(t, pp.parseWarnings, 1)
+		assert.Contains(t, pp.parseWarnings[0], "cross-file YAML anchor")
+		assert.Contains(t, pp.parseWarnings[0], "mapping key")
+	})
+
+	t.Run("SuccessfulAnchorParseEmitsNoWarning", func(t *testing.T) {
+		opts := &GetProjectOpts{}
+		pp, err := LoadProjectInto(t.Context(), []byte("functions:\n  f:\n    command: shell.exec\n"), opts, "proj", &Project{})
+		require.NoError(t, err)
+		require.NotNil(t, pp)
+		assert.Empty(t, pp.parseWarnings)
+	})
+}
+
+func TestDecodeWithAnchorsReservedEvgAnchorsKey(t *testing.T) {
+	yml := `
+_evg_anchors:
+  - &unused
+    x: 1
+functions:
+  f:
+    command: shell.exec
+`
+	t.Run("NoPreambleWarnsAndStrips", func(t *testing.T) {
+		pp, decodeErr, err := createIntermediateProject([]byte(yml), false, &anchorRegistry{})
+		require.NoError(t, err)
+		require.NoError(t, decodeErr)
+		// The reserved key must still be stripped from the parsed project.
+		require.Len(t, pp.Functions, 1)
+		require.Len(t, pp.parseWarnings, 1)
+		assert.Contains(t, pp.parseWarnings[0], "top-level YAML key '_evg_anchors'")
+	})
+
+	t.Run("WithPreambleDoesNotWarn", func(t *testing.T) {
+		// A registry with entries means a preamble was prepended, so the
+		// _evg_anchors key belongs to Evergreen and must be removed silently.
+		registry := &anchorRegistry{}
+		var anchorNode yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte("anchors:\n- &dummy\n  x: 1\n"), &anchorNode))
+		require.NoError(t, registry.mergeAnchorsFrom(&anchorNode))
+
+		pp, decodeErr, err := createIntermediateProject([]byte(yml), false, registry)
+		require.NoError(t, err)
+		require.NoError(t, decodeErr)
+		require.Len(t, pp.Functions, 1)
+		// The duplicate user-defined key makes the anchor-based parse fall
+		// back, which has its own warning; assert only that the reserved-key
+		// warning is absent.
+		for _, warning := range pp.parseWarnings {
+			assert.NotContains(t, warning, "top-level YAML key '_evg_anchors'")
+		}
+	})
+
+	t.Run("StrictModeStillWarns", func(t *testing.T) {
+		pp, decodeErr, err := createIntermediateProject([]byte(yml), true, &anchorRegistry{})
+		require.NoError(t, err)
+		require.NoError(t, decodeErr)
+		require.Len(t, pp.Functions, 1)
+		require.Len(t, pp.parseWarnings, 1)
+		assert.Contains(t, pp.parseWarnings[0], "top-level YAML key '_evg_anchors'")
+	})
+}
+
+func TestLoadProjectIntoPrefixesIncludeWarningsWithFileName(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - command: shell.exec
+`, "include.yml")
+	includeYAML := `
+_evg_anchors:
+  - &unused
+    x: 1
+tasks:
+- name: include-task
+  commands:
+  - command: shell.exec
+`
+	proj := &Project{}
+	pp, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(t, moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.NoError(t, err)
+	require.Len(t, pp.parseWarnings, 1)
+	assert.Contains(t, pp.parseWarnings[0], "included file 'include.yml'")
+	assert.Contains(t, pp.parseWarnings[0], "top-level YAML key '_evg_anchors'")
 }

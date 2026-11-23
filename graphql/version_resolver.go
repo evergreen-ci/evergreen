@@ -436,26 +436,14 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options
 		return nil, err
 	}
 	versionID := obj.Id
-	includeNeverActivatedTasks := false
-	if options.IncludeNeverActivatedTasks != nil {
-		includeNeverActivatedTasks = *options.IncludeNeverActivatedTasks
+
+	opts, err := getTasksByVersionOptions(ctx, obj, options)
+	if err != nil {
+		return nil, err
 	}
-	pageParam := 0
-	if options.Page != nil {
-		pageParam = *options.Page
-	}
-	limitParam := 0
-	if options.Limit != nil {
-		limitParam = *options.Limit
-	}
-	variantParam := ""
-	if options.Variant != nil {
-		variantParam = *options.Variant
-	}
-	taskNameParam := ""
-	if options.TaskName != nil {
-		taskNameParam = *options.TaskName
-	}
+	opts.Page = utility.FromIntPtr(options.Page)
+	opts.Limit = utility.FromIntPtr(options.Limit)
+
 	var taskSorts []task.TasksSortOrder
 	if len(options.Sorts) > 0 {
 		taskSorts = []task.TasksSortOrder{}
@@ -483,28 +471,8 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *model.Version, options
 			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
-	baseVersionID := ""
-	baseVersion, err := obj.FindBaseVersion(ctx, false)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", versionID, err.Error()))
-	}
-	if baseVersion != nil {
-		baseVersionID = baseVersion.Id
-	}
-	opts := task.GetTasksByVersionOptions{
-		Statuses:     getValidTaskStatusesFilter(options.Statuses),
-		BaseStatuses: getValidTaskStatusesFilter(options.BaseStatuses),
-		Variants:     []string{variantParam},
-		TaskNames:    []string{taskNameParam},
-		TaskTags:     options.TaskTags,
-		VariantTags:  options.VariantTags,
-		Page:         pageParam,
-		Limit:        limitParam,
-		Sorts:        taskSorts,
-		// If the version is mainline, include never-activated tasks regardless of the user's preference.
-		IncludeNeverActivatedTasks: includeNeverActivatedTasks || !evergreen.IsPatchRequester(obj.Requester),
-		BaseVersionID:              baseVersionID,
-	}
+	opts.Sorts = taskSorts
+
 	tasks, count, err := task.GetTasksByVersion(ctx, versionID, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for version '%s': %s", versionID, err.Error()))

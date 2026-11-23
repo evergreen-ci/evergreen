@@ -75,6 +75,7 @@ input AdminSettingsInput {
   fws: FWSConfigInput
   graphite: GraphiteConfigInput
   githubCheckRun: GitHubCheckRunConfigInput
+  githubRecoveryApp: GitHubRecoveryAppConfigInput
   githubOrgs: [String!]
   githubPRCreatorOrg: String
   githubWebhookSecret: String @redactSecrets
@@ -133,6 +134,7 @@ type AdminSettings {
   fws: FWSConfig
   graphite: GraphiteConfig
   githubCheckRun: GitHubCheckRunConfig
+  githubRecoveryApp: GitHubRecoveryAppConfig
   githubOrgs: [String!]
   githubPRCreatorOrg: String
   githubWebhookSecret: String @requireAdmin

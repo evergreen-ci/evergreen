@@ -470,6 +470,10 @@
             "githubCheckRun": {
               "checkRunLimit": 0
             },
+            "githubRecoveryApp": {
+              "appId": 1234,
+              "privateKey": "recovery_private_key"
+            },
             "releaseMode": {
               "distroMaxHostsFactor": 1,
               "targetTimeSecondsOverride": 0,
@@ -620,6 +624,7 @@
               { "name": "pod_diagnostics_disabled", "enabled": false },
               { "name": "retry_failed_log_move_enabled", "enabled": false },
               { "name": "project_translation_cache_enabled", "enabled": false },
+              { "name": "github_status_resync_enabled", "enabled": false },
               {
                 "name": "task_queue_auto_unschedule_disabled",
                 "enabled": false

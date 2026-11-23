@@ -130,7 +130,19 @@ type ParserProject struct {
 	// structs that were defined in more than one YAML file. It is
 	// intentionally unexported so that it's never persisted to the DB and it only exists in memory.
 	redefinedProjectConfigSettings []string
+	// parseWarnings records user-facing warnings encountered while parsing. It
+	// is intentionally unexported so that it's never persisted to the DB and it
+	// only exists in memory.
+	parseWarnings []string
 } // End of ParserProject mergeable fields (this comment is used by the linter).
+
+// ParseWarnings returns the user-facing warnings recorded while parsing.
+func (pp *ParserProject) ParseWarnings() []string {
+	if pp == nil {
+		return nil
+	}
+	return pp.parseWarnings
+}
 
 type parserTaskGroup struct {
 	Name                     string            `yaml:"name,omitempty" bson:"name,omitempty"`
@@ -1116,6 +1128,10 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		}
 		logDecodeErrorWithOpts(ctx, projectID, path.FileName, "mergeIncludes", decodeErr, opts)
 
+		for i, warning := range add.parseWarnings {
+			add.parseWarnings[i] = fmt.Sprintf("included file '%s': %s", path.FileName, warning)
+		}
+
 		if err = intermediateProject.mergeMultipleParserProjects(add); err != nil {
 			// Return intermediateProject even if we run into issues to show merge progress.
 			return errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
@@ -1675,7 +1691,9 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *ever
 // If unmarshalStrict is true, use the strict version of unmarshalling.
 // Uses decodeWithAnchors to collect anchors from each file into the registry.
 // If the registry already has entries, a preamble is prepended so aliases from
-// prior files resolve.
+// prior files resolve. If decoding with anchors fails, falls back to standard
+// unmarshalling and records the reason as a warning on the returned project;
+// breaching an anchor limit fails the load instead.
 func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (pp *ParserProject, decodeErr error, err error) {
 	var combined []byte
 	if anchorRegistry.Length() > 0 {
@@ -1694,7 +1712,15 @@ func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRe
 			return pp, nil, nil
 		}
 	}
+	// Falling back to standard unmarshalling would silently drop the anchors, so a breached
+	// anchor limit must fail the whole load instead.
+	if errors.Is(decodeErr, errAnchorExpansionLimit) || errors.Is(decodeErr, errAnchorPreambleSize) {
+		return nil, nil, decodeErr
+	}
 	pp, err = standardUnmarshal(parseBytes, unmarshalStrict)
+	if decodeErr != nil && pp != nil {
+		pp.parseWarnings = append(pp.parseWarnings, errors.Wrap(decodeErr, "cross-file YAML anchor parsing failed; falling back to parsing without anchors, so aliases defined in other files will not resolve in this file").Error())
+	}
 	return pp, decodeErr, err
 }
 
@@ -1773,7 +1799,10 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 		return &ParserProject{}, nil
 	}
 
-	stripEvgAnchorsKey(&node)
+	// A top-level _evg_anchors key in a file parsed without a prepended
+	// preamble can only be user content, since Evergreen did not put it there.
+	// It is still removed, but warn that the user-defined key is being ignored.
+	strippedUserEvgAnchorsKey := stripEvgAnchorsKey(&node) && anchorRegistry.Length() == 0
 
 	var p ParserProject
 	if unmarshalStrict {
@@ -1795,6 +1824,9 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
 			return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
 		}
+	}
+	if strippedUserEvgAnchorsKey {
+		p.parseWarnings = append(p.parseWarnings, fmt.Sprintf("ignoring top-level YAML key '%s'; this key is reserved for Evergreen's internal use when applying cross-file YAML anchors", evgAnchorsKey))
 	}
 	// The unexported projectConfigFields are not populated by the decodes above,
 	// so always set them from the raw bytes, matching standardUnmarshal.

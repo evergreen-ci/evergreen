@@ -225,6 +225,8 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Tracer.CollectorInternalEndpoint, *apiSettings.Tracer.CollectorInternalEndpoint)
 	assert.Equal(testSettings.Tracer.TraceURLTemplate, utility.FromStringPtr(apiSettings.Tracer.TraceURLTemplate))
 	assert.Equal(testSettings.GitHubCheckRun.CheckRunLimit, *apiSettings.GitHubCheckRun.CheckRunLimit)
+	assert.Equal(testSettings.GitHubRecoveryApp.AppID, utility.FromInt64Ptr(apiSettings.GitHubRecoveryApp.AppID))
+	assert.Equal(testSettings.GitHubRecoveryApp.PrivateKey, utility.FromStringPtr(apiSettings.GitHubRecoveryApp.PrivateKey))
 	assert.Equal(testSettings.Sage.BaseURL, utility.FromStringPtr(apiSettings.Sage.BaseURL))
 
 	// test converting from the API model back to a DB model
@@ -335,6 +337,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, dbSettings.Tracer.CollectorInternalEndpoint)
 	assert.EqualValues(testSettings.Tracer.TraceURLTemplate, dbSettings.Tracer.TraceURLTemplate)
 	assert.EqualValues(testSettings.GitHubCheckRun.CheckRunLimit, dbSettings.GitHubCheckRun.CheckRunLimit)
+	assert.Equal(testSettings.GitHubRecoveryApp, dbSettings.GitHubRecoveryApp)
 	assert.EqualValues(testSettings.Sage.BaseURL, dbSettings.Sage.BaseURL)
 }
 

@@ -1,0 +1,87 @@
+{
+  "tests": [
+    {
+      "query_file": "task_ids.graphql",
+      "result": {
+        "data": {
+          "scheduleTasksByIds": {
+            "modifiedTasks": [
+              {
+                "id": "unscheduled_display_task",
+                "status": "undispatched"
+              }
+            ],
+            "taskErrors": []
+          }
+        }
+      }
+    },
+    {
+      "query_file": "execution_task.graphql",
+      "result": {
+        "data": {
+          "scheduleTasksByIds": {
+            "modifiedTasks": [
+              {
+                "id": "exec_display_task",
+                "status": "undispatched"
+              }
+            ],
+            "taskErrors": []
+          }
+        }
+      }
+    },
+    {
+      "query_file": "child_patch_task.graphql",
+      "result": {
+        "data": {
+          "scheduleTasksByIds": {
+            "modifiedTasks": [
+              {
+                "id": "child_patch_display_task",
+                "status": "undispatched"
+              },
+              {
+                "id": "parent_display_task",
+                "status": "undispatched"
+              }
+            ],
+            "taskErrors": []
+          }
+        }
+      }
+    },
+    {
+      "query_file": "nonexistent_task.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "tasks not found: 'non-existent'",
+            "path": ["scheduleTasksByIds", "taskIds"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'regular_user' does not have permission to 'edit tasks' for the project 'evergreen'",
+            "path": ["scheduleTasksByIds", "taskIds"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
