@@ -189,6 +189,7 @@ type ComplexityRoot struct {
 		Expansions              func(childComplexity int) int
 		FWS                     func(childComplexity int) int
 		GitHubCheckRun          func(childComplexity int) int
+		GitHubRecoveryApp       func(childComplexity int) int
 		GithubOrgs              func(childComplexity int) int
 		GithubPRCreatorOrg      func(childComplexity int) int
 		GithubWebhookSecret     func(childComplexity int) int
@@ -639,6 +640,11 @@ type ComplexityRoot struct {
 	GitHubDynamicTokenPermissionGroup struct {
 		Name        func(childComplexity int) int
 		Permissions func(childComplexity int) int
+	}
+
+	GitHubRecoveryAppConfig struct {
+		AppID      func(childComplexity int) int
+		PrivateKey func(childComplexity int) int
 	}
 
 	GitTag struct {
@@ -3308,6 +3314,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.GitHubCheckRun(childComplexity), true
+	case "AdminSettings.githubRecoveryApp":
+		if e.complexity.AdminSettings.GitHubRecoveryApp == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.GitHubRecoveryApp(childComplexity), true
 	case "AdminSettings.githubOrgs":
 		if e.complexity.AdminSettings.GithubOrgs == nil {
 			break
@@ -5073,6 +5085,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GitHubDynamicTokenPermissionGroup.Permissions(childComplexity), true
+
+	case "GitHubRecoveryAppConfig.appId":
+		if e.complexity.GitHubRecoveryAppConfig.AppID == nil {
+			break
+		}
+
+		return e.complexity.GitHubRecoveryAppConfig.AppID(childComplexity), true
+	case "GitHubRecoveryAppConfig.privateKey":
+		if e.complexity.GitHubRecoveryAppConfig.PrivateKey == nil {
+			break
+		}
+
+		return e.complexity.GitHubRecoveryAppConfig.PrivateKey(childComplexity), true
 
 	case "GitTag.pusher":
 		if e.complexity.GitTag.Pusher == nil {
@@ -13609,6 +13634,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputGitHubAuthConfigInput,
 		ec.unmarshalInputGitHubCheckRunConfigInput,
 		ec.unmarshalInputGitHubDynamicTokenPermissionGroupInput,
+		ec.unmarshalInputGitHubRecoveryAppConfigInput,
 		ec.unmarshalInputGithubAppAuthInput,
 		ec.unmarshalInputGithubUserInput,
 		ec.unmarshalInputGraphiteConfigInput,
@@ -19527,6 +19553,41 @@ func (ec *executionContext) fieldContext_AdminSettings_githubCheckRun(_ context.
 				return ec.fieldContext_GitHubCheckRunConfig_checkRunLimit(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GitHubCheckRunConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_githubRecoveryApp(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_githubRecoveryApp,
+		func(ctx context.Context) (any, error) {
+			return obj.GitHubRecoveryApp, nil
+		},
+		nil,
+		ec.marshalOGitHubRecoveryAppConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubRecoveryAppConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_githubRecoveryApp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "appId":
+				return ec.fieldContext_GitHubRecoveryAppConfig_appId(ctx, field)
+			case "privateKey":
+				return ec.fieldContext_GitHubRecoveryAppConfig_privateKey(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GitHubRecoveryAppConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -29214,6 +29275,90 @@ func (ec *executionContext) fieldContext_GitHubDynamicTokenPermissionGroup_permi
 	return fc, nil
 }
 
+func (ec *executionContext) _GitHubRecoveryAppConfig_appId(ctx context.Context, field graphql.CollectedField, obj *model.APIGitHubRecoveryAppConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GitHubRecoveryAppConfig_appId,
+		func(ctx context.Context) (any, error) {
+			return obj.AppID, nil
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireAdmin == nil {
+					var zeroVal *int64
+					return zeroVal, errors.New("directive requireAdmin is not implemented")
+				}
+				return ec.directives.RequireAdmin(ctx, obj, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOInt2ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GitHubRecoveryAppConfig_appId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GitHubRecoveryAppConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GitHubRecoveryAppConfig_privateKey(ctx context.Context, field graphql.CollectedField, obj *model.APIGitHubRecoveryAppConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GitHubRecoveryAppConfig_privateKey,
+		func(ctx context.Context) (any, error) {
+			return obj.PrivateKey, nil
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireAdmin == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireAdmin is not implemented")
+				}
+				return ec.directives.RequireAdmin(ctx, obj, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GitHubRecoveryAppConfig_privateKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GitHubRecoveryAppConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GitTag_tag(ctx context.Context, field graphql.CollectedField, obj *model1.GitTag) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -37461,6 +37606,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_graphite(ctx, field)
 			case "githubCheckRun":
 				return ec.fieldContext_AdminSettings_githubCheckRun(ctx, field)
+			case "githubRecoveryApp":
+				return ec.fieldContext_AdminSettings_githubRecoveryApp(ctx, field)
 			case "githubOrgs":
 				return ec.fieldContext_AdminSettings_githubOrgs(ctx, field)
 			case "githubPRCreatorOrg":
@@ -52962,6 +53109,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_graphite(ctx, field)
 			case "githubCheckRun":
 				return ec.fieldContext_AdminSettings_githubCheckRun(ctx, field)
+			case "githubRecoveryApp":
+				return ec.fieldContext_AdminSettings_githubRecoveryApp(ctx, field)
 			case "githubOrgs":
 				return ec.fieldContext_AdminSettings_githubOrgs(ctx, field)
 			case "githubPRCreatorOrg":
@@ -83040,7 +83189,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "diagnostics", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "rateLimit", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "diagnostics", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubRecoveryApp", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "rateLimit", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -83208,6 +83357,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.GitHubCheckRun = data
+		case "githubRecoveryApp":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubRecoveryApp"))
+			data, err := ec.unmarshalOGitHubRecoveryAppConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubRecoveryAppConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GitHubRecoveryApp = data
 		case "githubOrgs":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubOrgs"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -86356,6 +86512,74 @@ func (ec *executionContext) unmarshalInputGitHubDynamicTokenPermissionGroupInput
 				return it, err
 			}
 			it.Permissions = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputGitHubRecoveryAppConfigInput(ctx context.Context, obj any) (model.APIGitHubRecoveryAppConfig, error) {
+	var it model.APIGitHubRecoveryAppConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"appId", "privateKey"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "appId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appId"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOInt2ᚖint64(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *int64
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*int64); ok {
+				it.AppID = data
+			} else if tmp == nil {
+				it.AppID = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *int64`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "privateKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("privateKey"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.PrivateKey = data
+			} else if tmp == nil {
+				it.PrivateKey = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -95140,6 +95364,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_graphite(ctx, field, obj)
 		case "githubCheckRun":
 			out.Values[i] = ec._AdminSettings_githubCheckRun(ctx, field, obj)
+		case "githubRecoveryApp":
+			out.Values[i] = ec._AdminSettings_githubRecoveryApp(ctx, field, obj)
 		case "githubOrgs":
 			out.Values[i] = ec._AdminSettings_githubOrgs(ctx, field, obj)
 		case "githubPRCreatorOrg":
@@ -98253,6 +98479,44 @@ func (ec *executionContext) _GitHubDynamicTokenPermissionGroup(ctx context.Conte
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var gitHubRecoveryAppConfigImplementors = []string{"GitHubRecoveryAppConfig"}
+
+func (ec *executionContext) _GitHubRecoveryAppConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIGitHubRecoveryAppConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, gitHubRecoveryAppConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GitHubRecoveryAppConfig")
+		case "appId":
+			out.Values[i] = ec._GitHubRecoveryAppConfig_appId(ctx, field, obj)
+		case "privateKey":
+			out.Values[i] = ec._GitHubRecoveryAppConfig_privateKey(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -123470,6 +123734,21 @@ func (ec *executionContext) unmarshalOGitHubDynamicTokenPermissionGroupInput2ᚕ
 	return res, nil
 }
 
+func (ec *executionContext) marshalOGitHubRecoveryAppConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubRecoveryAppConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIGitHubRecoveryAppConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._GitHubRecoveryAppConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOGitHubRecoveryAppConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubRecoveryAppConfig(ctx context.Context, v any) (*model.APIGitHubRecoveryAppConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputGitHubRecoveryAppConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOGitTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGitTagᚄ(ctx context.Context, sel ast.SelectionSet, v []model1.GitTag) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -124045,6 +124324,24 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	_ = sel
 	_ = ctx
 	res := graphql.MarshalInt(*v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOInt2ᚖint64(ctx context.Context, v any) (*int64, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt64(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint64(ctx context.Context, sel ast.SelectionSet, v *int64) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalInt64(*v)
 	return res
 }
 

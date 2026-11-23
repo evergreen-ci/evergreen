@@ -35,11 +35,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2026-10-28"
+	ClientVersion = "2026-11-20"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2026-11-18"
+	AgentVersion = "2026-11-20"
 )
 
 const (
@@ -88,6 +88,7 @@ type Settings struct {
 	FWS                 FWSConfig               `yaml:"fws" bson:"fws" json:"fws" id:"fws"`
 	GithubPRCreatorOrg  string                  `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	GitHubCheckRun      GitHubCheckRunConfig    `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
+	GitHubRecoveryApp   GitHubRecoveryAppConfig `yaml:"github_recovery_app" bson:"github_recovery_app" json:"github_recovery_app" id:"github_recovery_app"`
 	GithubOrgs          []string                `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
 	GithubWebhookSecret string                  `yaml:"github_webhook_secret" bson:"github_webhook_secret" json:"github_webhook_secret" secret:"true"`
 	ArtifactSignSecret  string                  `yaml:"artifact_sign_secret" bson:"artifact_sign_secret" json:"artifact_sign_secret" secret:"true"`

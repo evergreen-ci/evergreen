@@ -63,6 +63,9 @@ type attachResults struct {
 	// FileLoc describes the relative path of the file to be sent.
 	// Note that this can also be described via expansions.
 	FileLoc string `mapstructure:"file_location" plugin:"expand"`
+	// Optional, when set to true, causes this command to be skipped over
+	// without an error when the file does not exist or contains no results.
+	Optional bool `mapstructure:"optional"`
 	base
 }
 
@@ -102,8 +105,16 @@ func (c *attachResults) Execute(ctx context.Context, comm client.Communicator, l
 	SetWorkdirBoundaryAttribute(ctx, conf, c.FileLoc)
 
 	testLogs, results, err := parseNativeResults(parseOptionsForTask(conf), c.FileLoc)
+	if c.Optional && os.IsNotExist(errors.Cause(err)) {
+		logger.Task().Infof(ctx, "Report file '%s' not found and optional is true, skipping command '%s'.", c.FileLoc, c.Name())
+		return nil
+	}
 	if err != nil {
 		return err
+	}
+	if c.Optional && len(results) == 0 {
+		logger.Task().Infof(ctx, "Report file '%s' has no results and optional is true, skipping command '%s'.", c.FileLoc, c.Name())
+		return nil
 	}
 
 	return sendTestLogsAndResults(ctx, comm, logger, conf, testLogs, results)

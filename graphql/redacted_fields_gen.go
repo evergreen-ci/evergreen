@@ -33,6 +33,7 @@ var redactedFields = map[string]bool{
 	"parserProject": true,
 	"personalAccessToken": true,
 	"preferredType": true,
+	"privateKey": true,
 	"publicKey": true,
 	"role": true,
 	"roleARN": true,

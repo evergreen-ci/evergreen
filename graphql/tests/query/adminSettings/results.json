@@ -470,6 +470,10 @@
             "githubCheckRun": {
               "checkRunLimit": 0
             },
+            "githubRecoveryApp": {
+              "appId": 1234,
+              "privateKey": "recovery_private_key"
+            },
             "releaseMode": {
               "distroMaxHostsFactor": 1,
               "targetTimeSecondsOverride": 0,

@@ -83,6 +83,7 @@ mutation SaveAdminSettingsOther {
         repoExceptions: [{ owner: "test-owner", repo: "test-repo" }]
       }
       githubCheckRun: { checkRunLimit: 10 }
+      githubRecoveryApp: { appId: 1234, privateKey: "recovery-private-key" }
       releaseMode: {
         distroMaxHostsFactor: 1.5
         targetTimeSecondsOverride: 300
@@ -183,6 +184,9 @@ mutation SaveAdminSettingsOther {
     }
     githubCheckRun {
       checkRunLimit
+    }
+    githubRecoveryApp {
+      appId
     }
     releaseMode {
       distroMaxHostsFactor

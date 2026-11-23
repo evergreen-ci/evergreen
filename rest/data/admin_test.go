@@ -232,6 +232,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	secret, err = paramMgr.Get(ctx, "Settings/Expansions/k2")
 	s.NoError(err)
 	s.Equal(testSettings.Expansions["k2"], secret[0].Value)
+	secret, err = paramMgr.Get(ctx, "Settings/GitHubRecoveryAppConfig/PrivateKey")
+	s.NoError(err)
+	s.Equal(testSettings.GitHubRecoveryApp.PrivateKey, secret[0].Value)
 
 	// Read the settings from parameter manager and spot check secrets.
 	paramSettings, err := evergreen.GetConfig(ctx)
@@ -244,6 +247,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.Jira.PersonalAccessToken, paramSettings.Jira.PersonalAccessToken)
 	s.Equal(testSettings.Slack.Token, paramSettings.Slack.Token)
 	s.Equal(testSettings.Expansions["k2"], paramSettings.Expansions["k2"])
+	s.Equal(testSettings.GitHubRecoveryApp, paramSettings.GitHubRecoveryApp)
 
 	// spot check events in the event log
 	events, err := event.FindAdmin(s.T().Context(), event.RecentAdminEvents(1000))
@@ -449,6 +453,40 @@ func (s *AdminDataSuite) TestSetEvergreenSettingsPreservesBucketLifecycleFields(
 	s.Equal(90, *updated.Buckets.LogBucket.ExpirationDays)
 	s.Require().NotNil(updated.Buckets.LogBucketFailedTasks.TransitionToGlacierDays)
 	s.Equal(180, *updated.Buckets.LogBucketFailedTasks.TransitionToGlacierDays)
+}
+
+func (s *AdminDataSuite) TestSetEvergreenSettingsAllowsSavingAfterClearingGitHubRecoveryApp() {
+	ctx := s.T().Context()
+	u := &user.DBUser{Id: "user"}
+
+	seed := restModel.NewConfigModel()
+	s.Require().NoError(seed.BuildFromService(testutil.MockConfig()))
+	oldSettings, err := evergreen.GetConfig(ctx)
+	s.Require().NoError(err)
+	_, err = SetEvergreenSettings(ctx, seed, oldSettings, u, true)
+	s.Require().NoError(err)
+
+	oldSettings, err = evergreen.GetConfig(ctx)
+	s.Require().NoError(err)
+	_, err = SetEvergreenSettings(ctx, &restModel.APIAdminSettings{
+		GitHubRecoveryApp: &restModel.APIGitHubRecoveryAppConfig{
+			AppID:      utility.ToInt64Ptr(0),
+			PrivateKey: utility.ToStringPtr(""),
+		},
+	}, oldSettings, u, true)
+	s.Require().NoError(err)
+
+	// Clearing a secret leaves its old value in Parameter Store, so the key
+	// is read back even though the app ID is now unset.
+	oldSettings, err = evergreen.GetConfig(ctx)
+	s.Require().NoError(err)
+	s.Zero(oldSettings.GitHubRecoveryApp.AppID)
+	s.NotEmpty(oldSettings.GitHubRecoveryApp.PrivateKey)
+
+	_, err = SetEvergreenSettings(ctx, &restModel.APIAdminSettings{
+		Banner: utility.ToStringPtr("unrelated change"),
+	}, oldSettings, u, true)
+	s.NoError(err)
 }
 
 func (s *AdminDataSuite) TestRestart() {

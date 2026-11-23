@@ -18,6 +18,7 @@ const (
 	MergeQueuePatchProcessingSpan = "merge_queue.patch_processing"
 	MergeQueuePatchCompletedSpan  = "merge_queue.patch_completed"
 	MergeQueueDestroyedSpan       = "merge_queue.destroyed"
+	MergeQueueRemovalDetailSpan   = "merge_queue.removal_detail"
 )
 
 // OpenTelemetry attribute keys for merge queue metrics.
@@ -35,6 +36,9 @@ const (
 	MergeQueueAttrTimeToFirstTaskMs               = "evergreen.merge_queue.time_to_first_task_ms"
 	MergeQueueAttrStatus                          = "evergreen.merge_queue.status"
 	MergeQueueAttrRemovalReason                   = "evergreen.merge_queue.removal_reason"
+	MergeQueueAttrRemovalEventFound               = "evergreen.merge_queue.removal_event_found"
+	MergeQueueAttrRemovalReasonDetail             = "evergreen.merge_queue.removal_reason_detail"
+	MergeQueueAttrRemovalActor                    = "evergreen.merge_queue.removal_actor"
 	MergeQueueAttrHasTestFailure                  = "evergreen.merge_queue.has_test_failure"
 	MergeQueueAttrHasSystemFailure                = "evergreen.merge_queue.has_system_failure"
 	MergeQueueAttrHasSetupFailure                 = "evergreen.merge_queue.has_setup_failure"

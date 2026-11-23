@@ -295,6 +295,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubCheckRunConfig
   GitHubCheckRunConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubCheckRunConfig
+  GitHubRecoveryAppConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubRecoveryAppConfig
+  GitHubRecoveryAppConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubRecoveryAppConfig
   GithubCheckSubscriber:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubCheckSubscriber
   GitHubDynamicTokenPermissionGroupInput:
