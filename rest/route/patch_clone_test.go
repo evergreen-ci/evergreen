@@ -118,6 +118,26 @@ func TestPatchCloneRun(t *testing.T) {
 		res := handler.Run(gimlet.AttachUser(ctx, usr))
 		assert.Equal(t, http.StatusForbidden, res.Status())
 	})
+
+	t.Run("UnstoredDiff", func(t *testing.T) {
+		// Patches like very large patches and child patches with the parent as a module only store patch
+		// summaries, so their changes cannot be copied onto a clone.
+		source := patch.Patch{
+			Id:      mgobson.NewObjectId(),
+			Project: "project",
+			Githash: "abc123",
+			Patches: []patch.ModulePatch{
+				{PatchSet: patch.PatchSet{Summary: []thirdparty.Summary{{Name: "file.go"}}}},
+			},
+		}
+		require.NoError(t, source.Insert(ctx))
+
+		handler := makeClonePatchHandler(env).(*patchCloneHandler)
+		handler.patchID = source.Id.Hex()
+		handler.body = apimodels.ClonePatchRequest{}
+		res := handler.Run(gimlet.AttachUser(ctx, usr))
+		assert.Equal(t, http.StatusBadRequest, res.Status())
+	})
 }
 
 func TestCloneIntentParams(t *testing.T) {
@@ -154,5 +174,27 @@ func TestCloneIntentParams(t *testing.T) {
 		assert.False(t, params.RepeatDefinition)
 		assert.Empty(t, params.RepeatPatchId)
 		assert.Empty(t, params.TriggerAliases)
+	})
+
+	t.Run("CopiesRegexSelections", func(t *testing.T) {
+		source := patch.Patch{
+			Id:                                      mgobson.NewObjectId(),
+			Githash:                                 "abc123",
+			RegexBuildVariants:                      []string{"^ubuntu"},
+			RegexTasks:                              []string{"^build"},
+			RegexTestSelectionBuildVariants:         []string{"^test"},
+			RegexTestSelectionExcludedBuildVariants: []string{"^lint$"},
+			RegexTestSelectionTasks:                 []string{"^unit"},
+			RegexTestSelectionExcludedTasks:         []string{"^slow$"},
+		}
+
+		params := cloneIntentParams(&source, raw, "desc")
+
+		assert.Equal(t, []string{"^ubuntu"}, params.RegexVariants)
+		assert.Equal(t, []string{"^build"}, params.RegexTasks)
+		assert.Equal(t, []string{"^test"}, params.RegexTestSelectionVariants)
+		assert.Equal(t, []string{"^lint$"}, params.RegexTestSelectionExcludedVariants)
+		assert.Equal(t, []string{"^unit"}, params.RegexTestSelectionTasks)
+		assert.Equal(t, []string{"^slow$"}, params.RegexTestSelectionExcludedTasks)
 	})
 }

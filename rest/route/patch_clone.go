@@ -32,7 +32,7 @@ func makeClonePatchHandler(env evergreen.Environment) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Clone a patch
-//	@Description	Creates a new patch copying the diffs, base commit, description, and task/variant definition from the given patch. The clone is created unactivated unless 'finalize' is true. The caller must have 'Patches: Submit and Edit' permission on the project (and all child projects if relevant). Merge queue patches cannot be cloned, since their base branch is temporary.
+//	@Description	Creates a new patch copying the diffs, base commit, description, and task/variant definition from the given patch. The clone is created unactivated unless 'finalize' is true. The caller or author must have 'Patches: Submit and Edit' permission on the project (and all child projects if relevant). Merge queue patches cannot be cloned, since their base branch is temporary.
 //	@Tags			patches
 //	@Router			/patches/{patch_id}/clone [post]
 //	@Security		Api-User || Api-Key
@@ -87,6 +87,17 @@ func (h *patchCloneHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	// Patches with very large diffs and child patches with the parent as a module only store patch summaries, not
+	// their diff contents, so a clone would not reproduce the source's changes.
+	for _, p := range source.Patches {
+		if p.PatchSet.PatchFileId == "" && p.PatchSet.Patch == "" && len(p.PatchSet.Summary) > 0 {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("patch '%s' cannot be cloned because its diff contents are not stored", h.patchID),
+			})
+		}
+	}
+
 	pref, err := dbModel.FindMergedProjectRef(ctx, source.Project, "", true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", source.Project))
@@ -139,13 +150,19 @@ func (h *patchCloneHandler) Run(ctx context.Context) gimlet.Responder {
 // submission permission is checked when the processor spawns the child patches.
 func cloneIntentParams(source *patch.Patch, raw *restModel.APIRawPatch, description string) patch.CLIIntentParams {
 	params := patch.CLIIntentParams{
-		BaseGitHash:         source.Githash,
-		PatchContent:        raw.Patch.Diff,
-		Path:                source.Path,
-		Description:         description,
-		Parameters:          source.Parameters,
-		TriggerAliases:      source.Triggers.Aliases,
-		LocalModuleIncludes: source.LocalModuleIncludes,
+		BaseGitHash:                        source.Githash,
+		PatchContent:                       raw.Patch.Diff,
+		Path:                               source.Path,
+		Description:                        description,
+		Parameters:                         source.Parameters,
+		TriggerAliases:                     source.Triggers.Aliases,
+		LocalModuleIncludes:                source.LocalModuleIncludes,
+		RegexVariants:                      source.RegexBuildVariants,
+		RegexTasks:                         source.RegexTasks,
+		RegexTestSelectionVariants:         source.RegexTestSelectionBuildVariants,
+		RegexTestSelectionExcludedVariants: source.RegexTestSelectionExcludedBuildVariants,
+		RegexTestSelectionTasks:            source.RegexTestSelectionTasks,
+		RegexTestSelectionExcludedTasks:    source.RegexTestSelectionExcludedTasks,
 	}
 	if source.Version != "" {
 		// Reuse the source patch's exact build variant/task selection through the repeat logic rather than copying
