@@ -11,27 +11,35 @@ import (
 // underlying test results store.
 type TestResultsService interface {
 	AppendTestResultMetadata(context.Context, []string, int, int, testresult.DbTaskTestResults) error
-	AppendQuarantinedTests(context.Context, testresult.DbTaskTestResults, []testresult.QuarantinedTest) error
+	AppendTestSelectionResults(context.Context, testresult.DbTaskTestResults, TestSelectionResultsUpdate) error
 	Get(context.Context, []Task, GetTaskTestResultsOptions) ([]testresult.TaskTestResults, error)
 	GetTaskTestResultsStats(context.Context, []Task) (testresult.TaskTestResultsStats, error)
+}
+
+// TestSelectionResultsUpdate is a change to the test selection results
+// recorded on a test results record.
+type TestSelectionResultsUpdate struct {
+	// QuarantinedTests are appended to the record's quarantined-tests
+	// snapshot.
+	QuarantinedTests []testresult.QuarantinedTest
 }
 
 // maxQuarantinedTestsPerRecord caps how many quarantined tests are stored on a
 // single test results record to keep the document under 16MB.
 const maxQuarantinedTestsPerRecord = 40000
 
-// appendQuarantinedTestsUpdate returns the update document that appends the
+// appendTestSelectionResultsUpdate returns the update document that appends the
 // given tests to a test results record's quarantined-tests snapshot and
 // increments the snapshot count.
-func appendQuarantinedTestsUpdate(info testresult.TestResultsInfo, quarantinedTests []testresult.QuarantinedTest) bson.M {
+func appendTestSelectionResultsUpdate(info testresult.TestResultsInfo, update TestSelectionResultsUpdate) bson.M {
 	return bson.M{
 		"$setOnInsert": bson.M{
 			testresult.TestResultsInfoKey: info,
 		},
-		"$inc": bson.M{testresult.QuarantinedTestsCountKey: len(quarantinedTests)},
+		"$inc": bson.M{testresult.QuarantinedTestsCountKey: len(update.QuarantinedTests)},
 		"$push": bson.M{
 			testresult.QuarantinedTestsKey: bson.M{
-				"$each":  quarantinedTests,
+				"$each":  update.QuarantinedTests,
 				"$slice": maxQuarantinedTestsPerRecord,
 			},
 		},
@@ -48,6 +56,30 @@ type GetTaskTestResultsOptions struct {
 	// QuarantinedTestsLimit limits quarantined test snapshots in the database
 	// projection before they are decoded.
 	QuarantinedTestsLimit *int
+}
+
+// testResultsProjection returns the database projection for fetching test
+// results metadata.
+func testResultsProjection(getOpts GetTaskTestResultsOptions) bson.M {
+	if len(getOpts.Fields) == 0 {
+		if getOpts.IncludeQuarantinedTests {
+			return nil
+		}
+		return bson.M{testresult.QuarantinedTestsKey: 0}
+	}
+
+	projection := bson.M{}
+	for _, field := range getOpts.Fields {
+		projection[field] = 1
+	}
+	if getOpts.QuarantinedTestsLimit != nil {
+		if *getOpts.QuarantinedTestsLimit == 0 {
+			delete(projection, testresult.QuarantinedTestsKey)
+		} else if *getOpts.QuarantinedTestsLimit > 0 {
+			projection[testresult.QuarantinedTestsKey] = bson.M{"$slice": *getOpts.QuarantinedTestsLimit}
+		}
+	}
+	return projection
 }
 
 // FilterOptions represents the filtering arguments for fetching test results.
