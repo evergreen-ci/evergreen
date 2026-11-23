@@ -197,7 +197,11 @@ func markGitHubStatusResync(ctx context.Context, n *notification.Notification, s
 	if n.Metadata.PatchID == "" || isRejectedGitHubSend(sendErr) {
 		return nil
 	}
-	return patch.MarkGitHubStatusResync(ctx, n.Metadata.PatchID, n.Subscriber.Type == event.GithubMergeSubscriberType)
+	status, ok := n.Payload.(*message.GithubStatus)
+	if !ok || status == nil || status.Context == "" {
+		return nil
+	}
+	return patch.MarkGitHubStatusResync(ctx, n.Metadata.PatchID, n.Subscriber.Type == event.GithubMergeSubscriberType, status.Context)
 }
 
 // isGitHubRateLimit returns whether GitHub refused the request with a status

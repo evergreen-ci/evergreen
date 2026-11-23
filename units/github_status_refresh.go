@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -42,18 +43,35 @@ func NewGithubStatusRefreshJob(p *patch.Patch) amboy.Job {
 	return job
 }
 
+// NewGithubStatusResyncRefreshJob returns a job that resends the GitHub
+// statuses of a patch that failed to send. It only resends the statuses that
+// failed and are finished, so it can't overwrite a newer status with a stale
+// pending one. Only one resync job can be queued per patch at a time.
+func NewGithubStatusResyncRefreshJob(patchID string, ts time.Time) amboy.Job {
+	job := makeGithubStatusRefreshJob()
+	job.FetchID = patchID
+	job.IsResync = true
+
+	job.SetID(fmt.Sprintf("%s:resync-%s-%s", githubStatusRefreshJobName, patchID, ts.Format(TSFormat)))
+	job.SetScopes([]string{fmt.Sprintf("%s:resync-%s", githubStatusRefreshJobName, patchID)})
+	job.SetEnqueueAllScopes(true)
+	return job
+}
+
 type githubStatusRefreshJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment
 	sender   send.Sender
 
-	urlBase      string
-	patch        *patch.Patch
-	builds       []build.Build
-	childPatches []patch.Patch
-	rateLimited  bool
+	urlBase        string
+	patch          *patch.Patch
+	builds         []build.Build
+	childPatches   []patch.Patch
+	rateLimited    bool
+	resyncContexts []string
 
-	FetchID string `bson:"fetch_id" json:"fetch_id" yaml:"fetch_id"`
+	FetchID  string `bson:"fetch_id" json:"fetch_id" yaml:"fetch_id"`
+	IsResync bool   `bson:"is_resync" json:"is_resync" yaml:"is_resync"`
 }
 
 func makeGithubStatusRefreshJob() *githubStatusRefreshJob {
@@ -81,7 +99,95 @@ func (j *githubStatusRefreshJob) shouldUpdate(ctx context.Context) (bool, error)
 		return false, nil
 
 	}
+	if j.IsResync && !flags.GitHubStatusResyncEnabled {
+		return false, nil
+	}
 	return true, nil
+}
+
+var (
+	errPatchNotFound  = errors.New("patch not found")
+	errNoGitHubTarget = errors.New("patch has no GitHub owner, repo, and ref to send statuses to")
+)
+
+// prepareResync returns the patch's resync mark, or nil if there is nothing
+// to resend. It clears the mark if the patch's statuses can't be resent or
+// are no longer worth resending.
+func (j *githubStatusRefreshJob) prepareResync(ctx context.Context) (*patch.GitHubStatusResync, error) {
+	resync, err := patch.FindGitHubStatusResync(ctx, j.FetchID)
+	if err != nil || resync == nil {
+		return nil, err
+	}
+
+	err = j.loadPatch(ctx)
+	if errors.Is(err, errPatchNotFound) || errors.Is(err, errNoGitHubTarget) {
+		return nil, j.clearResync(ctx, resync, err.Error())
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Only the PR's latest commit shows up on the PR, so statuses for an older
+	// commit aren't worth resending.
+	if j.patch.IsGithubPRPatch() && !j.patch.IsMergeQueuePatch() {
+		latest, err := patch.FindLatestGithubPRPatch(ctx, j.patch.GithubPatchData.BaseOwner, j.patch.GithubPatchData.BaseRepo, j.patch.GithubPatchData.PRNumber)
+		if err != nil {
+			return nil, errors.Wrap(err, "finding latest patch for PR")
+		}
+		if latest != nil && latest.Id != j.patch.Id {
+			return nil, j.clearResync(ctx, resync, "PR has a newer patch")
+		}
+	}
+
+	j.resyncContexts = resync.Contexts
+	return resync, nil
+}
+
+func (j *githubStatusRefreshJob) clearResync(ctx context.Context, resync *patch.GitHubStatusResync, reason string) error {
+	grip.Info(ctx, message.Fields{
+		"message":  "clearing GitHub status resync without resending",
+		"reason":   reason,
+		"patch_id": j.FetchID,
+		"job_id":   j.ID(),
+	})
+	return patch.ClearGitHubStatusResync(ctx, j.FetchID, resync.LastFailedAt)
+}
+
+// sendsContext returns whether the job sends the status with the given
+// context. Resyncs only resend statuses that failed to send.
+func (j *githubStatusRefreshJob) sendsContext(statusContext string) bool {
+	return !j.IsResync || slices.Contains(j.resyncContexts, statusContext)
+}
+
+// shouldSend returns whether the job sends the status. Resyncs also leave
+// pending statuses to the regular notifications, since a pending status read
+// here may already be out of date by the time it's sent.
+func (j *githubStatusRefreshJob) shouldSend(status *message.GithubStatus) bool {
+	if !j.sendsContext(status.Context) {
+		return false
+	}
+	return !j.IsResync || status.State != message.GithubStatePending
+}
+
+// loadPatch loads the patch, if it isn't already loaded, and checks that it
+// has a GitHub target to send statuses to.
+func (j *githubStatusRefreshJob) loadPatch(ctx context.Context) error {
+	if j.patch == nil {
+		p, err := patch.FindOneId(ctx, j.FetchID)
+		if err != nil {
+			return errors.Wrap(err, "finding patch")
+		}
+		if p == nil {
+			return errors.Wrapf(errPatchNotFound, "patch '%s'", j.FetchID)
+		}
+		j.patch = p
+	}
+
+	target := j.newGitHubStatus()
+	if target.Owner == "" || target.Repo == "" || target.Ref == "" {
+		return errors.Wrapf(errNoGitHubTarget, "patch '%s'", j.patch.Id.Hex())
+	}
+	return nil
 }
 
 func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
@@ -98,21 +204,11 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 		return errors.New("url base doesn't exist")
 	}
 
-	if j.patch == nil {
-		j.patch, err = patch.FindOneId(ctx, j.FetchID)
-		if err != nil {
-			return errors.Wrap(err, "finding patch")
-		}
-		if j.patch == nil {
-			return errors.New("patch not found")
-		}
+	if err = j.loadPatch(ctx); err != nil {
+		return err
 	}
 
 	target := j.newGitHubStatus()
-	if target.Owner == "" || target.Repo == "" || target.Ref == "" {
-		return errors.Errorf("patch '%s' has no GitHub owner, repo, and ref to send statuses to", j.patch.Id.Hex())
-	}
-
 	j.sender, err = j.env.GetGitHubSender(target.Owner, target.Repo, githubapp.CreateGitHubAppAuth(j.env.Settings()).CreateGitHubSenderInstallationToken)
 	if err != nil {
 		return err
@@ -158,6 +254,17 @@ func (j *githubStatusRefreshJob) sendStatus(ctx context.Context, status *message
 	j.AddError(c.SetPriority(level.Notice))
 
 	if err := send.SendWithError(ctx, j.sender, c); err != nil {
+		// Resending a status GitHub rejected won't help, so it doesn't keep
+		// the patch marked for another resync.
+		if j.IsResync && isRejectedGitHubSend(err) {
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
+				"message":  "GitHub rejected resent status",
+				"context":  status.Context,
+				"patch_id": j.FetchID,
+				"job_id":   j.ID(),
+			}))
+			return
+		}
 		j.AddError(err)
 		j.rateLimited = isGitHubRateLimit(err)
 		return
@@ -173,31 +280,29 @@ func (j *githubStatusRefreshJob) sendStatus(ctx context.Context, status *message
 }
 
 // sendChildPatchStatuses iterates through child patches if relevant and builds/sends statuses.
-func (j *githubStatusRefreshJob) sendChildPatchStatuses(ctx context.Context) error {
-	if len(j.childPatches) == 0 {
-		return nil
-	}
-
+func (j *githubStatusRefreshJob) sendChildPatchStatuses(ctx context.Context) {
 	status := j.newGitHubStatus()
-
 	for _, childPatch := range j.childPatches {
 		if j.rateLimited {
-			return nil
+			return
 		}
 		projectIdentifier, err := model.GetIdentifierForProject(ctx, childPatch.Project)
 		if err != nil {
-			return errors.Wrap(err, "finding project identifier")
+			j.AddError(errors.Wrapf(err, "finding project identifier for child patch '%s'", childPatch.Id.Hex()))
+			continue
 		}
 		status.Context, err = patch.GetGithubContextForChildPatch(projectIdentifier, j.patch, &childPatch)
 		if err != nil {
-			return errors.Wrapf(err, "getting github context for child patch '%s'", childPatch.Id.Hex())
+			j.AddError(errors.Wrapf(err, "getting github context for child patch '%s'", childPatch.Id.Hex()))
+			continue
 		}
 
 		status.URL = childPatch.GetURL(j.urlBase)
 		status.State, status.Description = patch.GetGitHubStateAndDescription(childPatch.Status, childPatch.StartTime, childPatch.FinishTime)
-		j.sendStatus(ctx, status)
+		if j.shouldSend(status) {
+			j.sendStatus(ctx, status)
+		}
 	}
-	return nil
 }
 
 // getGitHubStateAndDescriptionForPatch returns the GitHub state and
@@ -214,6 +319,24 @@ func (j *githubStatusRefreshJob) getGitHubStateAndDescriptionForPatch(ctx contex
 		return "", "", err
 	}
 	return collective.State, collective.Description, nil
+}
+
+func (j *githubStatusRefreshJob) sendPatchStatus(ctx context.Context) {
+	if !j.sendsContext(thirdparty.GithubStatusDefaultContext) {
+		return
+	}
+	status := j.newGitHubStatus()
+	status.URL = j.patch.GetURL(j.urlBase)
+	status.Context = thirdparty.GithubStatusDefaultContext
+	var err error
+	status.State, status.Description, err = j.getGitHubStateAndDescriptionForPatch(ctx)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "getting GitHub state for patch '%s'", j.patch.Id.Hex()))
+		return
+	}
+	if j.shouldSend(status) {
+		j.sendStatus(ctx, status)
+	}
 }
 
 func (j *githubStatusRefreshJob) sendBuildStatuses(ctx context.Context) {
@@ -245,6 +368,9 @@ func (j *githubStatusRefreshJob) sendBuildStatuses(ctx context.Context) {
 		default:
 			status.State = message.GithubStatePending
 		}
+		if !j.shouldSend(status) {
+			continue
+		}
 
 		query := db.Query(task.ByBuildId(b.Id)).WithFields(task.StatusKey, task.IsEssentialToSucceedKey, task.ActivatedKey)
 		tasks, err := task.FindAll(ctx, query)
@@ -267,32 +393,37 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 	if !shouldUpdate {
 		return
 	}
-	start := time.Now()
-	if err = j.fetch(ctx); err != nil {
-		j.AddError(err)
-		return
+
+	// The patch's mark is cleared after its statuses are sent unless a send
+	// failed again in the meantime.
+	lastFailedAt := time.Now()
+	if j.IsResync {
+		resync, err := j.prepareResync(ctx)
+		if err != nil {
+			j.AddError(err)
+			return
+		}
+		if resync == nil {
+			return
+		}
+		lastFailedAt = resync.LastFailedAt
 	}
 
-	status := j.newGitHubStatus()
-	status.URL = j.patch.GetURL(j.urlBase)
-	status.Context = thirdparty.GithubStatusDefaultContext
-	status.State, status.Description, err = j.getGitHubStateAndDescriptionForPatch(ctx)
-	if err != nil {
-		j.AddError(errors.Wrapf(err, "getting GitHub state for patch '%s'", j.patch.Id.Hex()))
-	} else {
-		j.sendStatus(ctx, status)
-	}
-
-	// Send child patch statuses.
-	if err := j.sendChildPatchStatuses(ctx); err != nil {
-		j.AddError(err)
-		return
-	}
-
-	// For each build, send build status.
-	j.sendBuildStatuses(ctx)
+	j.sendStatuses(ctx)
 
 	if !j.HasErrors() {
-		j.AddError(patch.ClearGitHubStatusResync(ctx, j.FetchID, start))
+		j.AddError(patch.ClearGitHubStatusResync(ctx, j.FetchID, lastFailedAt))
+	} else if j.IsResync {
+		j.AddError(patch.MarkGitHubStatusResyncAttempted(ctx, j.FetchID))
 	}
+}
+
+func (j *githubStatusRefreshJob) sendStatuses(ctx context.Context) {
+	if err := j.fetch(ctx); err != nil {
+		j.AddError(err)
+		return
+	}
+	j.sendPatchStatus(ctx)
+	j.sendChildPatchStatuses(ctx)
+	j.sendBuildStatuses(ctx)
 }
