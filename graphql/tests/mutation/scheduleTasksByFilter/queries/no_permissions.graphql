@@ -1,0 +1,12 @@
+mutation {
+    scheduleTasksByFilter(filter: {}, versionId: "no_permissions") {
+      modifiedTasks {
+        id
+        status
+      }
+      taskErrors {
+        taskId
+        reason
+      }
+    }
+}

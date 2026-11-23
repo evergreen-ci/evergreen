@@ -1,0 +1,12 @@
+mutation {
+    scheduleTasksByIds(taskIds: ["unscheduled_exec_task"]) {
+      modifiedTasks {
+        id
+        status
+      }
+      taskErrors {
+        taskId
+        reason
+      }
+    }
+}

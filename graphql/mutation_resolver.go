@@ -1612,6 +1612,24 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, ve
 	return scheduledTasks, nil
 }
 
+// ScheduleTasksByIds is the resolver for the scheduleTasksByIds field.
+func (r *mutationResolver) ScheduleTasksByIds(ctx context.Context, taskIds []string) (*BulkTaskOperationResult, error) {
+	selectedTasks, err := resolveTasksByIDs(ctx, taskIds)
+	if err != nil {
+		return nil, err
+	}
+	return scheduleSelectedTasks(ctx, selectedTasks)
+}
+
+// ScheduleTasksByFilter is the resolver for the scheduleTasksByFilter field.
+func (r *mutationResolver) ScheduleTasksByFilter(ctx context.Context, versionID string, filter TaskFilterOptions) (*BulkTaskOperationResult, error) {
+	selectedTasks, err := resolveTasksByFilter(ctx, versionID, filter)
+	if err != nil {
+		return nil, err
+	}
+	return scheduleSelectedTasks(ctx, selectedTasks)
+}
+
 // SetVersionPriority is the resolver for the setVersionPriority field.
 func (r *mutationResolver) SetVersionPriority(ctx context.Context, versionID string, priority int) (*string, error) {
 	modifications := model.VersionModification{

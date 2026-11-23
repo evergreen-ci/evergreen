@@ -1,0 +1,12 @@
+mutation {
+    scheduleTasksByFilter(filter: {statuses: ["unscheduled"]}, versionId: "filter_version") {
+      modifiedTasks {
+        id
+        status
+      }
+      taskErrors {
+        taskId
+        reason
+      }
+    }
+}
