@@ -1332,10 +1332,6 @@ func TestGetTasksByVersionSortingAndPaginationPreserveCount(t *testing.T) {
 			tasks, count, err := GetTasksByVersion(t.Context(), "root", opts)
 			require.NoError(t, err)
 			assert.Equal(t, test.count, count)
-			if test.id == "" {
-				assert.Empty(t, tasks)
-				return
-			}
 			require.Len(t, tasks, 1)
 			assert.Equal(t, test.id, tasks[0].Id)
 			assert.Equal(t, "base-"+test.id, tasks[0].BaseTask.Id)
