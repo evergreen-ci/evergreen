@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -928,6 +929,127 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 			}
 
 			tCase(t, t.Context())
+		})
+	}
+}
+
+func TestGetActiveVersionsByTaskFiltersSelectsMatchingVersions(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection, task.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection, task.Collection))
+	})
+
+	requester := evergreen.RepotrackerVersionRequester
+	orders := map[string]int{}
+	for order := 10; order <= 19; order++ {
+		v := Version{
+			Id:                  fmt.Sprintf("v%d", order),
+			Identifier:          "project",
+			Requester:           requester,
+			RevisionOrderNumber: order,
+			Activated:           utility.TruePtr(),
+		}
+		if order == 12 {
+			v.Activated = utility.FalsePtr()
+		}
+		if order == 17 {
+			v.Requester = evergreen.GitTagRequester
+		}
+		if order == 18 {
+			v.Identifier = "otherProject"
+		}
+		require.NoError(t, v.Insert(t.Context()))
+		orders[v.Id] = order
+	}
+
+	tasks := []task.Task{
+		{Id: "lowerBound", Version: "v10", RevisionOrderNumber: 10, Activated: true},
+		{Id: "firstMatch", Version: "v12", RevisionOrderNumber: 12, Activated: true},
+		{Id: "duplicateMatch", Version: "v12", RevisionOrderNumber: 12, Activated: true},
+		{Id: "inactiveTask", Version: "v13", RevisionOrderNumber: 13},
+		{Id: "foreignTask", Version: "v14", RevisionOrderNumber: 14, Project: "otherProject", Activated: true},
+		{Id: "patchTask", Version: "v14", RevisionOrderNumber: 14, Requester: evergreen.PatchVersionRequester, Activated: true},
+		{Id: "secondMatch", Version: "v15", RevisionOrderNumber: 15, Activated: true},
+		{Id: "newestMatch", Version: "v17", RevisionOrderNumber: 17, Requester: evergreen.GitTagRequester, Activated: true},
+		{Id: "foreignVersion", Version: "v18", RevisionOrderNumber: 18, Project: "otherProject", Activated: true},
+		{Id: "upperBound", Version: "v19", RevisionOrderNumber: 19, Activated: true},
+	}
+	for _, tsk := range tasks {
+		if tsk.Project == "" {
+			tsk.Project = "project"
+		}
+		if tsk.Requester == "" {
+			tsk.Requester = requester
+		}
+		tsk.DisplayName = "Target"
+		require.NoError(t, tsk.Insert(t.Context()))
+	}
+
+	for _, tc := range []struct {
+		name           string
+		pagingBackward bool
+		opts           WaterfallOptions
+		wantIDs        []string
+	}{
+		{
+			name:    "ForwardPagingShouldSkipNonmatchingVersionsBeforeApplyingLimit",
+			opts:    WaterfallOptions{Limit: 2},
+			wantIDs: []string{"v17", "v15"},
+		},
+		{
+			name:           "BackwardPagingShouldSelectNearestMatchesAndReturnDescendingOrder",
+			pagingBackward: true,
+			opts:           WaterfallOptions{Limit: 2},
+			wantIDs:        []string{"v15", "v12"},
+		},
+		{
+			name:    "MatchingTasksShouldSelectInactiveVersionsOnlyOnce",
+			opts:    WaterfallOptions{Limit: 5},
+			wantIDs: []string{"v17", "v15", "v12"},
+		},
+		{
+			name:    "UpperOrderBoundShouldExcludeMatchingVersion",
+			opts:    WaterfallOptions{Limit: 5, MaxOrder: 17},
+			wantIDs: []string{"v15", "v12"},
+		},
+		{
+			name:           "LowerOrderBoundShouldExcludeMatchingVersion",
+			pagingBackward: true,
+			opts:           WaterfallOptions{Limit: 5, MinOrder: 12},
+			wantIDs:        []string{"v17", "v15"},
+		},
+		{
+			name:    "RequesterSubsetShouldExcludeOtherMatchingVersions",
+			opts:    WaterfallOptions{Limit: 5, Requesters: []string{requester}},
+			wantIDs: []string{"v15", "v12"},
+		},
+		{
+			name: "NonmatchingTaskNameShouldReturnNoVersions",
+			opts: WaterfallOptions{Limit: 5, Tasks: []string{"^Missing$"}},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.opts.MinOrder == 0 {
+				tc.opts.MinOrder = 10
+			}
+			if tc.opts.MaxOrder == 0 {
+				tc.opts.MaxOrder = 19
+			}
+			if len(tc.opts.Requesters) == 0 {
+				tc.opts.Requesters = []string{requester, evergreen.GitTagRequester}
+			}
+			if len(tc.opts.Tasks) == 0 {
+				tc.opts.Tasks = []string{"^Target$"}
+			}
+			tc.opts.TaskCaseSensitive = true
+
+			found, err := GetActiveVersionsByTaskFilters(t.Context(), "project", tc.opts, tc.pagingBackward)
+			require.NoError(t, err)
+			want := []Version{}
+			for _, id := range tc.wantIDs {
+				want = append(want, Version{Id: id, RevisionOrderNumber: orders[id]})
+			}
+			assert.Equal(t, want, found)
 		})
 	}
 }
