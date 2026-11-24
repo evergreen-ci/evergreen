@@ -58,8 +58,8 @@ type ServiceFlags struct {
 	// every distro runs in host mode regardless of its container isolation
 	// configuration.
 	ContainerIsolationEnabled bool `bson:"container_isolation_enabled" json:"container_isolation_enabled"`
-	// SourceCacheAllProjectsEnabled is a fleet-wide flag that forces the source
-	// cache on for all projects, overriding each project's source_cache_mode.
+	// SourceCacheAllProjectsEnabled is a fleet-wide flag that turns the source
+	// cache on for all projects.
 	SourceCacheAllProjectsEnabled bool `bson:"source_cache_all_projects_enabled" json:"source_cache_all_projects_enabled"`
 
 	// Notification Flags
