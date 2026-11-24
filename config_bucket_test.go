@@ -4,7 +4,21 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestBucketsConfigValidateAndDefault(t *testing.T) {
+	t.Run("ValidGitHubFileCacheBucket", func(t *testing.T) {
+		cfg := &BucketsConfig{GitHubFileCacheBucket: BucketConfig{Name: "github-file-cache"}}
+		require.NoError(t, cfg.ValidateAndDefault())
+		assert.Equal(t, BucketTypeS3, cfg.GitHubFileCacheBucket.Type, "bucket type should default to s3")
+	})
+
+	t.Run("InvalidGitHubFileCacheBucketType", func(t *testing.T) {
+		cfg := &BucketsConfig{GitHubFileCacheBucket: BucketConfig{Name: "github-file-cache", Type: "not-a-type"}}
+		assert.Error(t, cfg.ValidateAndDefault())
+	})
+}
 
 func TestBucketsConfigLogBucketExpirationDays(t *testing.T) {
 	days90 := 90

@@ -417,6 +417,8 @@ func TestAPIBucketsConfigServiceRoundTrip(t *testing.T) {
 		LogBucketLongRetention:          bucket("long"),
 		LogBucketFailedTasks:            bucket("failed"),
 		TestResultsBucket:               bucket("tr"),
+		SourceCacheBucket:               bucket("src-cache"),
+		GitHubFileCacheBucket:           bucket("gh-file-cache"),
 		LongRetentionProjects:           []string{"p1", "p2"},
 		SourceCacheOptOutProjects:       []string{"p1", "p2"},
 		RetryFailedLogMoveLookbackDays:  14,
