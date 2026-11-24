@@ -144,12 +144,12 @@ func TestBuildPostRestoreCommand(t *testing.T) {
 		wantNotContain []string
 	}{
 		{
-			// A restored tree keeps the producer's scrubbed origin, so the restore must put the task's own credential back.
+			// A restored tree gets the task's own credential back and a working tree rewritten from the verified commit objects.
 			name:         "VerifiesHeadAndRestoresAuthenticatedOrigin",
 			conf:         sourceCacheTestConfig(),
 			opts:         cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken},
 			revision:     "abc123",
-			wantContains: []string{`test "$(git rev-parse HEAD)" = "abc123"`, authedOrigin},
+			wantContains: []string{`test "$(git rev-parse HEAD)" = "abc123"`, authedOrigin, "git reset --hard", "git clean -ffdx", "git submodule update --recursive --force", "rm -rf .git/hooks", "core.fsmonitor"},
 		},
 		{
 			name:           "SkipsPRCheckoutOnAPRNamespacedHit",
@@ -260,6 +260,53 @@ func TestPostRestoreCommandFailsOnWrongRevision(t *testing.T) {
 	headAfter, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "HEAD").Output()
 	require.NoError(t, err)
 	assert.Equal(t, conf.Task.Revision, strings.TrimSpace(string(headAfter)))
+}
+
+// TestPostRestoreCommandHealsTamperedTree verifies a restored archive with a correct
+// HEAD but a tampered working tree is rewritten back to the revision's real content.
+func TestPostRestoreCommandHealsTamperedTree(t *testing.T) {
+	ctx := t.Context()
+
+	workDir, _ := newRepoWithLocalOrigin(t)
+	repoDir := filepath.Join(workDir, "src")
+
+	jpm, err := jasper.NewSynchronizedManager(false)
+	require.NoError(t, err)
+	c := &gitFetchProject{Directory: "src"}
+	c.SetJasperManager(jpm)
+	comm := client.NewMock("http://localhost.com")
+	conf := sourceCacheTestConfig()
+	conf.WorkDir = workDir
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	require.NoError(t, os.WriteFile(filepath.Join(repoDir, "tracked.txt"), []byte("expected content"), 0644))
+	for _, args := range [][]string{
+		{"-C", repoDir, "add", "tracked.txt"},
+		{"-C", repoDir, "commit", "-m", "add file"},
+	} {
+		cmd := exec.CommandContext(ctx, "git", args...)
+		cmd.Env = append(cmd.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+		require.NoError(t, cmd.Run())
+	}
+	headBytes, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "HEAD").Output()
+	require.NoError(t, err)
+	revision := strings.TrimSpace(string(headBytes))
+
+	// A malicious producer's archive can carry all of these without changing HEAD.
+	require.NoError(t, os.WriteFile(filepath.Join(repoDir, "tracked.txt"), []byte("poisoned"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(repoDir, "payload.sh"), []byte("echo hacked"), 0755))
+	// Plain git clean skips nested repositories, so the heal must use -ff to drop them.
+	require.NoError(t, os.MkdirAll(filepath.Join(repoDir, "evil", ".git"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(repoDir, "evil", "payload.sh"), []byte("echo hacked"), 0755))
+
+	require.NoError(t, c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo"}, revision, false)))
+
+	content, err := os.ReadFile(filepath.Join(repoDir, "tracked.txt"))
+	require.NoError(t, err)
+	assert.Equal(t, "expected content", string(content))
+	assert.NoFileExists(t, filepath.Join(repoDir, "payload.sh"))
+	assert.NoDirExists(t, filepath.Join(repoDir, "evil"))
 }
 
 // A tag pushed after the archive was saved must still reach the restored tree, since git describe --tags is the consumer.

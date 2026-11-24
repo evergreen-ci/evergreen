@@ -772,9 +772,25 @@ func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Commu
 }
 
 // buildPostRestoreCommand returns the script run over a restored tree. It verifies
-// HEAD, restores this task's credentials, and optionally checks out a PR.
+// HEAD and rewrites the working tree from the verified commit objects (the archive
+// is producer-controlled), restores this task's credentials, and optionally checks out a PR.
 func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opts cloneOpts, revision string, runPRCheckout bool) []string {
 	cmds := c.scriptInProjectDir(fmt.Sprintf(`test "$(git rev-parse HEAD)" = "%s"`, revision))
+	// The archive is producer-controlled: scrub hooks and config-driven execution
+	// before any command could run them, then rewrite the tree from the commit
+	// objects, which cannot be forged for a revision.
+	cmds = append(cmds, scrubGitExecutionCommands(".git/hooks")...)
+	cmds = append(cmds,
+		"git reset --hard",
+		// -ff so a planted nested repository is removed too, which plain clean skips.
+		"git clean -ffdx",
+		// Submodules carry the same execution vectors in their own git dirs, so the
+		// same scrub runs in each one via a single foreach traversal.
+		gitSubmoduleForeachCommand(strings.Join(scrubGitExecutionCommands(`"$(git rev-parse --git-common-dir)/hooks"`), "; ")),
+		// Pin each submodule to the gitlink the superproject records; the submodule's own HEAD is producer-controlled.
+		"git submodule update --recursive --force",
+		gitSubmoduleForeachCommand("git reset --hard && git clean -ffdx"),
+	)
 	cmds = append(cmds, setOriginURLCommands(opts)...)
 	// The archive was scrubbed of the producer's credentials, so a restored
 	// tree needs this task's own put into the submodule remotes.
@@ -783,6 +799,27 @@ func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opt
 		cmds = append(cmds, prCheckoutCommands(conf, opts.cloneDepth)...)
 	}
 	return append(cmds, "git log --oneline -n 10")
+}
+
+// scrubGitExecutionCommands returns the commands that strip one repository of
+// producer-controlled execution: deleting its hooks and clearing the config
+// settings that can invoke commands. hooksDir is the shell-quoted path to the
+// hooks directory; a submodule's is resolved through its own git dir, which is
+// not always under .git.
+func scrubGitExecutionCommands(hooksDir string) []string {
+	return append([]string{fmt.Sprintf("rm -rf %s", hooksDir)},
+		// The unset and remove-section commands ignore missing keys and sections,
+		// since not every repository has them set.
+		"git config --unset-all core.hooksPath 2>/dev/null || true",
+		"git config --remove-section alias 2>/dev/null || true",
+		"git config --unset-all core.fsmonitor 2>/dev/null || true",
+		"git config --unset-all core.sshCommand 2>/dev/null || true",
+	)
+}
+
+// gitSubmoduleForeachCommand wraps a script so git runs it once per submodule, recursively.
+func gitSubmoduleForeachCommand(script string) string {
+	return fmt.Sprintf(`git submodule foreach --recursive '%s'`, script)
 }
 
 // gitRevisionRegexp restricts revisions interpolated into tag refresh shell scripts to git commit SHAs.
