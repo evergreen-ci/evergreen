@@ -42,9 +42,7 @@ type ProjectConfigFields struct {
 	GithubPRTriggerAliases []string                      `yaml:"github_trigger_aliases,omitempty" bson:"github_trigger_aliases,omitempty"`
 	GithubMQTriggerAliases []string                      `yaml:"github_mq_trigger_aliases,omitempty" bson:"github_mq_trigger_aliases,omitempty"`
 
-	// VersionMakespanTags limits the task tags whose version makespans are
-	// published to Honeycomb as version-tag-makespan spans. Empty means no
-	// makespans are published.
+	// VersionMakespanTags limits the task tags whose version makespans are published to Honeycomb as version-tag-makespan spans.
 	VersionMakespanTags []string `yaml:"version_makespan_tags,omitempty" bson:"version_makespan_tags,omitempty"`
 }
 

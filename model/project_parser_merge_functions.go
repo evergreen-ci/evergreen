@@ -275,15 +275,11 @@ func (pp *ParserProject) mergeProjectConfigFields(toMerge *ParserProject) {
 	if len(other.GithubMQTriggerAliases) > 0 {
 		pcf.GithubMQTriggerAliases = utility.UniqueStrings(append(pcf.GithubMQTriggerAliases, other.GithubMQTriggerAliases...))
 	}
+	if len(other.VersionMakespanTags) > 0 {
+		pcf.VersionMakespanTags = utility.UniqueStrings(append(pcf.VersionMakespanTags, other.VersionMakespanTags...))
+	}
 
 	var redefined []string
-	if len(other.VersionMakespanTags) > 0 {
-		if len(pcf.VersionMakespanTags) > 0 {
-			redefined = append(redefined, "version_makespan_tags")
-		} else {
-			pcf.VersionMakespanTags = other.VersionMakespanTags
-		}
-	}
 	if other.BuildBaronSettings != nil {
 		if pcf.BuildBaronSettings != nil {
 			redefined = append(redefined, "build_baron_settings")

@@ -1200,7 +1200,6 @@ func startVersionCompletionSpan(ctx context.Context, v *Version, project string,
 
 	ctx = utility.ContextWithAttributes(ctx, attrs)
 
-	// use a new root span so that it logs it every time instead of only logging a small sample set as an http call span
 	spanCtx, span := tracer.Start(ctx, "version-completion", trace.WithNewRoot())
 	emitTagMakespanSpans(spanCtx, tagMakespans)
 
@@ -1220,9 +1219,7 @@ func versionMakespanTags(ctx context.Context, v *Version) ([]string, error) {
 	return pc.VersionMakespanTags, nil
 }
 
-// emitTagMakespanSpans publishes one span per task tag carrying the tag's
-// version makespan, so Honeycomb can track makespans of filtered task sets
-// without special-casing individual tags.
+// emitTagMakespanSpans publishes one span per specified task tag
 func emitTagMakespanSpans(ctx context.Context, tagMakespans map[string]time.Duration) {
 	for tag, makespan := range tagMakespans {
 		_, span := tracer.Start(ctx, evergreen.VersionTagMakespanOtelSpanName, trace.WithAttributes(
