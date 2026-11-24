@@ -1,0 +1,8 @@
+query {
+  version(versionId: "tag-version") {
+    tasks(options: { taskTags: ["test"], variantTags: ["windows"], limit: 10 }) {
+      count
+      data { id }
+    }
+  }
+}

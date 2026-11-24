@@ -1965,17 +1965,17 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "getting tasks by version pipeline")
 	}
-	if len(opts.Sorts) > 0 {
-		sortPipeline := []bson.M{}
 
+	resultsPipeline := []bson.M{}
+	if len(opts.Sorts) > 0 {
 		sortFields := bson.D{}
 		var hasIDSort bool
 		for _, singleSort := range opts.Sorts {
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
-				sortPipeline = append(sortPipeline, addStatusColorSort(singleSort.Key))
+				resultsPipeline = append(resultsPipeline, addStatusColorSort(singleSort.Key))
 				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
 			} else if singleSort.Key == TimeTakenKey {
-				sortPipeline = append(sortPipeline, recalculateTimeTaken())
+				resultsPipeline = append(resultsPipeline, recalculateTimeTaken())
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			} else {
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
@@ -1988,43 +1988,27 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 		if !hasIDSort {
 			sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
 		}
-
-		sortPipeline = append(sortPipeline, bson.M{
-			"$sort": sortFields,
-		})
-
-		pipeline = append(pipeline, sortPipeline...)
+		resultsPipeline = append(resultsPipeline, bson.M{"$sort": sortFields})
 	}
-
 	if len(opts.FieldsToProject) > 0 {
 		fieldKeys := bson.M{}
 		for _, field := range opts.FieldsToProject {
 			fieldKeys[field] = 1
 		}
-		pipeline = append(pipeline, bson.M{
-			"$project": fieldKeys,
-		})
+		resultsPipeline = append(resultsPipeline, bson.M{"$project": fieldKeys})
 	}
-
-	// If there is a limit we should calculate the total count before we apply the limit and pagination
+	// Keep the sort and limit in the same facet branch so MongoDB can use a top-N sort.
 	if opts.Limit > 0 {
-		paginatePipeline := []bson.M{}
-		paginatePipeline = append(paginatePipeline, bson.M{
-			"$skip": opts.Page * opts.Limit,
-		})
-		paginatePipeline = append(paginatePipeline, bson.M{
-			"$limit": opts.Limit,
-		})
-		// Use a $facet to perform separate aggregations for $count and to sort and paginate the results in the same query
-		tasksAndCountPipeline := bson.M{
-			"$facet": bson.M{
-				"count": []bson.M{
-					{"$count": "count"},
-				},
-				"tasks": paginatePipeline,
-			},
-		}
-		pipeline = append(pipeline, tasksAndCountPipeline)
+		resultsPipeline = append(resultsPipeline,
+			bson.M{"$skip": opts.Page * opts.Limit},
+			bson.M{"$limit": opts.Limit},
+		)
+		pipeline = append(pipeline, bson.M{"$facet": bson.M{
+			"count": []bson.M{{"$count": "count"}},
+			"tasks": resultsPipeline,
+		}})
+	} else {
+		pipeline = append(pipeline, resultsPipeline...)
 	}
 
 	env := evergreen.GetEnvironment()
@@ -2350,6 +2334,8 @@ type GetTasksByVersionOptions struct {
 	BaseStatuses               []string
 	Variants                   []string
 	TaskNames                  []string
+	TaskTags                   []string
+	VariantTags                []string
 	Page                       int
 	Limit                      int
 	FieldsToProject            []string
@@ -2526,12 +2512,26 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 
-		// Sort the tasks by their _id to ensure that they are in the same order as the original tasks
-		pipeline = append(pipeline, bson.M{
-			"$sort": bson.M{
-				"_id": 1,
-			},
-		})
+		if len(opts.Sorts) == 0 {
+			// Preserve task order when no explicit sort is applied later.
+			pipeline = append(pipeline, bson.M{
+				"$sort": bson.M{IdKey: 1},
+			})
+		}
+	}
+
+	// Filter tags after pairing so base tasks with different or missing tags remain available.
+	tagMatch := bson.M{}
+	taskTags := utility.FilterSlice(opts.TaskTags, func(s string) bool { return s != "" })
+	if len(taskTags) > 0 {
+		tagMatch[TagsKey] = bson.M{"$in": taskTags}
+	}
+	variantTags := utility.FilterSlice(opts.VariantTags, func(s string) bool { return s != "" })
+	if len(variantTags) > 0 {
+		tagMatch[BuildVariantTagsKey] = bson.M{"$in": variantTags}
+	}
+	if len(tagMatch) > 0 {
+		pipeline = append(pipeline, bson.M{"$match": tagMatch})
 	}
 
 	if len(opts.Statuses) > 0 {

@@ -92818,8 +92818,14 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 	if _, present := asMap["statuses"]; !present {
 		asMap["statuses"] = []any{}
 	}
+	if _, present := asMap["taskTags"]; !present {
+		asMap["taskTags"] = []any{}
+	}
+	if _, present := asMap["variantTags"]; !present {
+		asMap["variantTags"] = []any{}
+	}
 
-	fieldsInOrder := [...]string{"baseStatuses", "excludeTaskIds", "includeNeverActivatedTasks", "limit", "page", "sorts", "statuses", "taskName", "variant"}
+	fieldsInOrder := [...]string{"baseStatuses", "excludeTaskIds", "includeNeverActivatedTasks", "limit", "page", "sorts", "statuses", "taskName", "taskTags", "variant", "variantTags"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -92882,6 +92888,13 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 				return it, err
 			}
 			it.TaskName = data
+		case "taskTags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskTags"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskTags = data
 		case "variant":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variant"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -92889,6 +92902,13 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 				return it, err
 			}
 			it.Variant = data
+		case "variantTags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variantTags"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VariantTags = data
 		}
 	}
 

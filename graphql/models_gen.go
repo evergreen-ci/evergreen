@@ -599,7 +599,9 @@ type TaskFilterOptions struct {
 	Sorts                      []*SortOrder `json:"sorts,omitempty"`
 	Statuses                   []string     `json:"statuses,omitempty"`
 	TaskName                   *string      `json:"taskName,omitempty"`
+	TaskTags                   []string     `json:"taskTags,omitempty"`
 	Variant                    *string      `json:"variant,omitempty"`
+	VariantTags                []string     `json:"variantTags,omitempty"`
 }
 
 type TaskHistory struct {

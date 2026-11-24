@@ -1,0 +1,8 @@
+query {
+  version(versionId: "tag-version") {
+    tasks(options: { variantTags: ["", "missing", "linux"], limit: 10, sorts: [{ Key: NAME, Direction: ASC }] }) {
+      count
+      data { id }
+    }
+  }
+}

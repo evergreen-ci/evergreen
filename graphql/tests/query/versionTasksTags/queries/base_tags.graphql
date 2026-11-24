@@ -1,0 +1,16 @@
+query {
+  version(versionId: "tag-version") {
+    missingBaseTags: tasks(options: { taskTags: ["build"], variantTags: ["linux"], baseStatuses: ["success"], limit: 10 }) {
+      count
+      data { id baseStatus }
+    }
+    differentBaseTags: tasks(options: { taskTags: ["build"], variantTags: ["windows"], baseStatuses: ["success"], limit: 10 }) {
+      count
+      data { id baseStatus }
+    }
+    baseTagsOnly: tasks(options: { taskTags: ["old-task-tag"], variantTags: ["old-variant-tag"], limit: 10 }) {
+      count
+      data { id }
+    }
+  }
+}

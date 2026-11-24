@@ -1828,6 +1828,8 @@ func getTasksByVersionOptions(ctx context.Context, v *model.Version, f TaskFilte
 		BaseStatuses:   getValidTaskStatusesFilter(f.BaseStatuses),
 		Variants:       []string{utility.FromStringPtr(f.Variant)},
 		TaskNames:      []string{utility.FromStringPtr(f.TaskName)},
+		TaskTags:       f.TaskTags,
+		VariantTags:    f.VariantTags,
 		ExcludeTaskIDs: f.ExcludeTaskIds,
 		// If the version is mainline, include never-activated tasks regardless of the user's preference.
 		IncludeNeverActivatedTasks: utility.FromBoolPtr(f.IncludeNeverActivatedTasks) || !evergreen.IsPatchRequester(v.Requester),
