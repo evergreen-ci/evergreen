@@ -119,9 +119,25 @@ func TestPatchCloneRun(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, res.Status())
 	})
 
+	t.Run("ChildPatch", func(t *testing.T) {
+		// Child patches are internal artifacts of the trigger alias flow; the parent patch is cloned instead.
+		source := patch.Patch{
+			Id:       mgobson.NewObjectId(),
+			Project:  "project",
+			Githash:  "abc123",
+			Triggers: patch.TriggerInfo{ParentPatch: mgobson.NewObjectId().Hex()},
+		}
+		require.NoError(t, source.Insert(ctx))
+
+		handler := makeClonePatchHandler(env).(*patchCloneHandler)
+		handler.patchID = source.Id.Hex()
+		handler.body = apimodels.ClonePatchRequest{}
+		res := handler.Run(gimlet.AttachUser(ctx, usr))
+		assert.Equal(t, http.StatusBadRequest, res.Status())
+	})
+
 	t.Run("UnstoredDiff", func(t *testing.T) {
-		// Patches like very large patches and child patches with the parent as a module only store patch
-		// summaries, so their changes cannot be copied onto a clone.
+		// Patches with very large diffs only store patch summaries, so their changes cannot be copied onto a clone.
 		source := patch.Patch{
 			Id:      mgobson.NewObjectId(),
 			Project: "project",

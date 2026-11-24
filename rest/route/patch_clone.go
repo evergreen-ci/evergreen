@@ -87,8 +87,16 @@ func (h *patchCloneHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	// Patches with very large diffs and child patches with the parent as a module only store patch summaries, not
-	// their diff contents, so a clone would not reproduce the source's changes.
+	// Child patches are internal artifacts of the trigger alias flow; cloning the parent patch reproduces them.
+	if source.IsChild() {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "child patches cannot be cloned directly; clone the parent patch instead",
+		})
+	}
+
+	// Patches with very large diffs only store patch summaries, not their diff contents, so a clone would not
+	// reproduce the source's changes.
 	for _, p := range source.Patches {
 		if p.PatchSet.PatchFileId == "" && p.PatchSet.Patch == "" && len(p.PatchSet.Summary) > 0 {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
