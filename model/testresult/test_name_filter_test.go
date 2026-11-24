@@ -10,7 +10,7 @@ import (
 func TestTestNameFilter(t *testing.T) {
 	t.Run("AddedTestsShouldBeContainedWithFewFalsePositives", func(t *testing.T) {
 		const numTests = 2000
-		filter := NewTestNameFilter(numTests)
+		filter := NewTestNameFilter(t.Context(), numTests)
 		for i := range numTests {
 			filter.Add(fmt.Sprintf("jstests/core/test%d.js", i))
 		}
@@ -29,8 +29,8 @@ func TestTestNameFilter(t *testing.T) {
 	})
 
 	t.Run("SizeShouldBeBounded", func(t *testing.T) {
-		assert.Len(t, NewTestNameFilter(0).Bits, minTestNameFilterTests*testNameFilterBitsPerTest/8)
-		assert.Len(t, NewTestNameFilter(1500).Bits, 1500*testNameFilterBitsPerTest/8)
-		assert.Len(t, NewTestNameFilter(10000000).Bits, maxTestNameFilterTests*testNameFilterBitsPerTest/8)
+		assert.Len(t, NewTestNameFilter(t.Context(), 0).Bits, minTestNameFilterTests*testNameFilterBitsPerTest/8)
+		assert.Len(t, NewTestNameFilter(t.Context(), 1500).Bits, 1500*testNameFilterBitsPerTest/8)
+		assert.Len(t, NewTestNameFilter(t.Context(), 10000000).Bits, maxTestNameFilterTests*testNameFilterBitsPerTest/8)
 	})
 }

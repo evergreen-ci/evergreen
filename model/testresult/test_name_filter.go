@@ -1,9 +1,13 @@
 package testresult
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/binary"
 	"slices"
+
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 const (
@@ -31,7 +35,12 @@ type TestNameFilter struct {
 
 // NewTestNameFilter returns an empty filter sized to hold the given number of
 // tests.
-func NewTestNameFilter(numTests int) *TestNameFilter {
+func NewTestNameFilter(ctx context.Context, numTests int) *TestNameFilter {
+	grip.WarningWhen(ctx, numTests > maxTestNameFilterTests, message.Fields{
+		"message":   "test name filter is capped below the number of tests, so it will have a higher false positive rate",
+		"num_tests": numTests,
+		"max_tests": maxTestNameFilterTests,
+	})
 	numTests = min(max(numTests, minTestNameFilterTests), maxTestNameFilterTests)
 	return &TestNameFilter{
 		Bits:      make([]byte, (numTests*testNameFilterBitsPerTest+7)/8),
