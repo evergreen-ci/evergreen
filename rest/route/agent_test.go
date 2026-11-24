@@ -333,7 +333,7 @@ func TestExpansionsAndVarsHostOwnership(t *testing.T) {
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(t.Context()))
 	testutil.ConfigureIntegrationTest(t, env.Settings())
-	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.VersionCollection, model.ParserProjectCollection))
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, model.ProjectRefCollection, model.RepoRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.VersionCollection, model.ParserProjectCollection))
 
 	t1 := task.Task{
 		Id:      "t1",
@@ -435,6 +435,23 @@ func TestExpansionsAndVarsHostOwnership(t *testing.T) {
 		resp := rh.Run(userCtx)
 		require.NotZero(t, resp)
 		assert.Equal(t, http.StatusOK, resp.Status())
+	})
+
+	// An attached project with debug spawn hosts unset inherits the setting from
+	// its repo, so the check must use the merged ref, not the branch ref alone.
+	t.Run("UserRequestAllowsRepoInheritedDebugSpawnHosts", func(t *testing.T) {
+		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
+			Id:                      "repo_with_debug",
+			DebugSpawnHostsDisabled: utility.FalsePtr(),
+		}}
+		require.NoError(t, repoRef.Replace(t.Context()))
+		require.NoError(t, db.Update(t.Context(), model.ProjectRefCollection, mgobson.M{model.ProjectRefIdKey: "p1"}, mgobson.M{"$set": mgobson.M{model.ProjectRefRepoRefIdKey: "repo_with_debug"}}))
+
+		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t1", hostID: "debug_host"}
+		resp := rh.Run(userCtx)
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
 	})
 
 	t.Run("UserRequestRedactsServicePassword", func(t *testing.T) {

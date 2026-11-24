@@ -373,7 +373,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		}
 	}
 
-	pRef, err := model.FindBranchProjectRef(ctx, t.Project)
+	pRef, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, false)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project ref '%s'", t.Project))
 	}
