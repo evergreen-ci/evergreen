@@ -13,8 +13,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -40,6 +42,10 @@ const (
 	githubFileCacheReasonS3Get        = "s3_get"
 	githubFileCacheReasonVerification = "verification_mismatch"
 	githubFileCacheReasonS3Put        = "s3_put"
+
+	// githubFileCacheTimeout bounds each cache round trip so a slow S3 call
+	// cannot eat the git context that GitRestoreFile needs for its fallback.
+	githubFileCacheTimeout = 2 * time.Second
 )
 
 var (
@@ -51,9 +57,9 @@ var (
 	githubFileCacheBucketFn = getGitHubFileCacheBucket
 )
 
-// githubFileCache holds the memoized cache bucket. It is rebuilt when the
-// configured bucket name changes, which makes the bucket name the feature's
-// runtime kill switch.
+// githubFileCache holds the memoized cache bucket. Settings are startup-cached,
+// so the bucket name cannot change within a process; the name comparison exists
+// so tests can re-inject a different bucket.
 var githubFileCache struct {
 	sync.Mutex
 	bucketName string
@@ -62,13 +68,15 @@ var githubFileCache struct {
 
 // getGitHubFileCacheBucket returns the configured cache bucket, or nil if the
 // feature is disabled or unusable, so the cache can only save time, never fail
-// a config read.
+// a config read. It reads the startup-cached environment settings because this
+// runs once per fetched file; picking up bucket changes requires an app restart.
 func getGitHubFileCacheBucket(ctx context.Context) pail.Bucket {
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message": "getting admin settings for the GitHub file cache",
-		}))
+	env := evergreen.GetEnvironment()
+	if env == nil {
+		return nil
+	}
+	settings := env.Settings()
+	if settings == nil {
 		return nil
 	}
 	bucketConfig := settings.Buckets.GitHubFileCacheBucket
@@ -82,11 +90,21 @@ func getGitHubFileCacheBucket(ctx context.Context) pail.Bucket {
 		return githubFileCache.bucket
 	}
 
-	bucket, err := pail.NewS3MultiPartBucket(ctx, pail.S3Options{
-		Name:          bucketConfig.Name,
-		Region:        evergreen.DefaultEC2Region,
-		AssumeRoleARN: bucketConfig.RoleARN,
-	})
+	opts := pail.S3Options{
+		Name:   bucketConfig.Name,
+		Region: evergreen.DefaultEC2Region,
+	}
+	if bucketConfig.RoleARN != "" {
+		opts.AssumeRoleARN = bucketConfig.RoleARN
+		if bucketConfig.ExternalID != "" {
+			opts.AssumeRoleOptions = []func(*stscreds.AssumeRoleOptions){
+				func(aro *stscreds.AssumeRoleOptions) {
+					aro.ExternalID = utility.ToStringPtr(bucketConfig.ExternalID)
+				},
+			}
+		}
+	}
+	bucket, err := pail.NewS3MultiPartBucket(ctx, opts)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "building the GitHub file cache bucket",
@@ -122,7 +140,9 @@ func getGitHubFileWithCache(ctx context.Context, span trace.Span, owner, repo, r
 	}
 
 	key := githubFileCacheKey(owner, repo, blobSHA)
-	content, hit := getGitHubFileCacheObject(ctx, span, bucket, key, blobSHA)
+	getCtx, cancelGet := context.WithTimeout(ctx, githubFileCacheTimeout)
+	defer cancelGet()
+	content, hit := getGitHubFileCacheObject(getCtx, span, bucket, key, blobSHA)
 	if hit {
 		return content, nil
 	}
@@ -132,7 +152,9 @@ func getGitHubFileWithCache(ctx context.Context, span trace.Span, owner, repo, r
 		return nil, err
 	}
 	span.SetAttributes(attribute.String(githubFileCacheOutcomeAttribute, githubFileCacheOutcomeMissProduced))
-	putGitHubFileCacheObject(ctx, span, bucket, key, fileContent)
+	putCtx, cancelPut := context.WithTimeout(ctx, githubFileCacheTimeout)
+	defer cancelPut()
+	putGitHubFileCacheObject(putCtx, span, bucket, key, fileContent)
 	return fileContent, nil
 }
 
