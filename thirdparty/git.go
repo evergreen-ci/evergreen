@@ -266,7 +266,7 @@ func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file, worktree 
 		dir = worktree
 	}
 
-	fileContent, err := GitRestoreFile(ctx, owner, repo, ref, dir, file)
+	fileContent, err := getGitHubFileWithCache(ctx, span, owner, repo, ref, dir, file)
 	return fileContent, errors.Wrap(err, "restoring git file")
 }
 

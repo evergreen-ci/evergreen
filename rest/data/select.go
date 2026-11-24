@@ -210,7 +210,7 @@ func RecordQuarantinedTestsSkipped(ctx context.Context, env evergreen.Environmen
 	if t == nil {
 		return errors.Errorf("task '%s' not found", req.TaskID)
 	}
-	numAppended, err := task.AppendQuarantinedTests(ctx, t, env, quarantinedTests)
+	numAppended, err := task.AppendTestSelectionResults(ctx, t, env, quarantinedTests)
 	if err != nil {
 		return errors.Wrap(err, "recording quarantined tests on the test results record")
 	}

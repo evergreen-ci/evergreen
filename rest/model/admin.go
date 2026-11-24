@@ -799,6 +799,7 @@ type APIBucketsConfig struct {
 	TestResultsBucket                APIBucketConfig  `json:"test_results_bucket"`
 	SourceCacheBucket                APIBucketConfig  `json:"source_cache_bucket"`
 	SourceCacheOptOutProjects        []string         `json:"source_cache_opt_out_projects"`
+	GitHubFileCacheBucket            APIBucketConfig  `json:"github_file_cache_bucket"`
 	InternalBuckets                  []string         `json:"internal_buckets"`
 	Credentials                      APIS3Credentials `json:"credentials"`
 }
@@ -876,6 +877,7 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.LogBucketFailedTasks.buildFromService(v.LogBucketFailedTasks)
 		a.TestResultsBucket.buildFromService(v.TestResultsBucket)
 		a.SourceCacheBucket.buildFromService(v.SourceCacheBucket)
+		a.GitHubFileCacheBucket.buildFromService(v.GitHubFileCacheBucket)
 
 		a.LongRetentionProjects = v.LongRetentionProjects
 		a.SourceCacheOptOutProjects = v.SourceCacheOptOutProjects
@@ -920,6 +922,7 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 		RetryFailedLogMoveMaxJobsPerRun: utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
 		TestResultsBucket:               a.TestResultsBucket.ToService(),
 		SourceCacheBucket:               a.SourceCacheBucket.ToService(),
+		GitHubFileCacheBucket:           a.GitHubFileCacheBucket.ToService(),
 		Credentials:                     creds,
 	}, nil
 }

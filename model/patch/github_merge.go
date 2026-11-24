@@ -225,6 +225,10 @@ func (g *githubMergeIntent) ShouldFinalizePatch() bool {
 	return true
 }
 
+func (g *githubMergeIntent) GetSubmittedBy() string {
+	return ""
+}
+
 // RepeatPreviousPatchDefinition does not apply to GitHub merge groups.
 func (g *githubMergeIntent) RepeatPreviousPatchDefinition() (string, bool) {
 	return "", false

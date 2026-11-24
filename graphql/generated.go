@@ -341,6 +341,7 @@ type ComplexityRoot struct {
 
 	BucketsConfig struct {
 		Credentials                      func(childComplexity int) int
+		GitHubFileCacheBucket            func(childComplexity int) int
 		InternalBuckets                  func(childComplexity int) int
 		LogBucket                        func(childComplexity int) int
 		LogBucketFailedTasks             func(childComplexity int) int
@@ -1346,7 +1347,6 @@ type ComplexityRoot struct {
 		RepotrackerError                   func(childComplexity int) int
 		Restricted                         func(childComplexity int) int
 		RunEveryMainlineCommit             func(childComplexity int) int
-		SourceCacheMode                    func(childComplexity int) int
 		SpawnHostScriptPath                func(childComplexity int) int
 		StepbackBisect                     func(childComplexity int) int
 		StepbackDisabled                   func(childComplexity int) int
@@ -1625,7 +1625,6 @@ type ComplexityRoot struct {
 		RepotrackerDisabled                func(childComplexity int) int
 		Restricted                         func(childComplexity int) int
 		RunEveryMainlineCommit             func(childComplexity int) int
-		SourceCacheMode                    func(childComplexity int) int
 		SpawnHostScriptPath                func(childComplexity int) int
 		StepbackBisect                     func(childComplexity int) int
 		StepbackDisabled                   func(childComplexity int) int
@@ -4007,6 +4006,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BucketsConfig.Credentials(childComplexity), true
+	case "BucketsConfig.githubFileCacheBucket":
+		if e.complexity.BucketsConfig.GitHubFileCacheBucket == nil {
+			break
+		}
+
+		return e.complexity.BucketsConfig.GitHubFileCacheBucket(childComplexity), true
 	case "BucketsConfig.internalBuckets":
 		if e.complexity.BucketsConfig.InternalBuckets == nil {
 			break
@@ -8351,12 +8356,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.RunEveryMainlineCommit(childComplexity), true
-	case "Project.sourceCacheMode":
-		if e.complexity.Project.SourceCacheMode == nil {
-			break
-		}
-
-		return e.complexity.Project.SourceCacheMode(childComplexity), true
 	case "Project.spawnHostScriptPath":
 		if e.complexity.Project.SpawnHostScriptPath == nil {
 			break
@@ -9779,12 +9778,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoRef.RunEveryMainlineCommit(childComplexity), true
-	case "RepoRef.sourceCacheMode":
-		if e.complexity.RepoRef.SourceCacheMode == nil {
-			break
-		}
-
-		return e.complexity.RepoRef.SourceCacheMode(childComplexity), true
 	case "RepoRef.spawnHostScriptPath":
 		if e.complexity.RepoRef.SpawnHostScriptPath == nil {
 			break
@@ -19226,6 +19219,8 @@ func (ec *executionContext) fieldContext_AdminSettings_buckets(_ context.Context
 				return ec.fieldContext_BucketsConfig_testResultsBucket(ctx, field)
 			case "sourceCacheBucket":
 				return ec.fieldContext_BucketsConfig_sourceCacheBucket(ctx, field)
+			case "githubFileCacheBucket":
+				return ec.fieldContext_BucketsConfig_githubFileCacheBucket(ctx, field)
 			case "sourceCacheOptOutProjects":
 				return ec.fieldContext_BucketsConfig_sourceCacheOptOutProjects(ctx, field)
 			case "internalBuckets":
@@ -23967,6 +23962,55 @@ func (ec *executionContext) _BucketsConfig_sourceCacheBucket(ctx context.Context
 }
 
 func (ec *executionContext) fieldContext_BucketsConfig_sourceCacheBucket(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_BucketConfig_name(ctx, field)
+			case "testResultsPrefix":
+				return ec.fieldContext_BucketConfig_testResultsPrefix(ctx, field)
+			case "roleARN":
+				return ec.fieldContext_BucketConfig_roleARN(ctx, field)
+			case "type":
+				return ec.fieldContext_BucketConfig_type(ctx, field)
+			case "expirationDays":
+				return ec.fieldContext_BucketConfig_expirationDays(ctx, field)
+			case "transitionToIADays":
+				return ec.fieldContext_BucketConfig_transitionToIADays(ctx, field)
+			case "transitionToGlacierDays":
+				return ec.fieldContext_BucketConfig_transitionToGlacierDays(ctx, field)
+			case "lifecycleLastSyncedAt":
+				return ec.fieldContext_BucketConfig_lifecycleLastSyncedAt(ctx, field)
+			case "lifecycleSyncError":
+				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketsConfig_githubFileCacheBucket(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketsConfig_githubFileCacheBucket,
+		func(ctx context.Context) (any, error) {
+			return obj.GitHubFileCacheBucket, nil
+		},
+		nil,
+		ec.marshalOBucketConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBucketConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketsConfig_githubFileCacheBucket(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "BucketsConfig",
 		Field:      field,
@@ -30687,8 +30731,6 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(_ context.Cont
 				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_Project_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -30826,8 +30868,6 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_deactivatePrevious(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_RepoRef_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_RepoRef_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_RepoRef_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -38439,8 +38479,6 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_Project_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -38598,8 +38636,6 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_Project_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -38757,8 +38793,6 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_Project_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -38916,8 +38950,6 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_Project_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -39243,8 +39275,6 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_Project_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -42539,8 +42569,6 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_Project_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -42815,8 +42843,6 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_Project_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -46215,8 +46241,6 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(_ context.Context
 				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_Project_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -48324,35 +48348,6 @@ func (ec *executionContext) fieldContext_Project_disabledStatsCache(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Project_sourceCacheMode(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Project_sourceCacheMode,
-		func(ctx context.Context) (any, error) {
-			return obj.SourceCacheMode, nil
-		},
-		nil,
-		ec.marshalOSourceCacheMode2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐSourceCacheMode,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Project_sourceCacheMode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type SourceCacheMode does not have child fields")
 		},
 	}
 	return fc, nil
@@ -50883,8 +50878,6 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(_ conte
 				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_Project_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -52532,8 +52525,6 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(_ context.Co
 				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_Project_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -54291,8 +54282,6 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_Project_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -57105,35 +57094,6 @@ func (ec *executionContext) fieldContext_RepoRef_disabledStatsCache(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoRef_sourceCacheMode(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RepoRef_sourceCacheMode,
-		func(ctx context.Context) (any, error) {
-			return obj.SourceCacheMode, nil
-		},
-		nil,
-		ec.marshalOSourceCacheMode2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐSourceCacheMode,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_RepoRef_sourceCacheMode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RepoRef",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type SourceCacheMode does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _RepoRef_dispatchingDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -58572,8 +58532,6 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_deactivatePrevious(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_RepoRef_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_RepoRef_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_RepoRef_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -67944,8 +67902,6 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_Project_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -78897,8 +78853,6 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "sourceCacheMode":
-				return ec.fieldContext_Project_sourceCacheMode(ctx, field)
 			case "dispatchingDisabled":
 				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
 			case "waterfallDisabled":
@@ -84483,7 +84437,7 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackDays", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "sourceCacheBucket", "sourceCacheOptOutProjects", "internalBuckets", "credentials"}
+	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackDays", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "sourceCacheBucket", "githubFileCacheBucket", "sourceCacheOptOutProjects", "internalBuckets", "credentials"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -84553,6 +84507,13 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 				return it, err
 			}
 			it.SourceCacheBucket = data
+		case "githubFileCacheBucket":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubFileCacheBucket"))
+			data, err := ec.unmarshalOBucketConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBucketConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GitHubFileCacheBucket = data
 		case "sourceCacheOptOutProjects":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sourceCacheOptOutProjects"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -89320,7 +89281,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "debugSpawnHostsDisabled", "disabledStatsCache", "sourceCacheMode", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "stepbackPushTriggers", "taskAnnotationSettings", "taskOwnership", "testSelection", "virtualTasksEnabled", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "debugSpawnHostsDisabled", "disabledStatsCache", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "stepbackPushTriggers", "taskAnnotationSettings", "taskOwnership", "testSelection", "virtualTasksEnabled", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -89397,13 +89358,6 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.DisabledStatsCache = data
-		case "sourceCacheMode":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sourceCacheMode"))
-			data, err := ec.unmarshalOSourceCacheMode2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐSourceCacheMode(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SourceCacheMode = data
 		case "dispatchingDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dispatchingDisabled"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -90524,7 +90478,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "sourceCacheMode", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "debugSpawnHostsDisabled", "stepbackDisabled", "stepbackBisect", "stepbackPushTriggers", "taskAnnotationSettings", "taskOwnership", "testSelection", "virtualTasksEnabled", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "waterfallDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "debugSpawnHostsDisabled", "stepbackDisabled", "stepbackBisect", "stepbackPushTriggers", "taskAnnotationSettings", "taskOwnership", "testSelection", "virtualTasksEnabled", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -90580,13 +90534,6 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.DisabledStatsCache = data
-		case "sourceCacheMode":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sourceCacheMode"))
-			data, err := ec.unmarshalOSourceCacheMode2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐSourceCacheMode(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SourceCacheMode = data
 		case "dispatchingDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dispatchingDisabled"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -96276,6 +96223,8 @@ func (ec *executionContext) _BucketsConfig(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._BucketsConfig_testResultsBucket(ctx, field, obj)
 		case "sourceCacheBucket":
 			out.Values[i] = ec._BucketsConfig_sourceCacheBucket(ctx, field, obj)
+		case "githubFileCacheBucket":
+			out.Values[i] = ec._BucketsConfig_githubFileCacheBucket(ctx, field, obj)
 		case "sourceCacheOptOutProjects":
 			out.Values[i] = ec._BucketsConfig_sourceCacheOptOutProjects(ctx, field, obj)
 		case "internalBuckets":
@@ -104468,8 +104417,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_debugSpawnHostsDisabled(ctx, field, obj)
 		case "disabledStatsCache":
 			out.Values[i] = ec._Project_disabledStatsCache(ctx, field, obj)
-		case "sourceCacheMode":
-			out.Values[i] = ec._Project_sourceCacheMode(ctx, field, obj)
 		case "dispatchingDisabled":
 			out.Values[i] = ec._Project_dispatchingDisabled(ctx, field, obj)
 		case "waterfallDisabled":
@@ -107128,8 +107075,6 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "sourceCacheMode":
-			out.Values[i] = ec._RepoRef_sourceCacheMode(ctx, field, obj)
 		case "dispatchingDisabled":
 			out.Values[i] = ec._RepoRef_dispatchingDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -125914,25 +125859,6 @@ func (ec *executionContext) marshalOSource2ᚖgithubᚗcomᚋevergreenᚑciᚋev
 		return graphql.Null
 	}
 	return ec._Source(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOSourceCacheMode2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐSourceCacheMode(ctx context.Context, v any) (*model1.SourceCacheMode, error) {
-	if v == nil {
-		return nil, nil
-	}
-	tmp, err := graphql.UnmarshalString(v)
-	res := model1.SourceCacheMode(tmp)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOSourceCacheMode2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐSourceCacheMode(ctx context.Context, sel ast.SelectionSet, v *model1.SourceCacheMode) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	_ = sel
-	_ = ctx
-	res := graphql.MarshalString(string(*v))
-	return res
 }
 
 func (ec *executionContext) marshalOSpawnHostConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISpawnHostConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISpawnHostConfig) graphql.Marshaler {

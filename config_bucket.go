@@ -54,6 +54,9 @@ type BucketsConfig struct {
 	// SourceCacheOptOutProjects is the list of project IDs that never use the
 	// source cache, even when SourceCacheAllProjectsEnabled is set.
 	SourceCacheOptOutProjects []string `bson:"source_cache_opt_out_projects" json:"source_cache_opt_out_projects" yaml:"source_cache_opt_out_projects"`
+	// GitHubFileCacheBucket stores GitHub file contents fetched during config
+	// retrieval, keyed by git blob SHA. An empty bucket name disables the cache.
+	GitHubFileCacheBucket BucketConfig `bson:"github_file_cache_bucket" json:"github_file_cache_bucket" yaml:"github_file_cache_bucket"`
 	// Credentials for accessing the LogBucket.
 	Credentials S3Credentials `bson:"credentials" json:"credentials" yaml:"credentials"`
 }
@@ -68,6 +71,7 @@ var (
 	BucketsConfigTestResultsBucketKey               = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
 	BucketsConfigSourceCacheBucketKey               = bsonutil.MustHaveTag(BucketsConfig{}, "SourceCacheBucket")
 	BucketsConfigSourceCacheOptOutProjectsKey       = bsonutil.MustHaveTag(BucketsConfig{}, "SourceCacheOptOutProjects")
+	BucketsConfigGitHubFileCacheBucketKey           = bsonutil.MustHaveTag(BucketsConfig{}, "GitHubFileCacheBucket")
 	BucketsConfigCredentialsKey                     = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
 )
 
@@ -127,6 +131,7 @@ func (c *BucketsConfig) Set(ctx context.Context) error {
 				BucketsConfigTestResultsBucketKey:               c.TestResultsBucket,
 				BucketsConfigSourceCacheBucketKey:               c.SourceCacheBucket,
 				BucketsConfigSourceCacheOptOutProjectsKey:       c.SourceCacheOptOutProjects,
+				BucketsConfigGitHubFileCacheBucketKey:           c.GitHubFileCacheBucket,
 				BucketsConfigCredentialsKey:                     c.Credentials,
 			},
 		}),
@@ -140,6 +145,7 @@ func (c *BucketsConfig) ValidateAndDefault() error {
 	catcher.Add(c.LogBucketLongRetention.validate())
 	catcher.Add(c.LogBucketFailedTasks.validate())
 	catcher.Add(c.SourceCacheBucket.validate())
+	catcher.Add(c.GitHubFileCacheBucket.validate())
 	if c.RetryFailedLogMoveLookbackDays < 0 {
 		catcher.Add(errors.New("retry_failed_log_move_lookback_days cannot be negative"))
 	}

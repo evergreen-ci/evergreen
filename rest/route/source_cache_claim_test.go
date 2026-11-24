@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -69,7 +70,6 @@ func TestSourceCacheClaimParse(t *testing.T) {
 func TestSourceCacheClaimRun(t *testing.T) {
 	for tName, tCase := range map[string]struct {
 		insertTask     bool
-		mode           model.SourceCacheMode
 		preClaim       bool
 		expectedStatus int
 		wantClaimed    bool
@@ -77,20 +77,13 @@ func TestSourceCacheClaimRun(t *testing.T) {
 		"UnknownTaskIsNotFound": {
 			expectedStatus: http.StatusNotFound,
 		},
-		"ProjectWithDisabledModeIsRefused": {
-			insertTask:     true,
-			mode:           model.SourceCacheModeDisabled,
-			expectedStatus: http.StatusConflict,
-		},
 		"FirstTaskClaimsTheSave": {
 			insertTask:     true,
-			mode:           model.SourceCacheModeAll,
 			expectedStatus: http.StatusOK,
 			wantClaimed:    true,
 		},
 		"RacingTaskIsDeniedTheSave": {
 			insertTask:     true,
-			mode:           model.SourceCacheModeAll,
 			preClaim:       true,
 			expectedStatus: http.StatusOK,
 			wantClaimed:    false,
@@ -98,10 +91,15 @@ func TestSourceCacheClaimRun(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(evergreen.SourceCacheClaimsCollection, task.Collection, model.ProjectRefCollection, patch.Collection))
+			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
+			require.NoError(t, flags.Set(t.Context()))
+			t.Cleanup(func() {
+				require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
+			})
 			handler, ok := makeSourceCacheClaim(sourceCacheTestSettings()).(*sourceCacheClaim)
 			require.True(t, ok)
 			if tCase.insertTask {
-				insertSourceCacheTask(t, evergreen.RepotrackerVersionRequester, sourceCacheMainlineVersionID, sourceCacheRevision, "some-org", "some-repo", tCase.mode)
+				insertSourceCacheTask(t, evergreen.RepotrackerVersionRequester, sourceCacheMainlineVersionID, sourceCacheRevision, "some-org", "some-repo")
 			}
 			require.NoError(t, handler.Parse(t.Context(), newSourceCacheClaimRequest(t, sourceCacheTaskID, `{}`)))
 
@@ -154,7 +152,12 @@ func TestSourceCacheClaimResolveConflicts(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, patch.Collection))
-			insertSourceCacheTask(t, evergreen.RepotrackerVersionRequester, sourceCacheMainlineVersionID, sourceCacheRevision, "some-org", tCase.repo, model.SourceCacheModeAll)
+			flags := evergreen.ServiceFlags{SourceCacheAllProjectsEnabled: true}
+			require.NoError(t, flags.Set(t.Context()))
+			t.Cleanup(func() {
+				require.NoError(t, (&evergreen.ServiceFlags{}).Set(context.Background()))
+			})
+			insertSourceCacheTask(t, evergreen.RepotrackerVersionRequester, sourceCacheMainlineVersionID, sourceCacheRevision, "some-org", tCase.repo)
 			settings := sourceCacheTestSettings()
 			if tCase.blankBucket {
 				settings.Buckets.SourceCacheBucket.Name = ""
