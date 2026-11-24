@@ -949,7 +949,7 @@ func TestGetActiveVersionsByTaskFiltersSelectsMatchingVersions(t *testing.T) {
 			RevisionOrderNumber: order,
 			Activated:           utility.TruePtr(),
 		}
-		if order == 12 {
+		if order == 16 {
 			v.Activated = utility.FalsePtr()
 		}
 		if order == 17 {
@@ -970,6 +970,7 @@ func TestGetActiveVersionsByTaskFiltersSelectsMatchingVersions(t *testing.T) {
 		{Id: "foreignTask", Version: "v14", RevisionOrderNumber: 14, Project: "otherProject", Activated: true},
 		{Id: "patchTask", Version: "v14", RevisionOrderNumber: 14, Requester: evergreen.PatchVersionRequester, Activated: true},
 		{Id: "secondMatch", Version: "v15", RevisionOrderNumber: 15, Activated: true},
+		{Id: "inactiveVersion", Version: "v16", RevisionOrderNumber: 16, Activated: true},
 		{Id: "newestMatch", Version: "v17", RevisionOrderNumber: 17, Requester: evergreen.GitTagRequester, Activated: true},
 		{Id: "foreignVersion", Version: "v18", RevisionOrderNumber: 18, Project: "otherProject", Activated: true},
 		{Id: "upperBound", Version: "v19", RevisionOrderNumber: 19, Activated: true},
@@ -1003,7 +1004,7 @@ func TestGetActiveVersionsByTaskFiltersSelectsMatchingVersions(t *testing.T) {
 			wantIDs:        []string{"v15", "v12"},
 		},
 		{
-			name:    "MatchingTasksShouldSelectInactiveVersionsOnlyOnce",
+			name:    "OnlyActivatedVersionsShouldBeReturnedWithoutDuplicates",
 			opts:    WaterfallOptions{Limit: 5},
 			wantIDs: []string{"v17", "v15", "v12"},
 		},

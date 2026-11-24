@@ -149,8 +149,8 @@ func getBuildVariantFilterPipeline(variants, variantTags []string, caseSensitive
 }
 
 // GetActiveVersionsByTaskFilters returns the IDs and revision order numbers of up
-// to opts.Limit versions with activated tasks matching the task, requester, and
-// build variant filters. Version and build activation are not checked. If no task
+// to opts.Limit activated versions with activated tasks matching the task,
+// requester, and build variant filters. If no task
 // filters are specified, GetActiveWaterfallVersions is faster.
 func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts WaterfallOptions, pagingBackward bool) ([]Version, error) {
 	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetActiveVersionsByTaskFilters")})
@@ -181,6 +181,7 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 		{"$match": bson.M{
 			VersionIdentifierKey:          projectId,
 			VersionRequesterKey:           bson.M{"$in": opts.Requesters},
+			VersionActivatedKey:           true,
 			VersionRevisionOrderNumberKey: orderFilter,
 		}},
 		{"$sort": bson.M{VersionRevisionOrderNumberKey: sortOrder}},
