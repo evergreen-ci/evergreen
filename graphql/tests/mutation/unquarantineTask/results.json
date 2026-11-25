@@ -41,6 +41,22 @@
           }
         }
       }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'regular_user' does not have permission to 'quarantine and unquarantine tests' for the project 'sandbox_project_id'",
+            "path": ["unquarantineTask", "opts", "taskId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
     }
   ]
 }

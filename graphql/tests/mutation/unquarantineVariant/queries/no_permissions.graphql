@@ -1,0 +1,5 @@
+mutation {
+  unquarantineVariant(opts: { projectIdentifier: "sandbox", buildVariant: "ubuntu" }) {
+    projectIdentifier
+  }
+}
