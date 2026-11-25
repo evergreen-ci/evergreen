@@ -1,0 +1,12 @@
+mutation {
+    unscheduleTasksByIds(taskIds: ["running_task"], abort: true) {
+      modifiedTasks {
+        id
+        activated
+      }
+      taskErrors {
+        taskId
+        reason
+      }
+    }
+}

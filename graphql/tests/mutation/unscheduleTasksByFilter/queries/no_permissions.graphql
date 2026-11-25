@@ -1,0 +1,12 @@
+mutation {
+    unscheduleTasksByFilter(filter: {}, versionId: "no_permissions", abort: false) {
+      modifiedTasks {
+        id
+        activated
+      }
+      taskErrors {
+        taskId
+        reason
+      }
+    }
+}
