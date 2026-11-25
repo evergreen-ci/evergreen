@@ -243,6 +243,10 @@ const (
 	// GitHub merge queue removal reasons
 	MergeQueueReasonInvalidated = "invalidated" // Status checks failed
 	MergeQueueReasonMerged      = "merged"      // Successfully merged
+	// MergeQueueReasonRecovered marks a patch that Evergreen itself removed from the
+	// merge queue because polling GitHub showed its merge group is no longer queued
+	// and no removal webhook was ever received.
+	MergeQueueReasonRecovered = "recovered"
 
 	// Merge queue status values for metrics
 	MergeQueueStatusSuccess = "success" // Successfully completed/merged
@@ -2319,6 +2323,85 @@ func GetMergeQueueFrontEntry(ctx context.Context, owner, repo, baseBranch string
 	// Merge group refs naming scheme.
 	headRef = fmt.Sprintf("refs/heads/gh-readonly-queue/%s/pr-%d-%s", baseBranch, node.PullRequest.Number, node.BaseCommit.Oid)
 	return headRef, node.HeadCommit.Oid, true, nil
+}
+
+// MergeQueueEntriesPageSize is how many merge queue entries to fetch per GraphQL page.
+const mergeQueueEntriesPageSize = 100
+
+// MergeQueueEntriesResponse is one page of merge queue entries from the GraphQL API.
+type mergeQueueEntriesResponse struct {
+	Repository struct {
+		MergeQueue struct {
+			Entries struct {
+				Nodes []struct {
+					HeadCommit struct {
+						Oid string `json:"oid"`
+					} `json:"headCommit"`
+				} `json:"nodes"`
+				PageInfo struct {
+					HasNextPage bool   `json:"hasNextPage"`
+					EndCursor   string `json:"endCursor"`
+				} `json:"pageInfo"`
+			} `json:"entries"`
+		} `json:"mergeQueue"`
+	} `json:"repository"`
+}
+
+// GetMergeQueueEntries returns the head commit SHAs of the merge groups currently in the GitHub merge queue for the given branch, in position order.
+// An empty slice is returned when the queue is currently empty.
+func GetMergeQueueEntries(ctx context.Context, owner, repo, baseBranch string) ([]string, error) {
+	caller := "GetMergeQueueEntries"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(ctx, token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	query := `query($owner: String!, $repo: String!, $branch: String!, $first: Int!, $after: String) {
+		repository(owner: $owner, name: $repo) {
+			mergeQueue(branch: $branch) {
+				entries(first: $first, after: $after) {
+					nodes { headCommit { oid } }
+					pageInfo { hasNextPage endCursor }
+				}
+			}
+		}
+	}`
+
+	// Paginate until the queue is exhausted.
+	shas := []string{}
+	var after any
+	for {
+		variables := map[string]any{
+			"owner":  owner,
+			"repo":   repo,
+			"branch": baseBranch,
+			"first":  mergeQueueEntriesPageSize,
+			"after":  after,
+		}
+		var parsed mergeQueueEntriesResponse
+		if err := postGitHubGraphQL(ctx, githubClient.Client.Client(), query, variables, &parsed); err != nil {
+			return nil, err
+		}
+		entries := parsed.Repository.MergeQueue.Entries
+		for _, node := range entries.Nodes {
+			if node.HeadCommit.Oid != "" {
+				shas = append(shas, node.HeadCommit.Oid)
+			}
+		}
+		if !entries.PageInfo.HasNextPage || entries.PageInfo.EndCursor == "" {
+			return shas, nil
+		}
+		after = entries.PageInfo.EndCursor
+	}
 }
 
 // postGitHubGraphQL sends a query to GitHub's GraphQL API and decodes returned data.
