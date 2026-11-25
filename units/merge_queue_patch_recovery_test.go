@@ -74,10 +74,10 @@ func TestMergeGroupStagedAt(t *testing.T) {
 	})
 }
 
-func TestStaleQueueHeadSHAs(t *testing.T) {
+func TestGetStaleQueueItems(t *testing.T) {
 	now := time.Now()
 	oldEntryTime := now.Add(-2 * minQueueAge)
-	freshEntryTime := now.Add(-10 * time.Minute)
+	freshEntryTime := now.Add(-(minQueueAge - time.Minute))
 
 	for _, tc := range []struct {
 		name          string
