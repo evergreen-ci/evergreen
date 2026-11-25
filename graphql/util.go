@@ -1749,6 +1749,7 @@ func buildQuarantineMutationResponse(ctx context.Context, t *task.Task, testName
 	}
 	tr := taskResults.Results[0]
 	tr.IsManuallyQuarantined = isManuallyQuarantined
+	tr.CanQuarantine = true
 	apiTest := &restModel.APITest{}
 	settings := evergreen.GetEnvironment().Settings()
 	apiTestArgs := &restModel.APITestArgs{
