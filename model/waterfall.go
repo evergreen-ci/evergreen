@@ -148,8 +148,9 @@ func getBuildVariantFilterPipeline(variants, variantTags []string, caseSensitive
 	return pipeline, nil
 }
 
-// GetActiveVersionsByTaskFilters returns up to opts.Limit versions matching task
-// filters. It also applies requester and build variant filters. If no task
+// GetActiveVersionsByTaskFilters returns the IDs and revision order numbers of up
+// to opts.Limit activated versions with activated tasks matching the task,
+// requester, and build variant filters. If no task
 // filters are specified, GetActiveWaterfallVersions is faster.
 func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts WaterfallOptions, pagingBackward bool) ([]Version, error) {
 	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetActiveVersionsByTaskFilters")})
@@ -158,7 +159,7 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 		return nil, errors.Wrap(err, "validating waterfall order range")
 	}
 
-	match := bson.M{
+	taskMatch := bson.M{
 		task.ProjectKey: projectId,
 		task.RequesterKey: bson.M{
 			"$in": opts.Requesters,
@@ -167,55 +168,47 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 		task.RevisionOrderNumberKey: orderFilter,
 	}
 
-	addWaterfallTaskFilters(match, opts)
+	addWaterfallTaskFilters(taskMatch, opts)
 
-	pipeline := []bson.M{{"$match": match}}
-
-	pipeline = append(pipeline, bson.M{
-		"$group": bson.M{
-			task.IdKey: "$" + task.VersionKey,
-			// All tasks with the same version key should have the same order number, but $max is the safest way to ensure we can sort from newest to oldest upon grouping.
-			task.RevisionOrderNumberKey: bson.M{
-				"$max": "$" + task.RevisionOrderNumberKey,
-			},
-		},
-	})
-
+	sortOrder := -1
 	if pagingBackward {
-		// Sort ascending to select the nearest versions above MinOrder within the bounded window.
-		pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: 1}})
-		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
-		// Then sort descending to return the versions in waterfall order.
-		pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
-
-	} else {
-		pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
-		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
-
+		sortOrder = 1
 	}
 
-	versionLookupKey := "version"
-
-	// Get version documents
-	pipeline = append(pipeline, bson.M{
-		"$lookup": bson.M{
-			"from":         VersionCollection,
-			"localField":   task.IdKey,
-			"foreignField": VersionIdKey,
-			"as":           versionLookupKey,
-		},
-	})
-
-	// Reroot to only return version docs
-	pipeline = append(pipeline, bson.M{
-		"$replaceRoot": bson.M{
-			"newRoot": bson.M{"$arrayElemAt": bson.A{"$" + versionLookupKey, 0}},
-		},
-	})
+	matchingTaskKey := "matching_task"
+	// Sorting versions before the lookup lets pagination stop without checking the rest of the order window.
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			VersionIdentifierKey:          projectId,
+			VersionRequesterKey:           bson.M{"$in": opts.Requesters},
+			VersionActivatedKey:           true,
+			VersionRevisionOrderNumberKey: orderFilter,
+		}},
+		{"$sort": bson.M{VersionRevisionOrderNumberKey: sortOrder}},
+		{"$project": bson.M{VersionIdKey: 1, VersionRevisionOrderNumberKey: 1}},
+		{"$lookup": bson.M{
+			"from":         task.Collection,
+			"localField":   VersionIdKey,
+			"foreignField": task.VersionKey,
+			"pipeline": []bson.M{
+				{"$match": taskMatch},
+				{"$limit": 1},
+				{"$project": bson.M{task.IdKey: 1}},
+			},
+			"as": matchingTaskKey,
+		}},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(matchingTaskKey, "0"): bson.M{"$exists": true}}},
+		{"$limit": opts.Limit},
+		{"$project": bson.M{VersionIdKey: 1, VersionRevisionOrderNumberKey: 1}},
+	}
+	if pagingBackward {
+		// Select the nearest newer versions, then return them in waterfall order.
+		pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
+	}
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx, pipeline)
+	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding versions matching task filters")
 	}
