@@ -9,6 +9,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
@@ -33,6 +34,9 @@ const (
 	// merge intents. It matches GitHub's maximum merge queue status check
 	// timeout, after which the merge group is removed from the queue anyway.
 	unprocessedIntentLookback = 6 * time.Hour
+	// minQueueAge is how long a patch must have been in the merge queue per the database before the job polls GitHub
+	//to verify that its merge group is still queued.
+	minQueueAge = 10 * time.Minute
 )
 
 func init() {
@@ -102,6 +106,14 @@ func (j *mergeQueuePatchRecoveryJob) Run(ctx context.Context) {
 		if err := j.recoverProject(ctx, &projectRefs[i], pending); err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":    "recovering missing merge queue patches for project",
+				"project_id": projectRefs[i].Id,
+				"job_id":     j.ID(),
+			}))
+			j.AddRetryableError(err)
+		}
+		if err := j.syncProjectQueue(ctx, &projectRefs[i]); err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message":    "syncing merge queue patches with GitHub queue entries for project",
 				"project_id": projectRefs[i].Id,
 				"job_id":     j.ID(),
 			}))
@@ -189,6 +201,106 @@ func (j *mergeQueuePatchRecoveryJob) recoverMergeGroup(ctx context.Context, proj
 		"job_id":     j.ID(),
 	})
 	return nil
+}
+
+// MergeQueueItem identifies one GitHub merge queue.
+type MergeQueueItem struct {
+	org        string
+	repo       string
+	baseBranch string
+}
+
+// syncProjectQueue removes merge queue patches that the database still shows as queued but
+// that GitHub's merge queue does not show.
+func (j *mergeQueuePatchRecoveryJob) syncProjectQueue(ctx context.Context, projectRef *model.ProjectRef) error {
+	patches, err := patch.FindMergeQueuePatchesByProject(ctx, projectRef.Id)
+	if err != nil {
+		return errors.Wrapf(err, "finding merge queue patches for project '%s'", projectRef.Id)
+	}
+	if len(patches) == 0 {
+		return nil
+	}
+
+	// Patches missing queue metadata cannot be matched to a GitHub merge queue.
+	queuePatches := make(map[MergeQueueItem][]patch.Patch)
+	for i := range patches {
+		p := patches[i]
+		if p.GithubMergeData.Org == "" || p.GithubMergeData.Repo == "" || p.GithubMergeData.BaseBranch == "" {
+			continue
+		}
+		key := MergeQueueItem{
+			org:        p.GithubMergeData.Org,
+			repo:       p.GithubMergeData.Repo,
+			baseBranch: p.GithubMergeData.BaseBranch,
+		}
+		queuePatches[key] = append(queuePatches[key], p)
+	}
+
+	catcher := grip.NewSimpleCatcher()
+	for key, queuePatchList := range queuePatches {
+		if err := j.reconcileQueue(ctx, projectRef.Id, key, queuePatchList); err != nil {
+			catcher.Wrapf(err, "syncing merge queue for org '%s', repo '%s', branch '%s'", key.org, key.repo, key.baseBranch)
+		}
+	}
+	return catcher.Resolve()
+}
+
+// reconcileQueue polls GitHub for the entries of one merge queue and updates stale ones.
+func (j *mergeQueuePatchRecoveryJob) reconcileQueue(ctx context.Context, projectID string, key MergeQueueItem, queuePatches []patch.Patch) error {
+	entries, err := thirdparty.GetMergeQueueEntries(ctx, key.org, key.repo, key.baseBranch)
+	if err != nil {
+		return errors.Wrapf(err, "getting merge queue entries for org '%s', repo '%s', branch '%s'", key.org, key.repo, key.baseBranch)
+	}
+	githubEntries := make(map[string]bool, len(entries))
+	for _, sha := range entries {
+		githubEntries[sha] = true
+	}
+
+	catcher := grip.NewSimpleCatcher()
+	for _, headSHA := range getStaleQueueItems(queuePatches, githubEntries, time.Now()) {
+		updatedPatches, err := patch.MarkMergeQueuePatchesRemovedFromQueue(ctx, key.org, key.repo, headSHA, thirdparty.MergeQueueReasonRecovered)
+		if err != nil {
+			catcher.Wrapf(err, "marking merge queue patches with head SHA '%s' as removed", headSHA)
+			continue
+		}
+
+		patchIDs := make([]string, 0, len(updatedPatches))
+		for i := range updatedPatches {
+			p := &updatedPatches[i]
+			patchIDs = append(patchIDs, p.Id.Hex())
+			// Patches may not be finalized when the merge group was destroyed before the patch intent was processed into a version with tasks.
+			// CancelPatch would delete such patches, so those are only marked removed.
+			if p.Version == "" {
+				continue
+			}
+			catcher.Wrapf(model.CancelPatch(ctx, p, task.AbortInfo{User: evergreen.GithubMergeUser}), "cancelling patch '%s'", p.Id.Hex())
+		}
+	}
+	return catcher.Resolve()
+}
+
+// getStaleQueueItems returns the distinct head SHAs of Evergreen patches that the database that claims they are
+// in the merge queue but is not.
+func getStaleQueueItems(patches []patch.Patch, githubEntries map[string]bool, now time.Time) []string {
+	var stale []string
+	seen := make(map[string]bool, len(patches))
+	for i := range patches {
+		p := &patches[i]
+		headSHA := p.GithubMergeData.HeadSHA
+		if headSHA == "" || seen[headSHA] || githubEntries[headSHA] {
+			continue
+		}
+		seen[headSHA] = true
+
+		queueEntryTime := p.GithubMergeData.HeadCommitDate
+		if queueEntryTime.IsZero() {
+			queueEntryTime = p.CreateTime
+		}
+		if now.Sub(queueEntryTime) >= minQueueAge {
+			stale = append(stale, headSHA)
+		}
+	}
+	return stale
 }
 
 // mergeGroupStagedAt returns when GitHub created the merge group's commit, which

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
@@ -71,6 +72,84 @@ func TestMergeGroupStagedAt(t *testing.T) {
 		assert.True(t, mergeGroupStagedAt(nil).IsZero())
 		assert.True(t, mergeGroupStagedAt(&github.RepositoryCommit{}).IsZero())
 	})
+}
+
+func TestStaleQueueHeadSHAs(t *testing.T) {
+	now := time.Now()
+	oldEntryTime := now.Add(-2 * minQueueAge)
+	freshEntryTime := now.Add(-10 * time.Minute)
+
+	for _, tc := range []struct {
+		name          string
+		patches       []patch.Patch
+		githubEntries map[string]bool
+		expected      []string
+	}{
+		{
+			name: "AbsentFromGitHubEntriesAndOldIsStale",
+			patches: []patch.Patch{{
+				GithubMergeData: thirdparty.GithubMergeGroup{HeadSHA: "stale-sha", HeadCommitDate: oldEntryTime},
+			}},
+			githubEntries: map[string]bool{"other-sha": true},
+			expected:      []string{"stale-sha"},
+		},
+		{
+			name: "AbsentFromGitHubEntriesButFreshIsNotStale",
+			patches: []patch.Patch{{
+				GithubMergeData: thirdparty.GithubMergeGroup{HeadSHA: "fresh-sha", HeadCommitDate: freshEntryTime},
+			}},
+			githubEntries: map[string]bool{},
+			expected:      nil,
+		},
+		{
+			name: "StillInGitHubEntriesIsNotStale",
+			patches: []patch.Patch{{
+				GithubMergeData: thirdparty.GithubMergeGroup{HeadSHA: "queued-sha", HeadCommitDate: oldEntryTime},
+			}},
+			githubEntries: map[string]bool{"queued-sha": true},
+			expected:      nil,
+		},
+		{
+			name: "ZeroHeadCommitDateFallsBackToCreateTime",
+			patches: []patch.Patch{{
+				CreateTime:      oldEntryTime,
+				GithubMergeData: thirdparty.GithubMergeGroup{HeadSHA: "stale-sha"},
+			}},
+			githubEntries: map[string]bool{},
+			expected:      []string{"stale-sha"},
+		},
+		{
+			name: "FreshCreateTimeWithZeroHeadCommitDateIsNotStale",
+			patches: []patch.Patch{{
+				CreateTime:      freshEntryTime,
+				GithubMergeData: thirdparty.GithubMergeGroup{HeadSHA: "fresh-sha"},
+			}},
+			githubEntries: map[string]bool{},
+			expected:      nil,
+		},
+		{
+			name: "DuplicateHeadSHAIsDeduplicated",
+			patches: []patch.Patch{
+				{GithubMergeData: thirdparty.GithubMergeGroup{HeadSHA: "stale-sha", HeadCommitDate: oldEntryTime}},
+				{GithubMergeData: thirdparty.GithubMergeGroup{HeadSHA: "stale-sha", HeadCommitDate: oldEntryTime}},
+			},
+			githubEntries: map[string]bool{},
+			expected:      []string{"stale-sha"},
+		},
+		{
+			name: "EmptyHeadSHAIsSkipped",
+			patches: []patch.Patch{{
+				CreateTime:      oldEntryTime,
+				GithubMergeData: thirdparty.GithubMergeGroup{HeadCommitDate: oldEntryTime},
+			}},
+			githubEntries: map[string]bool{},
+			expected:      nil,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, getStaleQueueItems(tc.patches, tc.githubEntries, now))
+		})
+	}
 }
 
 func TestIsMergeIntentInFlight(t *testing.T) {
