@@ -1113,12 +1113,6 @@ func startVersionCompletionSpan(ctx context.Context, v *Version, project string,
 	}
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 
-	monitoredTags, err := versionMakespanTags(ctx, v)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting version makespan tags")
-	}
-	tagMakespans := task.GetMakespansByTag(tasks, monitoredTags)
-
 	highestExecutionTask, err := v.GetHighestTaskExecution(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting highest execution task")
@@ -1200,8 +1194,13 @@ func startVersionCompletionSpan(ctx context.Context, v *Version, project string,
 
 	ctx = utility.ContextWithAttributes(ctx, attrs)
 
+	monitoredTags, err := versionMakespanTags(ctx, v)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting version makespan tags")
+	}
+
 	spanCtx, span := tracer.Start(ctx, "version-completion", trace.WithNewRoot())
-	emitTagMakespanSpans(spanCtx, tagMakespans)
+	emitTagMakespanSpans(spanCtx, tasks, monitoredTags)
 
 	return span, nil
 }
@@ -1220,8 +1219,8 @@ func versionMakespanTags(ctx context.Context, v *Version) ([]string, error) {
 }
 
 // emitTagMakespanSpans publishes one span per specified task tag
-func emitTagMakespanSpans(ctx context.Context, tagMakespans map[string]time.Duration) {
-	for tag, makespan := range tagMakespans {
+func emitTagMakespanSpans(ctx context.Context, tasks []task.Task, monitoredTags []string) {
+	for tag, makespan := range task.GetMakespansByTag(tasks, monitoredTags) {
 		_, span := tracer.Start(ctx, evergreen.VersionTagMakespanOtelSpanName, trace.WithAttributes(
 			attribute.String(evergreen.VersionTaskTagOtelAttribute, tag),
 			attribute.Int(evergreen.VersionTaskTagMakespanSecondsOtelAttribute, int(makespan.Seconds())),
