@@ -882,17 +882,31 @@ func GetMainlineCommitVersionsWithOptions(ctx context.Context, projectId string,
 
 // GetVersionsOptions is a struct that holds the options for retrieving a list of versions
 type GetVersionsOptions struct {
-	Start          int       `json:"start"`
-	RevisionEnd    int       `json:"revision_end"`
-	Requesters     []string  `json:"requesters"`
-	Limit          int       `json:"limit"`
-	Skip           int       `json:"skip"`
-	IncludeBuilds  bool      `json:"include_builds"`
-	IncludeTasks   bool      `json:"include_tasks"`
-	ByBuildVariant string    `json:"by_build_variant"`
-	ByTask         string    `json:"by_task"`
-	CreatedAfter   time.Time `json:"created_after"`
-	CreatedBefore  time.Time `json:"created_before"`
+	// Start is the version revision order number to start at; returns versions older than it (for pagination).
+	Start int `json:"start"`
+	// RevisionEnd returns versions with revision order numbers greater than or equal to it.
+	RevisionEnd int `json:"revision_end"`
+	// Requesters returns versions for these requesters only.
+	Requesters []string `json:"requesters"`
+	// Limit is the number of versions to return per page; defaults to 5 and cannot exceed 100.
+	Limit int `json:"limit"`
+	// Skip is the number of versions to skip before the page begins; applied on every request, so do not combine
+	// with Start when following the Link header. Cannot exceed 1000 when include_builds is set.
+	Skip int `json:"skip"`
+	// IncludeBuilds returns some information for each build in the version.
+	IncludeBuilds bool `json:"include_builds"`
+	// IncludeTasks returns some information for each task in the included builds; requires IncludeBuilds.
+	IncludeTasks bool `json:"include_tasks"`
+	// ByBuildVariant only includes information for this build, and only returns versions with this build activated;
+	// requires IncludeBuilds.
+	ByBuildVariant string `json:"by_build_variant"`
+	// ByTask only includes information for this task, and only returns versions with this task activated; requires
+	// IncludeTasks.
+	ByTask string `json:"by_task"`
+	// CreatedAfter returns versions created at or after this time.
+	CreatedAfter time.Time `json:"created_after"`
+	// CreatedBefore returns versions created at or before this time.
+	CreatedBefore time.Time `json:"created_before"`
 }
 
 // MaxVersionsScannedWithBuilds bounds how many versions past the skip one GetVersionsWithOptions call joins

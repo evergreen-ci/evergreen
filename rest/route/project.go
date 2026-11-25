@@ -46,17 +46,19 @@ func makeFetchProjectsRoute() gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-//	@Summary		Fetch all projects
-//	@Description	Returns a paginated list of all non-hidden projects. Any authenticated user can access this endpoint, so potentially sensitive information (variables, task annotation settings, workstation settings, and container secrets) is omitted. subscriptions.subscriber.target is undocumented by the OpenAPI spec, and can be either a string or an object.
-//	@Tags			projects
-//	@Router			/projects [get]
-//	@Security		Api-User || Api-Key
-//	@Param			start_at	query	string	false	"The project identifier to start at in the pagination"
-//	@Param			limit		query	int		false	"The number of projects to be returned per page of pagination. Defaults to 100"
-//	@Param			owner_name	query	string	false	"Filter projects by owner name (GitHub organization)"
-//	@Param			repo_name	query	string	false	"Filter projects by repository name"
-//	@Param			active		query	bool	false	"If true, only return projects that are currently enabled"
-//	@Success		200			{array}	model.APIProjectRef
+//	@Summary			Fetch all projects
+//	@Description		Returns a paginated list of all non-hidden projects. Any authenticated user can access this endpoint, so potentially sensitive information (variables, task annotation settings, workstation settings, and container secrets) is omitted. subscriptions.subscriber.target is undocumented by the OpenAPI spec, and can be either a string or an object.
+//	@Tags				projects
+//	@Router				/projects [get]
+//	@Security			Api-User || Api-Key
+//	@Param				start_at	query		string	false	"Identifier of the first project on the next page. Defaults to the first project."
+//	@Param				limit		query		int		false	"The number of projects to be returned per page of pagination. Defaults to 100"
+//	@Param				owner_name	query		string	false	"Filter projects by owner name (GitHub organization)"
+//	@Param				repo_name	query		string	false	"Filter projects by repository name"
+//	@Param				active		query		bool	false	"If true, only return projects that are currently enabled"
+//	@Success			200			{array}		model.APIProjectRef
+//	@Header				200			{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."
+//	@x-pagination-type	"project-id-cursor"
 func (p *projectGetHandler) Factory() gimlet.RouteHandler {
 	return &projectGetHandler{}
 }
@@ -794,25 +796,21 @@ func makeGetProjectVersionsHandler() gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-//	@Summary		Get versions for a project
-//	@Description	Returns a paginated list of recent versions for a project. Parameters should be passed into the JSON body (the route still accepts limit and start as query parameters to support legacy behavior). When include_builds is set, a request searches at most 1000 versions. If that is not enough to fill the page, the request fails, and the search can be narrowed with start or revision_end.
-//	@Tags			versions
-//	@Router			/projects/{project_id}/versions [get]
-//	@Security		Api-User || Api-Key
-//	@Param			project_id			path	string		true	"the project ID"
-//	@Param			skip				query	int			false	"Number of versions to skip. Cannot exceed 1000 when include_builds is set."
-//	@Param			limit				query	int			false	"The number of versions to be returned per page of pagination. Defaults to 5, and cannot exceed 100."
-//	@Param			start				query	int			false	"The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified."
-//	@Param			revision_end		query	int			false	"Will return the versions that are greater than (and therefore more recent) or equal to revision number specified."
-//	@Param			requester			query	string		false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , github_merge_request (GitHub merge queue), and ad_hoc (periodic builds). Can be specified multiple times to include multiple requesters."
-//	@Param			requesters			body	[]string	false	"Returns versions for all specified requesters. Overridden by the requester query parameter if both are set."
-//	@Param			include_builds		query	bool		false	"If set, will return some information for each build in the version."
-//	@Param			by_build_variant	query	string		false	"If set, will only include information for this build, and only return versions with this build activated. Must have include_builds set."
-//	@Param			include_tasks		query	bool		false	"If set, will return some information for each task in the included builds. This is only allowed if include_builds is set."
-//	@Param			by_task				query	string		false	"If set, will only include information for this task, and will only return versions with this task activated. Must have include_tasks set."
-//	@Param			created_after		query	string		false	"Timestamp to look for applicable versions after or equal to create_time."
-//	@Param			created_before		query	string		false	"Timestamp to look for applicable versions before or equal to create_time."
-//	@Success		200					{array}	model.APIVersion
+//	@Summary			Get versions for a project
+//	@Description		Returns a paginated list of recent versions for a project. Only limit, start, requester, and created_after/created_before are read from the query string. All other options are read only from the JSON body. When include_builds is set, a request searches at most 1000 versions, if that is not enough to fill the page, the request fails, and the search can be narrowed with start or revision_end. The Link header keeps the original query string and only updates start and limit, so body-only options must be resent with each page request. A requester query parameter overrides requesters in the body. Do not set skip while paginating with start, since skip is applied on every page.
+//	@Tags				versions
+//	@Router				/projects/{project_id}/versions [get]
+//	@Security			Api-User || Api-Key
+//	@Param				project_id		path		string						true	"the project ID"
+//	@Param				limit			query		int							false	"The number of versions to be returned per page of pagination. Defaults to 5, and cannot exceed 100."
+//	@Param				start			query		int							false	"The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified."
+//	@Param				requester		query		string						false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , github_merge_request (GitHub merge queue), and ad_hoc (periodic builds). Can be specified multiple times to include multiple requesters."
+//	@Param				created_after	query		string						false	"Timestamp to look for applicable versions after or equal to create_time."
+//	@Param				created_before	query		string						false	"Timestamp to look for applicable versions before or equal to create_time."
+//	@Param				body			body		model.GetVersionsOptions	false	"All version query options, also accepted in the JSON body; filters not supported as query parameters (skip, revision_end, requesters, include_builds, by_build_variant, by_task) are only read from here."
+//	@Success			200				{array}		model.APIVersion
+//	@Header				200				{string}	Link	"Pagination link (rel=next) returned when the page holds exactly 'limit' versions. Follow it verbatim."
+//	@x-pagination-type	"revision-order-cursor"
 func (h *getProjectVersionsHandler) Factory() gimlet.RouteHandler {
 	return &getProjectVersionsHandler{}
 }
