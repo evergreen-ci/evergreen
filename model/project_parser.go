@@ -2530,10 +2530,10 @@ func (pp *ParserProject) forEachCommand(fn func(*PluginCommandConf) error) error
 }
 
 // RedactSecrets replaces every occurrence of the given secret values with
-// <REDACTED:name>, matching how task logs are redacted. The secrets map is keyed
-// by variable name because the name goes in the redacted text. Names and
-// references used by the CLI stay intact. The parser project is modified in
-// place, so it must not be saved afterwards.
+// <REDACTED:name>, matching how task logs are redacted.
+//
+// IMPORTANT: The parser project is modified in place, so it must not be saved
+// afterwards.
 func (pp *ParserProject) RedactSecrets(secrets map[string]string) error {
 	if len(secrets) == 0 {
 		return nil
