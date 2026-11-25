@@ -117,8 +117,9 @@ func getUnschedulableTasks(tasks []task.Task) ([]task.Task, []*TaskError) {
 	unschedulable := make([]task.Task, 0, len(tasks))
 	taskErrors := []*TaskError{}
 	for _, t := range tasks {
-		if !t.Activated || t.IsFinished() {
-			taskErrors = append(taskErrors, &TaskError{TaskID: t.Id, Reason: "task is not scheduled or has already finished"})
+		isScheduled := t.Activated && t.Status == evergreen.TaskUndispatched
+		if !isScheduled {
+			taskErrors = append(taskErrors, &TaskError{TaskID: t.Id, Reason: "task is not scheduled"})
 			continue
 		}
 		unschedulable = append(unschedulable, t)
@@ -127,7 +128,8 @@ func getUnschedulableTasks(tasks []task.Task) ([]task.Task, []*TaskError) {
 }
 
 // unscheduleSelectedTasks unschedules the unschedulable tasks among the selected tasks and reports the rest as task
-// errors. If abort is true, the unscheduled tasks that are already running are also aborted.
+// errors. If abort is true, the selected tasks that are already running are also aborted, as when unscheduling a whole
+// version.
 func unscheduleSelectedTasks(ctx context.Context, selectedTasks []task.Task, abort bool) (*BulkTaskOperationResult, error) {
 	result := &BulkTaskOperationResult{
 		ModifiedTasks: []*restModel.APITask{},
@@ -151,25 +153,20 @@ func unscheduleSelectedTasks(ctx context.Context, selectedTasks []task.Task, abo
 
 	tasksToUnschedule, taskErrors := getUnschedulableTasks(tasks)
 	result.TaskErrors = taskErrors
-	if len(tasksToUnschedule) == 0 {
-		return result, nil
-	}
-	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
-	unscheduled, err := setTasksScheduled(ctx, logURL, false, tasksToUnschedule)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("unscheduling tasks: %s", err.Error()))
+	if len(tasksToUnschedule) > 0 {
+		logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+		unscheduled, err := setTasksScheduled(ctx, logURL, false, tasksToUnschedule)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("unscheduling tasks: %s", err.Error()))
+		}
+		result.ModifiedTasks = unscheduled
 	}
 
 	if abort {
-		unscheduledIDs := make([]string, 0, len(tasksToUnschedule))
-		for _, t := range tasksToUnschedule {
-			unscheduledIDs = append(unscheduledIDs, t.Id)
-		}
 		abortInfo := task.AbortInfo{User: mustHaveUser(ctx).Username()}
-		if err := task.AbortTasksByIDs(ctx, unscheduledIDs, abortInfo); err != nil {
+		if err := task.AbortTasksByIDs(ctx, taskIDs, abortInfo); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("aborting tasks: %s", err.Error()))
 		}
 	}
-	result.ModifiedTasks = unscheduled
 	return result, nil
 }
