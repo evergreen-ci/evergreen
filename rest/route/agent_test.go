@@ -1864,7 +1864,7 @@ func TestReportS3Usage(t *testing.T) {
 				assert.Equal(t, int64(8192), dbTask.S3Usage.Logs.UploadBytes)
 			},
 		},
-		"FinalCallSkipsVersionIncrementWhenCrashPathAlreadyTracked": {
+		"FinalCallSkipsVersionReaggregationWhenCrashPathAlreadyTracked": {
 			insertTask: &task.Task{
 				Id:      "t4",
 				Status:  evergreen.TaskSystemFailed,
@@ -1874,7 +1874,7 @@ func TestReportS3Usage(t *testing.T) {
 					Logs: s3usage.LogMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 3, UploadBytes: 256}},
 				},
 			},
-			insertVersion: &model.Version{Id: "v4"},
+			insertVersion: &model.Version{Id: "v4", Status: evergreen.VersionFailed},
 			s3Usage: s3usage.S3Usage{
 				Artifacts: s3usage.ArtifactMetrics{
 					S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10, UploadBytes: 512},
@@ -1887,12 +1887,32 @@ func TestReportS3Usage(t *testing.T) {
 				dbVersion, err := model.VersionFindOneId(ctx, "v4")
 				require.NoError(t, err)
 				require.NotNil(t, dbVersion)
-				assert.Equal(t, 0, dbVersion.S3Usage.Artifacts.PutRequests, "version should not be incremented when crash path already tracked costs")
+				assert.Equal(t, 0, dbVersion.S3Usage.Artifacts.PutRequests, "version should not be re-aggregated when crash path already tracked costs")
 			},
 		},
-		"FinalCallSavesUsageAndReturnsOk": {
-			insertTask:    &task.Task{Id: "t3", Status: evergreen.TaskStarted, Version: "v3"},
-			insertVersion: &model.Version{Id: "v3"},
+		"FinalCallForUnfinishedVersionSavesTaskUsageWithoutUpdatingVersion": {
+			insertTask:    &task.Task{Id: "t5", Status: evergreen.TaskSucceeded, Version: "v5"},
+			insertVersion: &model.Version{Id: "v5", Status: evergreen.VersionStarted},
+			s3Usage: s3usage.S3Usage{
+				Artifacts: s3usage.ArtifactMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 20, UploadBytes: 1024},
+					Count:           2,
+				},
+			},
+			final:      true,
+			wantStatus: http.StatusOK,
+			assertions: func(t *testing.T, dbTask *task.Task) {
+				assert.Equal(t, 20, dbTask.S3Usage.Artifacts.PutRequests)
+
+				dbVersion, err := model.VersionFindOneId(ctx, "v5")
+				require.NoError(t, err)
+				require.NotNil(t, dbVersion)
+				assert.Zero(t, dbVersion.S3Usage.Artifacts.PutRequests, "unfinished version should not be updated until it finishes")
+			},
+		},
+		"FinalCallForFinishedVersionReaggregatesVersionUsage": {
+			insertTask:    &task.Task{Id: "t3", Status: evergreen.TaskSucceeded, Version: "v3"},
+			insertVersion: &model.Version{Id: "v3", Status: evergreen.VersionSucceeded},
 			s3Usage: s3usage.S3Usage{
 				Artifacts: s3usage.ArtifactMetrics{
 					S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 20, UploadBytes: 1024},
