@@ -3059,7 +3059,23 @@ workstation_config:
 		require.NotNil(t, p1.projectConfigFields.WorkstationConfig)
 		assert.True(t, utility.FromBoolPtr(p1.projectConfigFields.WorkstationConfig.GitClone))
 		assert.NotNil(t, p1.projectConfigFields.BuildBaronSettings)
-		assert.Equal(t, []string{"workstation_config"}, p1.redefinedProjectConfigSettings)
+	})
+
+	t.Run("MakespanTagListsAppendInFileOrder", func(t *testing.T) {
+		mainYaml := `
+version_makespan_tags: [workload_a, shared]
+`
+		includedYaml := `
+version_makespan_tags: [shared, workload_b]
+`
+		p1, _, err := createIntermediateProject([]byte(mainYaml), false, nil)
+		require.NoError(t, err)
+		p2, _, err := createIntermediateProject([]byte(includedYaml), false, nil)
+		require.NoError(t, err)
+
+		p1.mergeProjectConfigFields(p2)
+		assert.Empty(t, p1.redefinedProjectConfigSettings)
+		assert.Equal(t, []string{"workload_a", "shared", "workload_b"}, p1.projectConfigFields.VersionMakespanTags)
 	})
 }
 

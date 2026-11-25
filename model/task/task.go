@@ -4108,6 +4108,48 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
+// GetMakespansByTag returns the makespan of the tasks sharing each tag in
+// monitoredTags. Display-only tasks and tasks with missing or invalid timings
+// are excluded, and tags with no eligible task are omitted.
+func GetMakespansByTag(tasks []Task, monitoredTags []string) map[string]time.Duration {
+	if len(monitoredTags) == 0 {
+		return nil
+	}
+
+	monitored := make(map[string]struct{}, len(monitoredTags))
+	for _, tag := range monitoredTags {
+		monitored[tag] = struct{}{}
+	}
+
+	earliestStarts := map[string]time.Time{}
+	latestFinishes := map[string]time.Time{}
+	for _, t := range tasks {
+		if t.DisplayOnly || utility.IsZeroTime(t.StartTime) ||
+			utility.IsZeroTime(t.FinishTime) || t.FinishTime.Before(t.StartTime) {
+			continue
+		}
+		for _, tag := range t.Tags {
+			if _, ok := monitored[tag]; !ok {
+				continue
+			}
+			if start, ok := earliestStarts[tag]; !ok || t.StartTime.Before(start) {
+				earliestStarts[tag] = t.StartTime
+			}
+			if finish, ok := latestFinishes[tag]; !ok || t.FinishTime.After(finish) {
+				latestFinishes[tag] = t.FinishTime
+			}
+		}
+	}
+
+	makespans := make(map[string]time.Duration, len(monitoredTags))
+	for _, tag := range monitoredTags {
+		if start, ok := earliestStarts[tag]; ok {
+			makespans[tag] = latestFinishes[tag].Sub(start)
+		}
+	}
+	return makespans
+}
+
 // GetFormattedTimeSpent returns the total time_taken and makespan of tasks as a formatted string
 func GetFormattedTimeSpent(tasks []Task) (string, string) {
 	timeTaken, makespan := GetTimeSpent(tasks)

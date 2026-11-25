@@ -363,6 +363,21 @@ include:
     module: module_name
 ```
 
+### Version Makespan Tags
+
+The `version_makespan_tags` list selects the task tags whose version
+makespans Evergreen publishes as Honeycomb spans when a version finishes,
+so that the makespan of a filtered set of tasks (for example, workloads
+tagged as high-value) can be tracked over time. By default, no makespans
+are published. See
+[version makespans by tag](Task-Traces#version-makespans-by-tag) for the
+published fields and how to query them.
+
+```yaml
+version_makespan_tags:
+  - monitored_high_value_workload
+```
+
 #### YAML Anchors
 
 YAML anchors (`&name`) and aliases (`*name`) are supported within a single file and across include files.
