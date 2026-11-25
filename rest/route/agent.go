@@ -1134,10 +1134,10 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 	if record.CreatedAt.IsZero() {
-		// The record may have been created at test selection time by the
-		// quarantined-tests snapshot, which does not know when results are
-		// created. Take the created timestamp from the attach request because
-		// it determines the partition key of the offline test results.
+		// The record may have been created at test selection time, which does
+		// not know when results are created. Take the created timestamp from
+		// the attach request because it determines the partition key of the
+		// offline test results.
 		record.CreatedAt = h.body.CreatedAt
 	}
 	err = task.AppendTestResultMetadata(ctx, t, h.env, h.body.FailedSample, h.body.Stats.FailedCount, h.body.Stats.TotalCount, record)

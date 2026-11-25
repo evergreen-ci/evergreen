@@ -3,8 +3,10 @@ package data
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -334,6 +336,16 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, map[string]bool{"test_a": false}, statuses)
 	})
+}
+
+// assertCheckedTests asserts that the filter holds exactly the given tests out
+// of the tests named test0 through test9.
+func assertCheckedTests(t *testing.T, filter *testresult.TestNameFilter, expected []string) {
+	require.NotNil(t, filter)
+	for i := range 10 {
+		name := fmt.Sprintf("test%d", i)
+		assert.Equal(t, slices.Contains(expected, name), filter.Contains(name), "test '%s'", name)
+	}
 }
 
 // setTSSURLForTest swaps the TSS URL in env settings and restores it on test cleanup.
@@ -765,7 +777,7 @@ func TestDecorateQuarantineStatus(t *testing.T) {
 	})
 }
 
-func TestRecordQuarantinedTestsSkipped(t *testing.T) {
+func TestRecordTestSelection(t *testing.T) {
 	const (
 		projectID = "my_project"
 		bvName    = "ubuntu"
@@ -849,7 +861,7 @@ func TestRecordQuarantinedTestsSkipped(t *testing.T) {
 
 		req := baseReq
 		req.Tests = []string{"test0", "test1", "test2"}
-		require.NoError(t, RecordQuarantinedTestsSkipped(ctx, env, req, []string{"test0"}))
+		require.NoError(t, RecordTestSelection(ctx, env, req, []string{"test0"}))
 
 		record := findRecord(t)
 		assert.Equal(t, record.Info.ID(), record.ID)
@@ -857,20 +869,37 @@ func TestRecordQuarantinedTestsSkipped(t *testing.T) {
 		assert.Equal(t, taskName, record.Info.TaskName)
 		assert.Equal(t, 1, record.QuarantinedTestsCount)
 		assert.Equal(t, []testresult.QuarantinedTest{{TestName: "test1"}}, record.QuarantinedTests)
+		assertCheckedTests(t, record.TestSelectionCheckedTests, []string{"test0", "test1", "test2"})
 		assert.Equal(t, 1, findTask(t).NumQuarantinedTestsSkipped)
 	})
 
-	t.Run("AllTestsSelectedSkipsStatusCheckAndRecordsNothing", func(t *testing.T) {
+	t.Run("AllTestsSelectedSkipsStatusCheckAndRecordsOnlyCheckedTests", func(t *testing.T) {
 		setupTask(t)
 		hits := newTSSServer(t, nil, nil)
 
 		req := baseReq
 		req.Tests = []string{"test0", "test1"}
-		require.NoError(t, RecordQuarantinedTestsSkipped(ctx, env, req, []string{"test0", "test1"}))
+		require.NoError(t, RecordTestSelection(ctx, env, req, []string{"test0", "test1"}))
 
 		assert.Zero(t, *hits, "no status call should be made when no tests were skipped")
-		assert.Zero(t, countRecords(t))
+		record := findRecord(t)
+		assertCheckedTests(t, record.TestSelectionCheckedTests, []string{"test0", "test1"})
+		assert.Empty(t, record.QuarantinedTests)
 		assert.Zero(t, findTask(t).NumQuarantinedTestsSkipped)
+	})
+
+	t.Run("RepeatedRequestsAppendCheckedTestsOnce", func(t *testing.T) {
+		setupTask(t)
+		newTSSServer(t, nil, nil)
+
+		req := baseReq
+		req.Tests = []string{"test0", "test1"}
+		require.NoError(t, RecordTestSelection(ctx, env, req, req.Tests))
+		req.Tests = []string{"test1", "test2"}
+		require.NoError(t, RecordTestSelection(ctx, env, req, req.Tests))
+
+		assert.Equal(t, int64(1), countRecords(t))
+		assertCheckedTests(t, findRecord(t).TestSelectionCheckedTests, []string{"test0", "test1", "test2"})
 	})
 
 	t.Run("KnownTestsPathUsesVariantState", func(t *testing.T) {
@@ -887,12 +916,39 @@ func TestRecordQuarantinedTestsSkipped(t *testing.T) {
 			},
 		})
 
-		require.NoError(t, RecordQuarantinedTestsSkipped(ctx, env, baseReq, []string{"test0", "test3"}))
+		require.NoError(t, RecordTestSelection(ctx, env, baseReq, []string{"test0", "test3"}))
 
 		record := findRecord(t)
 		assert.Equal(t, 2, record.QuarantinedTestsCount)
 		assert.Equal(t, []testresult.QuarantinedTest{{TestName: "test1"}, {TestName: "test2"}}, record.QuarantinedTests, "quarantined tests that were still selected should not be recorded")
+		assertCheckedTests(t, record.TestSelectionCheckedTests, []string{"test0", "test3", "test1", "test2"})
 		assert.Equal(t, 2, findTask(t).NumQuarantinedTestsSkipped)
+	})
+
+	t.Run("UndispatchedVirtualTaskRecordsCheckedTests", func(t *testing.T) {
+		setupTask(t)
+		newTSSServer(t, nil, nil)
+		virtualTask := task.Task{
+			Id:           "virtual",
+			Project:      projectID,
+			BuildVariant: bvName,
+			DisplayName:  "virtual",
+			Version:      "version_id",
+			Requester:    evergreen.PatchVersionRequester,
+			Status:       evergreen.TaskUndispatched,
+			IsVirtual:    true,
+		}
+		require.NoError(t, virtualTask.Insert(ctx))
+
+		req := baseReq
+		req.TaskID = virtualTask.Id
+		req.TaskName = virtualTask.DisplayName
+		req.Tests = []string{"test0", "test1"}
+		require.NoError(t, RecordTestSelection(ctx, env, req, req.Tests))
+
+		var record testresult.DbTaskTestResults
+		require.NoError(t, env.CedarDB().Collection(testresult.Collection).FindOne(ctx, task.ByTaskIDAndExecution(virtualTask.Id, 0)).Decode(&record))
+		assertCheckedTests(t, record.TestSelectionCheckedTests, []string{"test0", "test1"})
 	})
 
 	t.Run("FullyQuarantinedTaskRecordsAndReturnsSnapshot", func(t *testing.T) {
@@ -904,7 +960,7 @@ func TestRecordQuarantinedTestsSkipped(t *testing.T) {
 
 		req := baseReq
 		req.Tests = []string{"test0", "test1"}
-		require.NoError(t, RecordQuarantinedTestsSkipped(ctx, env, req, nil))
+		require.NoError(t, RecordTestSelection(ctx, env, req, nil))
 
 		dbTask := findTask(t)
 		assert.Equal(t, 2, dbTask.NumQuarantinedTestsSkipped)

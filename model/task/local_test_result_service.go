@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mongodb/anser/bsonutil"
@@ -51,13 +52,18 @@ func (s *localTestResultsService) AppendTestResultMetadata(ctx context.Context, 
 }
 
 // AppendTestSelectionResults upserts the task run's test results record with
-// the test selection results update.
+// the test selection results update. It returns
+// errTestSelectionResultsConflict if the record's checked tests don't match the
+// update's previous checked tests.
 func (s *localTestResultsService) AppendTestSelectionResults(ctx context.Context, tr testresult.DbTaskTestResults, update TestSelectionResultsUpdate) error {
 	id := dbTaskTestResultsID{
 		TaskID:    tr.Info.TaskID,
 		Execution: tr.Info.Execution,
 	}
-	_, err := s.env.DB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: id}, appendTestSelectionResultsUpdate(tr.Info, update), options.Update().SetUpsert(true))
+	_, err := s.env.DB().Collection(testresult.Collection).UpdateOne(ctx, appendTestSelectionResultsQuery(id, update), appendTestSelectionResultsUpdate(tr.Info, update), options.Update().SetUpsert(true))
+	if db.IsDuplicateKey(err) {
+		return errTestSelectionResultsConflict
+	}
 	return errors.Wrap(err, "appending test selection results to DB test results")
 }
 
@@ -112,6 +118,7 @@ func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, getO
 		allTaskResults[i].Results = dbTaskResults.Results
 		allTaskResults[i].QuarantinedTestsCount = dbTaskResults.QuarantinedTestsCount
 		allTaskResults[i].QuarantinedTests = dbTaskResults.QuarantinedTests
+		allTaskResults[i].TestSelectionCheckedTests = dbTaskResults.TestSelectionCheckedTests
 	}
 
 	return allTaskResults, nil
@@ -129,8 +136,9 @@ type localDbTaskTestResults struct {
 	FailedTestsSample []string                `bson:"failed_tests_sample"`
 	Results           []testresult.TestResult `bson:"results"`
 
-	QuarantinedTestsCount int                          `bson:"quarantined_tests_count,omitempty"`
-	QuarantinedTests      []testresult.QuarantinedTest `bson:"quarantined_tests,omitempty"`
+	QuarantinedTestsCount     int                          `bson:"quarantined_tests_count,omitempty"`
+	QuarantinedTests          []testresult.QuarantinedTest `bson:"quarantined_tests,omitempty"`
+	TestSelectionCheckedTests *testresult.TestNameFilter   `bson:"test_selection_checked_tests,omitempty"`
 }
 
 type dbTaskTestResultsID struct {

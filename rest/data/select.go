@@ -192,27 +192,33 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 	return selectedTests, nil
 }
 
-// RecordQuarantinedTestsSkipped snapshots the tests that test selection
-// skipped because they are quarantined in TSS, appending them to the task
-// run's test_results record.
-func RecordQuarantinedTestsSkipped(ctx context.Context, env evergreen.Environment, req model.SelectTestsRequest, selectedTests []string) error {
-	quarantinedTests, err := findQuarantinedSkippedTests(ctx, req, selectedTests)
-	if err != nil {
-		return err
+// RecordTestSelection records the outcome of a test selection request on the
+// task run's test_results record: the tests that test selection checked, which
+// are the only tests that can be quarantined from the task run's results, and
+// the tests it skipped because they are quarantined in TSS. The checked tests
+// are recorded even if finding the quarantined tests fails.
+func RecordTestSelection(ctx context.Context, env evergreen.Environment, req model.SelectTestsRequest, selectedTests []string) error {
+	checkedTests, quarantinedTests, summarizeErr := summarizeTestSelection(ctx, req, selectedTests)
+	if len(checkedTests) == 0 {
+		return summarizeErr
 	}
-	if len(quarantinedTests) == 0 {
-		return nil
-	}
-	t, err := task.FindOneId(ctx, req.TaskID)
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(summarizeErr)
+	catcher.Add(recordTestSelection(ctx, env, req.TaskID, checkedTests, quarantinedTests))
+	return catcher.Resolve()
+}
+
+func recordTestSelection(ctx context.Context, env evergreen.Environment, taskID string, checkedTests []string, quarantinedTests []testresult.QuarantinedTest) error {
+	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
-		return errors.Wrapf(err, "finding task '%s'", req.TaskID)
+		return errors.Wrapf(err, "finding task '%s'", taskID)
 	}
 	if t == nil {
-		return errors.Errorf("task '%s' not found", req.TaskID)
+		return errors.Errorf("task '%s' not found", taskID)
 	}
-	numAppended, err := task.AppendTestSelectionResults(ctx, t, env, quarantinedTests)
+	numAppended, err := task.AppendTestSelectionResults(ctx, t, env, checkedTests, quarantinedTests)
 	if err != nil {
-		return errors.Wrap(err, "recording quarantined tests on the test results record")
+		return errors.Wrap(err, "recording test selection results on the test results record")
 	}
 	if numAppended == 0 {
 		return nil
@@ -231,19 +237,23 @@ func RecordQuarantinedTestsSkipped(ctx context.Context, env evergreen.Environmen
 	return errors.Wrap(dt.IncNumQuarantinedTestsSkipped(ctx, numAppended), "incrementing the display task's quarantined tests skipped count")
 }
 
-// findQuarantinedSkippedTests returns the tests that test selection skipped
-// specifically because they are quarantined in TSS. When the request names
-// its tests, only the skipped subset is checked for quarantine status; when
-// it does not (the select-known-tests path), the full test set is unknown, so
-// the variant's quarantine state determines which known tests were withheld.
-func findQuarantinedSkippedTests(ctx context.Context, req model.SelectTestsRequest, selectedTests []string) ([]testresult.QuarantinedTest, error) {
+// summarizeTestSelection returns the tests that test selection checked and the
+// tests it skipped specifically because they are quarantined in TSS. When the
+// request names its tests, those are the checked tests, and only the skipped
+// subset is checked for quarantine status. When it does not (the
+// select-known-tests path), the full test set is unknown, so the checked tests
+// are the ones it returned plus the known tests that the variant's quarantine
+// state shows were withheld. If the quarantine state can't be fetched, the
+// checked tests that are known are still returned with the error.
+func summarizeTestSelection(ctx context.Context, req model.SelectTestsRequest, selectedTests []string) ([]string, []testresult.QuarantinedTest, error) {
 	selected := make(map[string]bool, len(selectedTests))
 	for _, name := range selectedTests {
 		selected[name] = true
 	}
 
-	var quarantinedNames []string
+	var checkedTests, quarantinedNames []string
 	if len(req.Tests) > 0 {
+		checkedTests = req.Tests
 		var skipped []string
 		seen := make(map[string]bool, len(req.Tests))
 		for _, name := range req.Tests {
@@ -253,11 +263,11 @@ func findQuarantinedSkippedTests(ctx context.Context, req model.SelectTestsReque
 			}
 		}
 		if len(skipped) == 0 {
-			return nil, nil
+			return checkedTests, nil, nil
 		}
 		statuses, err := GetTestsQuarantineStatus(ctx, req.Project, req.BuildVariant, req.TaskName, req.DisplayTaskName, skipped)
 		if err != nil {
-			return nil, errors.Wrap(err, "getting quarantine status for skipped tests")
+			return checkedTests, nil, errors.Wrap(err, "getting quarantine status for skipped tests")
 		}
 		for _, name := range skipped {
 			if statuses[name] {
@@ -265,9 +275,10 @@ func findQuarantinedSkippedTests(ctx context.Context, req model.SelectTestsReque
 			}
 		}
 	} else {
+		checkedTests = slices.Clone(selectedTests)
 		variantState, err := GetVariantQuarantineStatus(ctx, req.Project, req.BuildVariant)
 		if err != nil {
-			return nil, errors.Wrap(err, "getting variant quarantine status")
+			return checkedTests, nil, errors.Wrap(err, "getting variant quarantine status")
 		}
 		for name, isQuarantined := range variantState[req.TaskName] {
 			if isQuarantined && !selected[name] {
@@ -276,6 +287,7 @@ func findQuarantinedSkippedTests(ctx context.Context, req model.SelectTestsReque
 		}
 		// The variant state is a map, so sort for a deterministic snapshot.
 		sort.Strings(quarantinedNames)
+		checkedTests = append(checkedTests, quarantinedNames...)
 	}
 
 	// DisplayTestName is left unset because it isn't known until a test
@@ -284,7 +296,7 @@ func findQuarantinedSkippedTests(ctx context.Context, req model.SelectTestsReque
 	for _, name := range quarantinedNames {
 		quarantinedTests = append(quarantinedTests, testresult.QuarantinedTest{TestName: name})
 	}
-	return quarantinedTests, nil
+	return checkedTests, quarantinedTests, nil
 }
 
 // SetTestQuarantined marks the test as quarantined or unquarantined in the test
