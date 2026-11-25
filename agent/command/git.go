@@ -637,12 +637,19 @@ func (c *gitFetchProject) fetchOrRestoreSource(ctx context.Context, comm client.
 		// The app server marks on the restore key whether the PR must be checked
 		// out over the restored tree, so the agent does not re-derive that.
 		runPRCheckout := restoreKey.PRCheckout
+		// The revision is interpolated into the heal script, so only a git commit SHA may reach it.
+		if !gitRevisionRegexp.MatchString(restoreKey.Revision) {
+			fallbackReason = "restored revision is not a commit SHA"
+			break
+		}
 		// buildPostRestoreCommand verifies HEAD against the revision, so a restored
 		// tree at the wrong commit fails here and falls back to a clone below.
+		healStart := time.Now()
 		if err := c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, opts, restoreKey.Revision, runPRCheckout)); err != nil {
 			fallbackReason = errors.Wrap(err, "preparing restored source tree").Error()
 			break
 		}
+		setSourceCacheSpanDuration(ctx, sourceCacheHealDurationAttribute, time.Since(healStart))
 		// Probe before the tag refresh so the fetch's own topology is what is measured.
 		// Without the PR checkout no head fetch ran, so probing would report a false island.
 		if runPRCheckout {
@@ -771,10 +778,10 @@ func (c *gitFetchProject) saveSourceCache(ctx context.Context, comm client.Commu
 	return produced, catcher.Resolve()
 }
 
-// buildPostRestoreCommand returns the script run over a restored tree. It verifies
-// HEAD, restores this task's credentials, and optionally checks out a PR.
+// buildPostRestoreCommand heals a restored tree, restores this task's credentials,
+// and optionally checks out a PR.
 func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opts cloneOpts, revision string, runPRCheckout bool) []string {
-	cmds := c.scriptInProjectDir(fmt.Sprintf(`test "$(git rev-parse HEAD)" = "%s"`, revision))
+	cmds := c.buildPostRestoreHealCommands(revision)
 	cmds = append(cmds, setOriginURLCommands(opts)...)
 	// The archive was scrubbed of the producer's credentials, so a restored
 	// tree needs this task's own put into the submodule remotes.
@@ -783,6 +790,85 @@ func (c *gitFetchProject) buildPostRestoreCommand(conf *internal.TaskConfig, opt
 		cmds = append(cmds, prCheckoutCommands(conf, opts.cloneDepth)...)
 	}
 	return append(cmds, "git log --oneline -n 10")
+}
+
+// buildPostRestoreHealCommands deletes replacement state, scrubs producer-controlled
+// execution, verifies HEAD against the revision, and rewrites the tree and submodules
+// from the commit objects. Reusable so restored module caches heal the same way.
+func (c *gitFetchProject) buildPostRestoreHealCommands(revision string) []string {
+	// The export covers this script's git commands; deleting the refs covers the
+	// task's later git commands, which outlive it.
+	prologue := append([]string{"export GIT_NO_REPLACE_OBJECTS=1"}, clearGitReplacementStateCommands()...)
+	cmds := c.scriptInProjectDir(prologue...)
+	cmds = append(cmds, fmt.Sprintf(`test "$(git rev-parse HEAD)" = "%s"`, revision))
+	cmds = append(cmds, scrubGitExecutionCommands(".git/hooks")...)
+	cmds = append(cmds,
+		"git reset --hard",
+		// -ff so a planted nested repository is removed too, which plain clean skips.
+		"git clean -ffdx",
+		submoduleForeachScrubCommand(clearGitReplacementStateCommands()...),
+		// --init re-pins submodules a producer deinitialized from config; the
+		// hooksPath override keeps the update's checkouts from firing unscrubbed hooks.
+		"git -c core.hooksPath=/dev/null submodule update --init --recursive --force",
+		submoduleForeachScrubCommand("git reset --hard && git clean -ffdx"),
+	)
+	return cmds
+}
+
+// scrubGitExecutionCommands strips one repository of producer-controlled
+// execution: its hooks and the config settings that can invoke commands.
+func scrubGitExecutionCommands(hooksDir string) []string {
+	return append([]string{fmt.Sprintf("rm -rf %s", hooksDir)},
+		// Includes can re-arm the values below, so they go first; the rest remove
+		// config that executes planted commands on checkout or fetch, and the
+		// attributes file activates planted filters.
+		removeConfigSectionsCommand("^include"),
+		removeConfigSectionsCommand("^alias\\."),
+		unsetConfigKeysCommand("^core\\.(hooksPath|fsmonitor|sshCommand)$"),
+		removeConfigSectionsCommand(`^filter\.`),
+		removeConfigSectionsCommand(`^credential(\..*)?\.helper$`),
+		unsetConfigKeysCommand(`^submodule\..*\.update$`),
+		unsetConfigKeysCommand(`^protocol\..*\.allow$`),
+		`rm -f "$(git rev-parse --git-path info/attributes)"`,
+	)
+}
+
+// removeConfigSectionsCommand returns the shell that removes every config
+// section owning a key matching the pattern; git config has no wildcard unset.
+func removeConfigSectionsCommand(pattern string) string {
+	// The doubled %% renders the shell's ${k%.*}, which strips a key down to its owning section.
+	return fmt.Sprintf(`for k in $(git config --name-only --get-regexp %q 2>/dev/null); do git config --remove-section "${k%%.*}" 2>/dev/null || true; done`, pattern)
+}
+
+// unsetConfigKeysCommand returns the shell that unsets every config key matching
+// the pattern, leaving the rest of their sections intact.
+func unsetConfigKeysCommand(pattern string) string {
+	return fmt.Sprintf(`for k in $(git config --name-only --get-regexp %q 2>/dev/null); do git config --unset-all "$k" 2>/dev/null || true; done`, pattern)
+}
+
+// submoduleForeachScrubCommand runs the execution scrub in each submodule, followed
+// by extras; hooks resolve through the submodule's own git dir, not always under .git.
+func submoduleForeachScrubCommand(extras ...string) string {
+	return gitSubmoduleForeachCommand(strings.Join(append(
+		scrubGitExecutionCommands(`"$(git rev-parse --git-common-dir)/hooks"`),
+		extras...,
+	), "; "))
+}
+
+// clearGitReplacementStateCommands deletes replace refs (loose and packed) and the
+// grafts file, which transparently remap any object git reads and never arrive in a
+// genuine clone. The planted .git/shallow stays: legitimate restores are shallow, and
+// it only truncates history. Double-quoted to survive the submodule foreach quoting.
+func clearGitReplacementStateCommands() []string {
+	return []string{
+		`git for-each-ref refs/replace --format="delete %(refname)" | git update-ref --stdin`,
+		`rm -f "$(git rev-parse --git-path info/grafts)"`,
+	}
+}
+
+// gitSubmoduleForeachCommand wraps a script so git runs it once per submodule, recursively.
+func gitSubmoduleForeachCommand(script string) string {
+	return fmt.Sprintf(`git submodule foreach --recursive '%s'`, script)
 }
 
 // gitRevisionRegexp restricts revisions interpolated into tag refresh shell scripts to git commit SHAs.

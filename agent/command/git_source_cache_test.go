@@ -144,12 +144,11 @@ func TestBuildPostRestoreCommand(t *testing.T) {
 		wantNotContain []string
 	}{
 		{
-			// A restored tree keeps the producer's scrubbed origin, so the restore must put the task's own credential back.
 			name:         "VerifiesHeadAndRestoresAuthenticatedOrigin",
 			conf:         sourceCacheTestConfig(),
 			opts:         cloneOpts{owner: "some-org", repo: "some-repo", token: projectGitHubToken},
 			revision:     "abc123",
-			wantContains: []string{`test "$(git rev-parse HEAD)" = "abc123"`, authedOrigin},
+			wantContains: []string{`test "$(git rev-parse HEAD)" = "abc123"`, authedOrigin, "git reset --hard", "git clean -ffdx", "submodule update --init --recursive --force", "rm -rf .git/hooks", "hooksPath|fsmonitor|sshCommand", "export GIT_NO_REPLACE_OBJECTS=1", `for-each-ref refs/replace`, "info/grafts"},
 		},
 		{
 			name:           "SkipsPRCheckoutOnAPRNamespacedHit",
@@ -260,6 +259,147 @@ func TestPostRestoreCommandFailsOnWrongRevision(t *testing.T) {
 	headAfter, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "HEAD").Output()
 	require.NoError(t, err)
 	assert.Equal(t, conf.Task.Revision, strings.TrimSpace(string(headAfter)))
+}
+
+// TestPostRestoreCommandHealsTamperedTree verifies a tampered restored tree is rewritten to the revision's real content.
+func TestPostRestoreCommandHealsTamperedTree(t *testing.T) {
+	ctx := t.Context()
+
+	workDir, _ := newRepoWithLocalOrigin(t)
+	repoDir := filepath.Join(workDir, "src")
+
+	jpm, err := jasper.NewSynchronizedManager(false)
+	require.NoError(t, err)
+	c := &gitFetchProject{Directory: "src"}
+	c.SetJasperManager(jpm)
+	comm := client.NewMock("http://localhost.com")
+	conf := sourceCacheTestConfig()
+	conf.WorkDir = workDir
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	require.NoError(t, os.WriteFile(filepath.Join(repoDir, "tracked.txt"), []byte("expected content"), 0644))
+	env := append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+	runIn := func(stdin string, args ...string) string {
+		cmd := exec.CommandContext(ctx, "git", args...)
+		cmd.Env = env
+		cmd.Stdin = strings.NewReader(stdin)
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "git %v: %s", args, out)
+		return strings.TrimSpace(string(out))
+	}
+	run := func(args ...string) string { return runIn("", args...) }
+	run("-C", repoDir, "add", "tracked.txt")
+	run("-C", repoDir, "commit", "-m", "add file")
+	revision := run("-C", repoDir, "rev-parse", "HEAD")
+	realTree := run("-C", repoDir, "rev-parse", revision+"^{tree}")
+
+	require.NoError(t, os.WriteFile(filepath.Join(repoDir, "tracked.txt"), []byte("poisoned"), 0644))
+	// Plain git clean skips nested repositories, so the heal must use -ff to drop them.
+	require.NoError(t, os.MkdirAll(filepath.Join(repoDir, "evil", ".git"), 0755))
+
+	// The replace ref is packed, so deleting only loose refs would miss it; grafts
+	// rewrite parentage the same way. Plumbing keeps HEAD at the revision.
+	blob := runIn("pwned", "-C", repoDir, "hash-object", "-w", "--stdin")
+	tree := runIn("100644 blob "+blob+"\tpwned.txt\n", "-C", repoDir, "mktree")
+	evil := runIn("", "-C", repoDir, "commit-tree", tree, "-m", "evil")
+	run("-C", repoDir, "replace", revision, evil)
+	run("-C", repoDir, "pack-refs", "--all")
+	require.NoError(t, os.MkdirAll(filepath.Join(repoDir, ".git", "info"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(repoDir, ".git", "info", "grafts"), []byte(revision+"\n"), 0644))
+
+	// The smudge marker is written outside the repo, which the heal's clean would
+	// otherwise delete.
+	require.NoError(t, os.WriteFile(filepath.Join(repoDir, ".git", "evil-hooks"), []byte("[core]\n\thooksPath = .git/evil-hooks\n"), 0644))
+	// The include path is relative to the including file's directory (.git).
+	run("-C", repoDir, "config", "include.path", "evil-hooks")
+	run("-C", repoDir, "config", "filter.evil.smudge", "touch ../pwned-smudge")
+	require.NoError(t, os.WriteFile(filepath.Join(repoDir, ".git", "info", "attributes"), []byte("* filter=evil\n"), 0644))
+
+	require.NoError(t, c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo"}, revision, false)))
+
+	content, err := os.ReadFile(filepath.Join(repoDir, "tracked.txt"))
+	require.NoError(t, err)
+	assert.Equal(t, "expected content", string(content))
+	assert.NoDirExists(t, filepath.Join(repoDir, "evil"))
+
+	assert.Empty(t, run("-C", repoDir, "for-each-ref", "refs/replace"))
+	assert.NoFileExists(t, filepath.Join(repoDir, ".git", "info", "grafts"))
+	assert.Equal(t, realTree, run("-C", repoDir, "show", "-s", "--format=%T", revision))
+	assert.NoFileExists(t, filepath.Join(workDir, "pwned-smudge"))
+	_, hooksErr := exec.CommandContext(ctx, "git", "-C", repoDir, "config", "core.hooksPath").Output()
+	assert.Error(t, hooksErr, "the hooksPath set through the include must be gone")
+}
+
+// TestPostRestoreCommandClearsReplacementStateInSubmodules verifies replace refs and grafts are stripped from each submodule's own git dir.
+func TestPostRestoreCommandClearsReplacementStateInSubmodules(t *testing.T) {
+	ctx := t.Context()
+
+	workDir, _ := newRepoWithLocalOrigin(t)
+	repoDir := filepath.Join(workDir, "src")
+
+	childDir := filepath.Join(workDir, "child")
+	require.NoError(t, os.MkdirAll(childDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(childDir, "lib.txt"), []byte("real lib"), 0644))
+	env := append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+	run := func(args ...string) string {
+		cmd := exec.CommandContext(ctx, "git", args...)
+		cmd.Env = env
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "git %v: %s", args, out)
+		return strings.TrimSpace(string(out))
+	}
+	run("-C", childDir, "init", "--initial-branch=main")
+	run("-C", childDir, "add", "lib.txt")
+	run("-C", childDir, "commit", "-m", "real")
+	// The file transport must be explicitly allowed for a local submodule; a
+	// relative URL would resolve against the unrewritten GitHub origin.
+	run("-C", repoDir, "-c", "protocol.file.allow=always", "submodule", "add", "file://"+childDir, "child")
+	run("-C", repoDir, "commit", "-m", "add submodule")
+	gitlink := run("-C", repoDir, "rev-parse", "HEAD:child")
+	superRevision := run("-C", repoDir, "rev-parse", "HEAD")
+	realTree := run("-C", childDir, "rev-parse", gitlink+"^{tree}")
+	submoduleDir := filepath.Join(repoDir, "child")
+	childGitDir := run("-C", submoduleDir, "rev-parse", "--absolute-git-dir")
+
+	// Replace the gitlink commit with an evil child commit in the cloned submodule (not its origin), packed into its packed-refs.
+	require.NoError(t, os.WriteFile(filepath.Join(submoduleDir, "lib.txt"), []byte("pwned"), 0644))
+	run("-C", submoduleDir, "commit", "-am", "evil")
+	run("-C", submoduleDir, "replace", gitlink, "HEAD")
+	run("-C", submoduleDir, "pack-refs", "--all")
+	require.NoError(t, os.MkdirAll(filepath.Join(childGitDir, "info"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(childGitDir, "info", "grafts"), []byte(gitlink+"\n"), 0644))
+	// Its marker is written outside the repo, which the heal's clean would delete.
+	run("-C", repoDir, "config", "submodule.child.update", "!touch ../../pwned-update")
+
+	jpm, err := jasper.NewSynchronizedManager(false)
+	require.NoError(t, err)
+	c := &gitFetchProject{Directory: "src"}
+	c.SetJasperManager(jpm)
+	comm := client.NewMock("http://localhost.com")
+	conf := sourceCacheTestConfig()
+	conf.WorkDir = workDir
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	require.NoError(t, c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo"}, superRevision, false)))
+
+	assert.Empty(t, run("-C", submoduleDir, "for-each-ref", "refs/replace"))
+	assert.NoFileExists(t, filepath.Join(childGitDir, "info", "grafts"))
+	assert.NoFileExists(t, filepath.Join(workDir, "pwned-update"))
+	assert.Equal(t, realTree, run("-C", submoduleDir, "show", "-s", "--format=%T", "HEAD"))
+
+	// A producer can strip the submodule's config entry.
+	run("-C", submoduleDir, "checkout", "main")
+	run("-C", repoDir, "config", "--remove-section", "submodule.child")
+	require.NoError(t, os.MkdirAll(filepath.Join(childGitDir, "hooks"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(childGitDir, "hooks", "post-checkout"), []byte("#!/bin/sh\ntouch ../../pwned-hook\n"), 0755))
+	require.NoError(t, c.runCommands(ctx, logger, conf, c.buildPostRestoreCommand(conf, cloneOpts{owner: "some-org", repo: "some-repo"}, superRevision, false)))
+	assert.NoFileExists(t, filepath.Join(workDir, "pwned-hook"))
+	assert.Equal(t, realTree, run("-C", submoduleDir, "show", "-s", "--format=%T", "HEAD"))
+	libBytes, err := os.ReadFile(filepath.Join(repoDir, "child", "lib.txt"))
+	require.NoError(t, err)
+	assert.Equal(t, "real lib", string(libBytes))
 }
 
 // A tag pushed after the archive was saved must still reach the restored tree, since git describe --tags is the consumer.

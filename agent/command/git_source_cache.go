@@ -67,6 +67,7 @@ var (
 	sourceCacheUploadDurationAttribute   = sourceCacheAttribute("upload_duration_ms")
 	sourceCacheClaimDurationAttribute    = sourceCacheAttribute("claim_duration_ms")
 	sourceCacheClaimErrorAttribute       = sourceCacheAttribute("claim_error")
+	sourceCacheHealDurationAttribute     = sourceCacheAttribute("heal_duration_ms")
 
 	// sourceCacheClaimDeniedReason distinguishes a denied claim from losing the S3 create-only race at upload time.
 	sourceCacheClaimDeniedReason = "claim_denied_save_in_progress"
