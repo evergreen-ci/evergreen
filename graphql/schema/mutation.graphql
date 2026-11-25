@@ -131,5 +131,7 @@ type Mutation {
   scheduleTasksByIds(taskIds: [String!]! @requireProjectAccessForTasks(permission: TASKS, access: EDIT)): BulkTaskOperationResult!
   scheduleTasksByFilter(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), filter: TaskFilterOptions!): BulkTaskOperationResult!
   setVersionPriority(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): String
+  unscheduleTasksByIds(taskIds: [String!]! @requireProjectAccessForTasks(permission: TASKS, access: EDIT), abort: Boolean!): BulkTaskOperationResult!
+  unscheduleTasksByFilter(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), filter: TaskFilterOptions!, abort: Boolean!): BulkTaskOperationResult!
   unscheduleVersionTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!): String
 }

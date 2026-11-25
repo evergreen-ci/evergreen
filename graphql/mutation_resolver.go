@@ -1643,6 +1643,24 @@ func (r *mutationResolver) SetVersionPriority(ctx context.Context, versionID str
 	return &versionID, nil
 }
 
+// UnscheduleTasksByIds is the resolver for the unscheduleTasksByIds field.
+func (r *mutationResolver) UnscheduleTasksByIds(ctx context.Context, taskIds []string, abort bool) (*BulkTaskOperationResult, error) {
+	selectedTasks, err := resolveTasksByIDs(ctx, taskIds)
+	if err != nil {
+		return nil, err
+	}
+	return unscheduleSelectedTasks(ctx, selectedTasks, abort)
+}
+
+// UnscheduleTasksByFilter is the resolver for the unscheduleTasksByFilter field.
+func (r *mutationResolver) UnscheduleTasksByFilter(ctx context.Context, versionID string, filter TaskFilterOptions, abort bool) (*BulkTaskOperationResult, error) {
+	selectedTasks, err := resolveTasksByFilter(ctx, versionID, filter)
+	if err != nil {
+		return nil, err
+	}
+	return unscheduleSelectedTasks(ctx, selectedTasks, abort)
+}
+
 // UnscheduleVersionTasks is the resolver for the unscheduleVersionTasks field.
 func (r *mutationResolver) UnscheduleVersionTasks(ctx context.Context, versionID string, abort bool) (*string, error) {
 	modifications := model.VersionModification{

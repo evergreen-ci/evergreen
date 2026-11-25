@@ -52,55 +52,6 @@ func resolveTasksByFilter(ctx context.Context, versionID string, f TaskFilterOpt
 	return tasks, nil
 }
 
-// scheduleSelectedTasks schedules the schedulable tasks among the selected tasks and reports the rest as task errors.
-func scheduleSelectedTasks(ctx context.Context, selectedTasks []task.Task) (*BulkTaskOperationResult, error) {
-	result := &BulkTaskOperationResult{
-		ModifiedTasks: []*restModel.APITask{},
-		TaskErrors:    []*TaskError{},
-	}
-	taskIDs := getTaskIDsToSchedule(selectedTasks)
-	if len(taskIDs) == 0 {
-		return result, nil
-	}
-	if len(taskIDs) > maxTasksToModify {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot schedule more than %d tasks at once, but the selection contains %d tasks; narrow the selection", maxTasksToModify, len(taskIDs)))
-	}
-	tasks, err := findAllTasksByIds(ctx, taskIDs...)
-	if err != nil {
-		return nil, err
-	}
-	tasksToSchedule, taskErrors := getSchedulableTasks(tasks)
-	result.TaskErrors = taskErrors
-	if len(tasksToSchedule) == 0 {
-		return result, nil
-	}
-	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
-	scheduled, err := setTasksScheduled(ctx, logURL, true, tasksToSchedule)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("scheduling tasks: %s", err.Error()))
-	}
-	result.ModifiedTasks = scheduled
-	return result, nil
-}
-
-// getTaskIDsToSchedule returns the unique IDs of the tasks to schedule. Execution tasks can't be scheduled
-// individually, so they're replaced by their display task.
-func getTaskIDsToSchedule(tasks []task.Task) []string {
-	seen := make(map[string]bool, len(tasks))
-	taskIDs := make([]string, 0, len(tasks))
-	for _, t := range tasks {
-		id := t.Id
-		if displayTaskID := utility.FromStringPtr(t.DisplayTaskId); displayTaskID != "" {
-			id = displayTaskID
-		}
-		if !seen[id] {
-			seen[id] = true
-			taskIDs = append(taskIDs, id)
-		}
-	}
-	return taskIDs
-}
-
 // getSchedulableTasks returns the tasks that can be scheduled and an error for each task that can't be.
 func getSchedulableTasks(tasks []task.Task) ([]task.Task, []*TaskError) {
 	schedulable := make([]task.Task, 0, len(tasks))
@@ -117,4 +68,105 @@ func getSchedulableTasks(tasks []task.Task) ([]task.Task, []*TaskError) {
 		schedulable = append(schedulable, t)
 	}
 	return schedulable, taskErrors
+}
+
+// scheduleSelectedTasks schedules the schedulable tasks among the selected tasks and reports the rest as task errors.
+func scheduleSelectedTasks(ctx context.Context, selectedTasks []task.Task) (*BulkTaskOperationResult, error) {
+	result := &BulkTaskOperationResult{
+		ModifiedTasks: []*restModel.APITask{},
+		TaskErrors:    []*TaskError{},
+	}
+
+	// Execution tasks can't be scheduled individually.
+	taskIDs := make([]string, 0, len(selectedTasks))
+	for _, t := range selectedTasks {
+		id := t.Id
+		if displayTaskID := utility.FromStringPtr(t.DisplayTaskId); displayTaskID != "" {
+			id = displayTaskID
+		}
+		taskIDs = append(taskIDs, id)
+	}
+	taskIDs = utility.UniqueStrings(taskIDs)
+	if len(taskIDs) == 0 {
+		return result, nil
+	}
+	if len(taskIDs) > maxTasksToModify {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot modify more than %d tasks at once, but the selection contains %d tasks; narrow the selection", maxTasksToModify, len(taskIDs)))
+	}
+	tasks, err := findAllTasksByIds(ctx, taskIDs...)
+	if err != nil {
+		return nil, err
+	}
+
+	tasksToSchedule, taskErrors := getSchedulableTasks(tasks)
+	result.TaskErrors = taskErrors
+	if len(tasksToSchedule) == 0 {
+		return result, nil
+	}
+	logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+	scheduled, err := setTasksScheduled(ctx, logURL, true, tasksToSchedule)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("scheduling tasks: %s", err.Error()))
+	}
+	result.ModifiedTasks = scheduled
+	return result, nil
+}
+
+// getUnschedulableTasks returns the tasks that can be unscheduled and an error for each task that can't be.
+func getUnschedulableTasks(tasks []task.Task) ([]task.Task, []*TaskError) {
+	unschedulable := make([]task.Task, 0, len(tasks))
+	taskErrors := []*TaskError{}
+	for _, t := range tasks {
+		isScheduled := t.Activated && t.Status == evergreen.TaskUndispatched
+		if !isScheduled {
+			taskErrors = append(taskErrors, &TaskError{TaskID: t.Id, Reason: "task is not scheduled"})
+			continue
+		}
+		unschedulable = append(unschedulable, t)
+	}
+	return unschedulable, taskErrors
+}
+
+// unscheduleSelectedTasks unschedules the unschedulable tasks among the selected tasks and reports the rest as task
+// errors. If abort is true, the selected tasks that are already running are also aborted, as when unscheduling a whole
+// version.
+func unscheduleSelectedTasks(ctx context.Context, selectedTasks []task.Task, abort bool) (*BulkTaskOperationResult, error) {
+	result := &BulkTaskOperationResult{
+		ModifiedTasks: []*restModel.APITask{},
+		TaskErrors:    []*TaskError{},
+	}
+	taskIDs := make([]string, 0, len(selectedTasks))
+	for _, t := range selectedTasks {
+		taskIDs = append(taskIDs, t.Id)
+	}
+	taskIDs = utility.UniqueStrings(taskIDs)
+	if len(taskIDs) == 0 {
+		return result, nil
+	}
+	if len(taskIDs) > maxTasksToModify {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot modify more than %d tasks at once, but the selection contains %d tasks; narrow the selection", maxTasksToModify, len(taskIDs)))
+	}
+	tasks, err := findAllTasksByIds(ctx, taskIDs...)
+	if err != nil {
+		return nil, err
+	}
+
+	tasksToUnschedule, taskErrors := getUnschedulableTasks(tasks)
+	result.TaskErrors = taskErrors
+	if len(tasksToUnschedule) > 0 {
+		logURL := evergreen.GetEnvironment().Settings().Ui.LogUrl
+		unscheduled, err := setTasksScheduled(ctx, logURL, false, tasksToUnschedule)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("unscheduling tasks: %s", err.Error()))
+		}
+		result.ModifiedTasks = unscheduled
+	}
+
+	if abort {
+		abortInfo := task.AbortInfo{User: mustHaveUser(ctx).Username()}
+		if err := task.AbortTasksByIDs(ctx, taskIDs, abortInfo); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("aborting tasks: %s", err.Error()))
+		}
+	}
+	return result, nil
 }

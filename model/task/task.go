@@ -3026,6 +3026,19 @@ func AbortVersionTasks(ctx context.Context, versionId string, reason AbortInfo) 
 	return errors.Wrapf(abortTasksByQuery(ctx, q, reason), "aborting tasks for version '%s'", versionId)
 }
 
+// AbortTasksByIDs sets the abort flag on the tasks with the given IDs, and on the execution tasks of any display
+// tasks among them, that are in an abortable status.
+func AbortTasksByIDs(ctx context.Context, taskIDs []string, reason AbortInfo) error {
+	q := bson.M{
+		"$or": []bson.M{
+			{IdKey: bson.M{"$in": taskIDs}},
+			{DisplayTaskIdKey: bson.M{"$in": taskIDs}},
+		},
+		StatusKey: bson.M{"$in": evergreen.TaskInProgressStatuses},
+	}
+	return errors.Wrap(abortTasksByQuery(ctx, q, reason), "aborting tasks by IDs")
+}
+
 func abortTasksByQuery(ctx context.Context, q bson.M, reason AbortInfo) error {
 	ids, err := findAllTaskIDs(ctx, db.Query(q))
 	if err != nil {

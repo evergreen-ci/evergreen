@@ -132,43 +132,6 @@ func TestResolveTasks(t *testing.T) {
 	})
 }
 
-func TestGetTaskIDsToSchedule(t *testing.T) {
-	regular := task.Task{Id: "regular", DisplayTaskId: utility.ToStringPtr("")}
-	display := task.Task{Id: "display", DisplayOnly: true, DisplayTaskId: utility.ToStringPtr("")}
-	exec1 := task.Task{Id: "exec1", DisplayTaskId: utility.ToStringPtr("display")}
-	exec2 := task.Task{Id: "exec2", DisplayTaskId: utility.ToStringPtr("display")}
-
-	for testName, testCase := range map[string]struct {
-		tasks       []task.Task
-		expectedIDs []string
-	}{
-		"RegularAndDisplayTasksAreKept": {
-			tasks:       []task.Task{regular, display},
-			expectedIDs: []string{"regular", "display"},
-		},
-		"ExecutionTaskIsReplacedByItsDisplayTask": {
-			tasks:       []task.Task{exec1},
-			expectedIDs: []string{"display"},
-		},
-		"SiblingExecutionTasksCollapseToOneDisplayTask": {
-			tasks:       []task.Task{exec1, exec2},
-			expectedIDs: []string{"display"},
-		},
-		"DisplayTaskAlreadySelectedIsNotDuplicated": {
-			tasks:       []task.Task{display, exec1},
-			expectedIDs: []string{"display"},
-		},
-		"DuplicateTasksAreDeduplicated": {
-			tasks:       []task.Task{regular, regular},
-			expectedIDs: []string{"regular"},
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			assert.ElementsMatch(t, testCase.expectedIDs, getTaskIDsToSchedule(testCase.tasks))
-		})
-	}
-}
-
 func TestGetSchedulableTasks(t *testing.T) {
 	unscheduled := task.Task{Id: "unscheduled", Status: evergreen.TaskUndispatched, Activated: false}
 	scheduled := task.Task{Id: "scheduled", Status: evergreen.TaskUndispatched, Activated: true}
@@ -214,6 +177,52 @@ func TestGetSchedulableTasks(t *testing.T) {
 			ids := []string{}
 			for _, s := range schedulable {
 				ids = append(ids, s.Id)
+			}
+			errorIDs := []string{}
+			for _, e := range taskErrors {
+				errorIDs = append(errorIDs, e.TaskID)
+			}
+			assert.ElementsMatch(t, testCase.expectedIDs, ids)
+			assert.ElementsMatch(t, testCase.expectedErrorIDs, errorIDs)
+		})
+	}
+}
+
+func TestGetUnschedulableTasks(t *testing.T) {
+	scheduled := task.Task{Id: "scheduled", Status: evergreen.TaskUndispatched, Activated: true}
+	unscheduled := task.Task{Id: "unscheduled", Status: evergreen.TaskUndispatched, Activated: false}
+	running := task.Task{Id: "running", Status: evergreen.TaskStarted, Activated: true}
+	finished := task.Task{Id: "finished", Status: evergreen.TaskFailed, Activated: true}
+	scheduledExecution := task.Task{Id: "scheduledExecution", Status: evergreen.TaskUndispatched, Activated: true, DisplayTaskId: utility.ToStringPtr("display")}
+
+	for testName, testCase := range map[string]struct {
+		tasks            []task.Task
+		expectedIDs      []string
+		expectedErrorIDs []string
+	}{
+		"ScheduledTaskIsUnschedulable": {
+			tasks:       []task.Task{scheduled},
+			expectedIDs: []string{"scheduled"},
+		},
+		"ScheduledExecutionTaskIsUnschedulable": {
+			tasks:       []task.Task{scheduledExecution},
+			expectedIDs: []string{"scheduledExecution"},
+		},
+		"UnscheduledRunningAndFinishedTasksAreNotUnschedulable": {
+			tasks:            []task.Task{unscheduled, running, finished},
+			expectedErrorIDs: []string{"unscheduled", "running", "finished"},
+		},
+		"MixedTasksAreSplitByUnschedulability": {
+			tasks:            []task.Task{scheduled, unscheduled, running, scheduledExecution},
+			expectedIDs:      []string{"scheduled", "scheduledExecution"},
+			expectedErrorIDs: []string{"unscheduled", "running"},
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			unschedulable, taskErrors := getUnschedulableTasks(testCase.tasks)
+			ids := []string{}
+			for _, u := range unschedulable {
+				ids = append(ids, u.Id)
 			}
 			errorIDs := []string{}
 			for _, e := range taskErrors {

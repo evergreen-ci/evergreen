@@ -1,0 +1,84 @@
+{
+  "tests": [
+    {
+      "query_file": "task_ids.graphql",
+      "result": {
+        "data": {
+          "unscheduleTasksByIds": {
+            "modifiedTasks": [
+              {
+                "id": "scheduled_task",
+                "activated": false
+              }
+            ],
+            "taskErrors": []
+          }
+        }
+      }
+    },
+    {
+      "query_file": "execution_task.graphql",
+      "result": {
+        "data": {
+          "unscheduleTasksByIds": {
+            "modifiedTasks": [
+              {
+                "id": "scheduled_exec_task",
+                "activated": false
+              }
+            ],
+            "taskErrors": []
+          }
+        }
+      }
+    },
+    {
+      "query_file": "unscheduled_task.graphql",
+      "result": {
+        "data": {
+          "unscheduleTasksByIds": {
+            "modifiedTasks": [],
+            "taskErrors": [
+              {
+                "taskId": "unscheduled_task",
+                "reason": "task is not scheduled"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "running_task_with_abort.graphql",
+      "result": {
+        "data": {
+          "unscheduleTasksByIds": {
+            "modifiedTasks": [],
+            "taskErrors": [
+              {
+                "taskId": "running_task",
+                "reason": "task is not scheduled"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'regular_user' does not have permission to 'edit tasks' for the project 'evergreen'",
+            "path": ["unscheduleTasksByIds", "taskIds"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+mutation {
+    unscheduleTasksByFilter(filter: {}, versionId: "abort_version", abort: true) {
+      modifiedTasks {
+        id
+        activated
+      }
+      taskErrors {
+        taskId
+        reason
+      }
+    }
+}

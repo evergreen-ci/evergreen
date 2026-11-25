@@ -1,0 +1,89 @@
+{
+  "tests": [
+    {
+      "query_file": "filter.graphql",
+      "result": {
+        "data": {
+          "unscheduleTasksByFilter": {
+            "modifiedTasks": [
+              {
+                "id": "filtered_scheduled_task",
+                "activated": false
+              }
+            ],
+            "taskErrors": []
+          }
+        }
+      }
+    },
+    {
+      "query_file": "filter_with_exclusions.graphql",
+      "result": {
+        "data": {
+          "unscheduleTasksByFilter": {
+            "modifiedTasks": [
+              {
+                "id": "included_scheduled_task",
+                "activated": false
+              }
+            ],
+            "taskErrors": []
+          }
+        }
+      }
+    },
+    {
+      "query_file": "blank_filter.graphql",
+      "result": {
+        "data": {
+          "unscheduleTasksByFilter": {
+            "modifiedTasks": [
+              {
+                "id": "blank_filter_scheduled_task",
+                "activated": false
+              }
+            ],
+            "taskErrors": []
+          }
+        }
+      }
+    },
+    {
+      "query_file": "abort.graphql",
+      "result": {
+        "data": {
+          "unscheduleTasksByFilter": {
+            "modifiedTasks": [
+              {
+                "id": "abort_scheduled_task",
+                "activated": false
+              }
+            ],
+            "taskErrors": [
+              {
+                "taskId": "abort_running_task",
+                "reason": "task is not scheduled"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'regular_user' does not have permission to 'edit tasks' for the project 'evergreen'",
+            "path": ["unscheduleTasksByFilter", "versionId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

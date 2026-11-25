@@ -1,0 +1,126 @@
+{
+  "tasks": [
+    {
+      "_id": "scheduled_task",
+      "version": "parent_version",
+      "branch": "sandbox_project_id",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "scheduled task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "will-run",
+      "activated": true
+    },
+    {
+      "_id": "unscheduled_task",
+      "version": "parent_version",
+      "branch": "sandbox_project_id",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "unscheduled task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "unscheduled",
+      "activated": false
+    },
+    {
+      "_id": "running_task",
+      "version": "parent_version",
+      "branch": "sandbox_project_id",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "running task",
+      "r": "patch_request",
+      "status": "started",
+      "display_status_cache": "started",
+      "activated": true
+    },
+    {
+      "_id": "scheduled_exec_display_task",
+      "version": "parent_version",
+      "branch": "sandbox_project_id",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "scheduled exec display task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "will-run",
+      "activated": true,
+      "display_only": true,
+      "execution_tasks": ["scheduled_exec_task"]
+    },
+    {
+      "_id": "scheduled_exec_task",
+      "version": "parent_version",
+      "branch": "sandbox_project_id",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "scheduled exec task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "will-run",
+      "activated": true,
+      "display_task_id": "scheduled_exec_display_task"
+    },
+    {
+      "_id": "no_permissions_task",
+      "version": "no_permissions_version",
+      "branch": "evergreen",
+      "build_id": "some_thang",
+      "distro": "distro",
+      "build_variant": "variant",
+      "display_name": "no permissions task",
+      "r": "patch_request",
+      "status": "undispatched",
+      "display_status_cache": "will-run",
+      "activated": true
+    }
+  ],
+  "versions": [
+    {
+      "_id": "parent_version",
+      "identifier": "sandbox_project_id"
+    },
+    {
+      "_id": "no_permissions_version",
+      "identifier": "evergreen"
+    }
+  ],
+  "builds": [
+    {
+      "_id": "some_thang",
+      "version": "parent_version",
+      "build_variant": "variant",
+      "status": "started",
+      "activated": true,
+      "tasks": [
+        { "id": "scheduled_task", "s": "undispatched", "a": true },
+        { "id": "unscheduled_task", "s": "undispatched", "a": false },
+        { "id": "running_task", "s": "started", "a": true },
+        { "id": "scheduled_exec_display_task", "s": "undispatched", "a": true },
+        { "id": "scheduled_exec_task", "s": "undispatched", "a": true },
+        { "id": "no_permissions_task", "s": "undispatched", "a": true }
+      ]
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ]
+}
