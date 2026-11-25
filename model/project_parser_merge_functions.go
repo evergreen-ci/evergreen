@@ -332,7 +332,7 @@ func (pp *ParserProject) mergeMultipleParserProjects(toMerge *ParserProject) err
 		catcher.Add(err)
 	}
 
-	// Aggregate parse warnings from the main file and all merged files.
+	// Parse warnings are in-memory only (never persisted); aggregate them from all merged files.
 	pp.parseWarnings = append(pp.parseWarnings, toMerge.parseWarnings...)
 
 	return errors.Wrap(catcher.Resolve(), MergeProjectConfigError)
