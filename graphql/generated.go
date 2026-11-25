@@ -1090,8 +1090,8 @@ type ComplexityRoot struct {
 		UnquarantineTest              func(childComplexity int, opts UnquarantineTestInput) int
 		UnquarantineVariant           func(childComplexity int, opts UnquarantineVariantInput) int
 		UnscheduleTask                func(childComplexity int, taskID string) int
-		UnscheduleTasksByFilter       func(childComplexity int, versionID string, filter TaskFilterOptions) int
-		UnscheduleTasksByIds          func(childComplexity int, taskIds []string) int
+		UnscheduleTasksByFilter       func(childComplexity int, versionID string, filter TaskFilterOptions, abort bool) int
+		UnscheduleTasksByIds          func(childComplexity int, taskIds []string, abort bool) int
 		UnscheduleVersionTasks        func(childComplexity int, versionID string, abort bool) int
 		UpdateBetaFeatures            func(childComplexity int, opts UpdateBetaFeaturesInput) int
 		UpdateHostStatus              func(childComplexity int, hostIds []string, status string, notes *string) int
@@ -2669,8 +2669,8 @@ type MutationResolver interface {
 	ScheduleTasksByIds(ctx context.Context, taskIds []string) (*BulkTaskOperationResult, error)
 	ScheduleTasksByFilter(ctx context.Context, versionID string, filter TaskFilterOptions) (*BulkTaskOperationResult, error)
 	SetVersionPriority(ctx context.Context, versionID string, priority int) (*string, error)
-	UnscheduleTasksByIds(ctx context.Context, taskIds []string) (*BulkTaskOperationResult, error)
-	UnscheduleTasksByFilter(ctx context.Context, versionID string, filter TaskFilterOptions) (*BulkTaskOperationResult, error)
+	UnscheduleTasksByIds(ctx context.Context, taskIds []string, abort bool) (*BulkTaskOperationResult, error)
+	UnscheduleTasksByFilter(ctx context.Context, versionID string, filter TaskFilterOptions, abort bool) (*BulkTaskOperationResult, error)
 	UnscheduleVersionTasks(ctx context.Context, versionID string, abort bool) (*string, error)
 }
 type PatchResolver interface {
@@ -7228,7 +7228,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UnscheduleTasksByFilter(childComplexity, args["versionId"].(string), args["filter"].(TaskFilterOptions)), true
+		return e.complexity.Mutation.UnscheduleTasksByFilter(childComplexity, args["versionId"].(string), args["filter"].(TaskFilterOptions), args["abort"].(bool)), true
 	case "Mutation.unscheduleTasksByIds":
 		if e.complexity.Mutation.UnscheduleTasksByIds == nil {
 			break
@@ -7239,7 +7239,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UnscheduleTasksByIds(childComplexity, args["taskIds"].([]string)), true
+		return e.complexity.Mutation.UnscheduleTasksByIds(childComplexity, args["taskIds"].([]string), args["abort"].(bool)), true
 	case "Mutation.unscheduleVersionTasks":
 		if e.complexity.Mutation.UnscheduleVersionTasks == nil {
 			break
@@ -16167,6 +16167,11 @@ func (ec *executionContext) field_Mutation_unscheduleTasksByFilter_args(ctx cont
 		return nil, err
 	}
 	args["filter"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "abort", ec.unmarshalNBoolean2bool)
+	if err != nil {
+		return nil, err
+	}
+	args["abort"] = arg2
 	return args, nil
 }
 
@@ -16229,6 +16234,11 @@ func (ec *executionContext) field_Mutation_unscheduleTasksByIds_args(ctx context
 		return nil, err
 	}
 	args["taskIds"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "abort", ec.unmarshalNBoolean2bool)
+	if err != nil {
+		return nil, err
+	}
+	args["abort"] = arg1
 	return args, nil
 }
 
@@ -43862,7 +43872,7 @@ func (ec *executionContext) _Mutation_unscheduleTasksByIds(ctx context.Context, 
 		ec.fieldContext_Mutation_unscheduleTasksByIds,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().UnscheduleTasksByIds(ctx, fc.Args["taskIds"].([]string))
+			return ec.resolvers.Mutation().UnscheduleTasksByIds(ctx, fc.Args["taskIds"].([]string), fc.Args["abort"].(bool))
 		},
 		nil,
 		ec.marshalNBulkTaskOperationResult2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBulkTaskOperationResult,
@@ -43909,7 +43919,7 @@ func (ec *executionContext) _Mutation_unscheduleTasksByFilter(ctx context.Contex
 		ec.fieldContext_Mutation_unscheduleTasksByFilter,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().UnscheduleTasksByFilter(ctx, fc.Args["versionId"].(string), fc.Args["filter"].(TaskFilterOptions))
+			return ec.resolvers.Mutation().UnscheduleTasksByFilter(ctx, fc.Args["versionId"].(string), fc.Args["filter"].(TaskFilterOptions), fc.Args["abort"].(bool))
 		},
 		nil,
 		ec.marshalNBulkTaskOperationResult2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBulkTaskOperationResult,
