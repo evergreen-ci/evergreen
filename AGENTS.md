@@ -65,6 +65,11 @@ Whenever modifying the `agent/` package, increment `AgentVersion` in `config.go`
 rollover. The format is the calendar date (`YYYY-MM-DD`); append a letter suffix (e.g. `2026-05-20a`)
 if there are multiple changes on the same day.
 
+### GraphQL Changes
+
+Do not suddenly remove or delete GraphQL fields. Fields should be marked for removal by adding a `@deprecated` 
+directive to them. Deprecated fields can be removed once a 14-day grace period has elapsed.
+
 ### CI Self-Tests
 
 The Evergreen codebase has automated tests defined in `self-tests.yml`, which itself runs in Evergreen. For most tasks in
