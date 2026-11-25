@@ -37,8 +37,8 @@ form:
 <http://<EVERGREEN_HOST>/rest/v2/path/to/resource?start_at=<pagination_key>&limit=<objects_per_page>; rel="prev"
 ```
 
-To fetch all results, follow the `rel="next"` link verbatim until no Link
-header is returned, rather than constructing pagination URLs yourself.
+To fetch all results, follow the `rel="next"` link verbatim until there is
+no `rel="next"` link, rather than constructing pagination URLs yourself.
 Every paginated endpoint documents its pagination style in the OpenAPI
 spec via an `x-pagination-type` operation extension:
 

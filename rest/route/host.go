@@ -200,7 +200,7 @@ type hostGetHandler struct {
 //	@Tags				hosts
 //	@Router				/hosts [get]
 //	@Security			Api-User || Api-Key
-//	@Param				host_id	query		string	false	"ID of the first host on the next page. Defaults to the most recent host."
+//	@Param				host_id	query		string	false	"ID of the first host on the next page."
 //	@Param				limit	query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
 //	@Param				status	query		string	false	"A status of host to limit the results to"
 //	@Success			200		{array}		model.APIHost
@@ -218,7 +218,7 @@ func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
 //	@Router				/users/{user_id}/hosts [get]
 //	@Security			Api-User || Api-Key
 //	@Param				user_id	path		string	true	"the user ID"
-//	@Param				host_id	query		string	false	"ID of the first host on the next page. Defaults to the most recent host."
+//	@Param				host_id	query		string	false	"ID of the first host on the next page."
 //	@Param				limit	query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
 //	@Param				status	query		string	false	"A status of host to limit the results to"
 //	@Success			200		{array}		model.APIHost

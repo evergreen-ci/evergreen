@@ -75,8 +75,8 @@ the generated spec (`rest/openapi` tests). After editing annotations, run `make 
   for `rest/model` even when the file imports it as `restModel`. `float` is not a valid `@Param`
   type; use `number`.
 * `@x-` operation extensions require JSON values, e.g. `@x-pagination-type "time-cursor"`.
-* Keep annotation descriptions at most ~120 characters; `swag fmt` normalizes alignment, so do not
-  hand-format it.
+* Keep each annotation comment line at most ~120 characters; `swag fmt` normalizes alignment, so do
+  not hand-format it.
 * Paginated routes must document the `Link` response header (`@Header ... Link "Pagination link to
   the next page (rel=next) when more results exist. Follow it verbatim rather than constructing
   URLs."`), an `@x-pagination-type` extension naming the pagination style, the cursor parameter's

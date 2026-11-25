@@ -294,7 +294,7 @@ type taskStatsHandler struct {
 //	@Param				distros			query		string	false	"Only return statistics for these distros. Can be a comma-separated list or repeated."
 //	@Param				requesters		query		string	false	"Only return statistics for versions with these requesters (comma-separated or repeated). Defaults to 'mainline' (commit-push versions)."
 //	@Param				before_date		query		string	true	"Only return statistics from before this date, in YYYY-MM-DD format."
-//	@Param				after_date		query		string	true	"Only return statistics from after this date, in YYYY-MM-DD format."
+//	@Param				after_date		query		string	true	"Only return statistics from on or after this date, in YYYY-MM-DD format."
 //	@Param				sort			query		string	false	"Sort order of statistics: 'earliest' or 'latest'. Defaults to 'earliest'."
 //	@Success			200				{array}		model.APITaskStats
 //	@Header				200				{string}	Link	"Pagination link to the next page (rel=next) when more results exist. Follow it verbatim rather than constructing URLs."

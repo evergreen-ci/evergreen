@@ -51,7 +51,7 @@ func makeFetchProjectsRoute() gimlet.RouteHandler {
 //	@Tags				projects
 //	@Router				/projects [get]
 //	@Security			Api-User || Api-Key
-//	@Param				start_at	query		string	false	"ID of the first project on the next page. Defaults to the first project."
+//	@Param				start_at	query		string	false	"Identifier of the first project on the next page. Defaults to the first project."
 //	@Param				limit		query		int		false	"The number of projects to be returned per page of pagination. Defaults to 100"
 //	@Param				owner_name	query		string	false	"Filter projects by owner name (GitHub organization)"
 //	@Param				repo_name	query		string	false	"Filter projects by repository name"
@@ -797,7 +797,7 @@ func makeGetProjectVersionsHandler() gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary			Get versions for a project
-//	@Description		Returns a paginated list of recent versions for a project. Parameters should be passed into the JSON body (the route still accepts limit and start as query parameters to support legacy behavior). When include_builds is set, a request searches at most 1000 versions. If that is not enough to fill the page, the request fails, and the search can be narrowed with start or revision_end. Only limit, start, requester, and created_after/created_before are read from the query string; all other filters are read only from the JSON body. The Link header carries only start and limit, so it does not preserve the other filters: resend the JSON body with each page request, and do not set skip while paginating with start, since skip is applied on every page.
+//	@Description		Returns a paginated list of recent versions for a project. Only limit, start, requester, and created_after/created_before are read from the query string. All other options are read only from the JSON body. When include_builds is set, a request searches at most 1000 versions, if that is not enough to fill the page, the request fails, and the search can be narrowed with start or revision_end. The Link header keeps the original query string and only updates start and limit, so body-only options must be resent with each page request. A requester query parameter overrides requesters in the body. Do not set skip while paginating with start, since skip is applied on every page.
 //	@Tags				versions
 //	@Router				/projects/{project_id}/versions [get]
 //	@Security			Api-User || Api-Key
