@@ -188,7 +188,7 @@ func makeGetTaskLogs() *getTaskLogsHandler {
 //	@Param				tail_limit		query		int		false	"If set greater than 0, returns the last N log lines."
 //	@Param				print_time		query		bool	false	"If set to true, returns log lines prefixed with their timestamp."
 //	@Param				print_priority	query		bool	false	"If set to true, returns log lines prefixed with their priority."
-//	@Param				paginate		query		bool	false	"If true, paginates and returns Link headers (rel=next, rel=prev) with timestamp cursors. Defaults to false."
+//	@Param				paginate		query		bool	false	"If true, paginates with timestamp cursors and returns Link headers. Defaults to false."
 //	@Success			200				{string}	string
 //	@Header				200				{string}	Link	"Returned whenever 'paginate' is true. Always contains a rel=prev link pointing at the current page start; contains a rel=next link only when more log lines exist. Follow rel=next verbatim until it is no longer present."
 //	@x-pagination-type	"log-time-cursor"
@@ -253,7 +253,7 @@ func makeGetTestLogs() *getTestLogsHandler {
 //	@Param				tail_limit		query		int		false	"If set greater than 0, returns the last N log lines."
 //	@Param				print_time		query		bool	false	"If set to true, returns log lines prefixed with their timestamp."
 //	@Param				print_priority	query		bool	false	"If set to true, returns log lines prefixed with their priority."
-//	@Param				paginate		query		bool	false	"If true, paginates and returns Link headers (rel=next, rel=prev) with timestamp cursors. Defaults to false."
+//	@Param				paginate		query		bool	false	"If true, paginates with timestamp cursors and returns Link headers. Defaults to false."
 //	@Success			200				{string}	string
 //	@Header				200				{string}	Link	"Returned whenever 'paginate' is true. Always contains a rel=prev link pointing at the current page start; contains a rel=next link only when more log lines exist. Follow rel=next verbatim until it is no longer present."
 //	@x-pagination-type	"log-time-cursor"

@@ -25,7 +25,7 @@ type adminEventsGet struct {
 // Factory creates an instance of the handler.
 //
 //	@Summary			Fetch the Evergreen admin event log
-//	@Description		Returns a paginated list of admin events, most recent first.
+//	@Description		Returns a paginated list of admin events, most recent first. This route is restricted to Evergreen admins.
 //	@Tags				admin
 //	@Router				/admin/events [get]
 //	@Security			Api-User || Api-Key

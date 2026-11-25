@@ -26,7 +26,7 @@ type projectEventsGet struct {
 // Factory creates an instance of the handler.
 //
 //	@Summary			Fetch a project's event log
-//	@Description		Returns a paginated list of the project's events, most recent first.
+//	@Description		Returns a paginated list of the project's events, most recent first. This route is restricted to project admins.
 //	@Tags				projects
 //	@Router				/projects/{project_id}/events [get]
 //	@Security			Api-User || Api-Key
